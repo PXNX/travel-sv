@@ -8,7 +8,7 @@
 		type Trip,
 		type TripStop,
 		type Category,
-		type TravelLocation
+		type TravelTip
 	} from '$lib/types';
 	import { goto } from '$app/navigation';
 	import { formatDuration, getTotalTripDuration } from '$lib/utils/calculations';
@@ -25,14 +25,16 @@
 	import IconThumbLikeFilled from '~icons/fluent/thumb-like-24-filled';
 	import IconClock from '~icons/fluent/clock-24-regular';
 	import IconFilter from '~icons/fluent/filter-24-regular';
-	import IconPlaylistAdd from '~icons/fluent/list-bar-24-regular';
+	import FluentList24Regular from '~icons/fluent/list-24-regular';
 	import IconSave from '~icons/fluent/save-24-regular';
 	import IconLocationIcon from '~icons/fluent/location-24-regular';
 	import IconPin from '~icons/fluent/pin-24-filled';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { resolve } from '$app/paths';
 
 	interface Props {
 		data: {
-			initialLocations?: TravelLocation[];
+			initialLocations?: TravelTip[];
 			isSignedIn?: boolean;
 			user?: { id: string; name: string; email: string; isAdmin: boolean };
 		};
@@ -41,7 +43,7 @@
 	let { data }: Props = $props();
 
 	// State
-	let locations = $state<TravelLocation[]>(data.initialLocations || []);
+	let locations = $state<TravelTip[]>(data.initialLocations || []);
 	let selectedCategory = $state<Category | 'all'>('all');
 	let searchQuery = $state('');
 	let mapInstance: L.Map | undefined = $state();
@@ -50,7 +52,7 @@
 
 	// Bottom sheet state
 	let showBottomSheet = $state(false);
-	let selectedLocation = $state<TravelLocation | null>(null);
+	let selectedLocation = $state<TravelTip | null>(null);
 	let userLikes = $state<Set<number>>(new Set());
 
 	// Trip planning
@@ -74,7 +76,7 @@
 	);
 
 	// Get locations map for quick lookup
-	const locationsMap = $derived(new Map(locations.map((loc) => [loc.id, loc])));
+	const locationsMap = $derived(locations.map((loc) => [loc.id, loc]));
 
 	// Current trip stops with details
 	const currentTripStops = $derived(
@@ -82,7 +84,7 @@
 			? currentTrip.stops
 					.map((stop) => ({
 						...stop,
-						location: locationsMap.get(stop.locationId)
+						location: locationsMap.get(stop.tipId)
 					}))
 					.filter((stop) => stop.location)
 			: []
@@ -109,7 +111,17 @@
 
 		const savedLikes = localStorage.getItem('travel-likes');
 		if (savedLikes) {
-			userLikes = new Set(JSON.parse(savedLikes));
+			userLikes = new SvelteSet(JSON.parse(savedLikes));
+		}
+	});
+
+	// Attach map click handler using $effect
+	$effect(() => {
+		if (mapInstance) {
+			mapInstance.on('click', handleMapClick);
+			return () => {
+				mapInstance.off('click', handleMapClick);
+			};
 		}
 	});
 
@@ -136,7 +148,7 @@
 			const location = locations.find((l) => l.id === locationId);
 			if (location) location.likes++;
 		}
-		userLikes = new Set(userLikes); // Trigger reactivity
+		userLikes = new SvelteSet(userLikes); // Trigger reactivity
 		saveLikes();
 	}
 
@@ -170,11 +182,11 @@
 			showBottomSheet = true;
 		} else if (data.isSignedIn) {
 			// Navigate to new location page with coordinates
-			goto(`/locations/new?lat=${clickedLat}&lng=${clickedLng}`);
+			goto(resolve(`/location/new?lat=${clickedLat.toFixed(6)}&lng=${clickedLng.toFixed(6)}`));
 		}
 	}
 
-	function handleLocationCardClick(location: TravelLocation) {
+	function handleLocationCardClick(location: TravelTip) {
 		selectedLocation = location;
 		showBottomSheet = true;
 		mapCenter = [location.latitude, location.longitude];
@@ -224,19 +236,19 @@
 		showTripPlanner = true;
 	}
 
-	function addToTrip(location: TravelLocation) {
+	function addToTrip(location: TravelTip) {
 		if (!currentTrip) {
 			showNewTripDialog = true;
 			return;
 		}
 
 		// Check if already in trip
-		if (currentTrip.stops.some((s) => s.locationId === location.id)) {
+		if (currentTrip.stops.some((s) => s.tipId === location.id)) {
 			return;
 		}
 
 		const stop: TripStop = {
-			locationId: location.id,
+			tipId: location.id,
 			order: currentTrip.stops.length,
 			customDuration: undefined,
 			notes: ''
@@ -248,11 +260,11 @@
 		saveTrips();
 	}
 
-	function removeFromTrip(locationId: number) {
+	function removeFromTrip(tipId: number) {
 		if (!currentTrip) return;
 
 		currentTrip.stops = currentTrip.stops
-			.filter((stop) => stop.locationId !== locationId)
+			.filter((stop) => stop.tipId !== tipId)
 			.map((stop, index) => ({ ...stop, order: index }));
 
 		currentTrip.updatedAt = new Date().toISOString();
@@ -276,7 +288,7 @@
 		if (trip.stops.length > 0) {
 			const bounds = L.latLngBounds(
 				trip.stops
-					.map((stop) => locationsMap.get(stop.locationId))
+					.map((stop) => locationsMap.get(stop.tipId))
 					.filter(Boolean)
 					.map((loc) => [loc!.latitude, loc!.longitude] as [number, number])
 			);
@@ -285,11 +297,11 @@
 	}
 
 	function viewLocationDetail(locationId: number) {
-		goto(`/locations/${locationId}`);
+		goto(resolve(`/location/${locationId}`));
 	}
 
-	function isInCurrentTrip(locationId: number): boolean {
-		return currentTrip?.stops.some((s) => s.locationId === locationId) ?? false;
+	function isInCurrentTrip(tipId: number): boolean {
+		return currentTrip?.stops.some((s) => s.tipId === tipId) ?? false;
 	}
 </script>
 
@@ -315,14 +327,14 @@
 					onkeydown={(e) => e.key === 'Enter' && searchLocation()}
 				/>
 				<button class="btn btn-sm btn-square" onclick={searchLocation}>
-					<IconSearch class="h-5 w-5" />
+					<IconSearch class="size-5" />
 				</button>
 			</div>
 
 			{#if data.isSignedIn}
 				<div class="alert alert-sm bg-primary-focus text-primary-content mt-3 border-0">
-					<IconPin class="h-4 w-4" />
-					<span class="text-xs">Tap map to add new location</span>
+					<IconPin class="size-4" />
+					<span class="text-xs">Click anywhere on map to add new location</span>
 				</div>
 			{/if}
 		</div>
@@ -331,7 +343,7 @@
 		<div class="bg-base-100 border-base-300 space-y-3 border-b p-4">
 			<div>
 				<div class="mb-2 flex items-center gap-2">
-					<IconFilter class="h-4 w-4" />
+					<IconFilter class="size-4" />
 					<span class="text-sm font-medium">Category</span>
 				</div>
 				<select class="select select-sm select-bordered w-full" bind:value={selectedCategory}>
@@ -348,7 +360,7 @@
 					class:btn-primary={!showTripPlanner}
 					onclick={() => (showTripPlanner = false)}
 				>
-					<IconLocationIcon class="h-4 w-4" />
+					<IconLocationIcon class="size-4" />
 					Browse
 				</button>
 				<button
@@ -356,7 +368,7 @@
 					class:btn-primary={showTripPlanner}
 					onclick={() => (showTripPlanner = true)}
 				>
-					<IconNavigation class="h-4 w-4" />
+					<IconNavigation class="size-4" />
 					Trips ({trips.length})
 				</button>
 			</div>
@@ -374,13 +386,13 @@
 								class="btn btn-primary btn-sm w-full gap-2"
 								onclick={() => (showNewTripDialog = true)}
 							>
-								<IconAdd class="h-5 w-5" />
+								<IconAdd class="size-5" />
 								New Trip
 							</button>
 
 							{#if trips.length === 0}
 								<div class="text-base-content/60 py-8 text-center">
-									<IconNavigation class="mx-auto mb-2 h-12 w-12 opacity-50" />
+									<IconNavigation class="mx-auto mb-2 size-12 opacity-50" />
 									<p class="text-sm">No trips yet</p>
 									<p class="text-xs">Create a trip to start planning</p>
 								</div>
@@ -408,13 +420,13 @@
 														class="btn btn-ghost btn-xs btn-square"
 														onclick={() => selectTrip(trip)}
 													>
-														<IconEdit class="h-4 w-4" />
+														<IconEdit class="size-4" />
 													</button>
 													<button
 														class="btn btn-ghost btn-xs btn-square text-error"
 														onclick={() => deleteTrip(trip.id)}
 													>
-														<IconDelete class="h-4 w-4" />
+														<IconDelete class="size-4" />
 													</button>
 												</div>
 											</div>
@@ -432,7 +444,7 @@
 									class="btn btn-ghost btn-sm btn-square"
 									onclick={() => (currentTrip = null)}
 								>
-									<IconDismiss class="h-5 w-5" />
+									<IconDismiss class="size-5" />
 								</button>
 							</div>
 
@@ -449,12 +461,12 @@
 
 							{#if currentTripStops.length === 0}
 								<div class="alert">
-									<IconPlaylistAdd class="h-5 w-5" />
+									<FluentList24Regular class="size-5" />
 									<span class="text-sm">Tap locations to add them to your trip</span>
 								</div>
 							{:else}
 								<div class="space-y-2">
-									{#each currentTripStops as stop, index (stop.locationId)}
+									{#each currentTripStops as stop, index (stop.tipId)}
 										{@const location = stop.location!}
 										<div class="card bg-base-100 shadow">
 											<div class="card-body p-3">
@@ -481,7 +493,7 @@
 														class="btn btn-ghost btn-xs btn-square"
 														onclick={() => removeFromTrip(location.id)}
 													>
-														<IconDismiss class="h-4 w-4" />
+														<IconDismiss class="size-4" />
 													</button>
 												</div>
 											</div>
@@ -497,7 +509,7 @@
 				<div class="space-y-3 p-4">
 					{#if filteredLocations.length === 0}
 						<div class="text-base-content/60 py-8 text-center">
-							<IconMap class="mx-auto mb-2 h-12 w-12 opacity-50" />
+							<IconMap class="mx-auto mb-2 size-12 opacity-50" />
 							<p>No locations found</p>
 						</div>
 					{:else}
@@ -534,14 +546,14 @@
 
 									<div class="mt-2 flex items-center gap-3">
 										<div class="flex items-center gap-1">
-											<IconClock class="h-4 w-4" />
+											<IconClock class="size-4" />
 											<span class="text-sm">{formatDuration(location.durationMinutes)}</span>
 										</div>
 										<div class="ml-auto flex items-center gap-1">
 											{#if userLikes.has(location.id)}
-												<IconThumbLikeFilled class="text-primary h-4 w-4" />
+												<IconThumbLikeFilled class="text-primary size-4" />
 											{:else}
-												<IconThumbLike class="h-4 w-4" />
+												<IconThumbLike class="size-4" />
 											{/if}
 											<span class="text-sm">{location.likes}</span>
 										</div>
@@ -561,7 +573,6 @@
 			options={{ center: mapCenter, zoom: mapZoom, minZoom: 2, maxZoom: 18 }}
 			class="h-full w-full"
 			bind:instance={mapInstance}
-			on:click={handleMapClick}
 		>
 			<TileLayer url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'} />
 
@@ -635,14 +646,14 @@
 				<!-- Stats -->
 				<div class="mb-4 flex items-center gap-4">
 					<div class="flex items-center gap-2">
-						<IconClock class="h-5 w-5" />
+						<IconClock class="size-5" />
 						<span class="font-medium">{formatDuration(selectedLocation.durationMinutes)}</span>
 					</div>
 					<button class="flex items-center gap-2" onclick={() => toggleLike(selectedLocation.id)}>
 						{#if userLikes.has(selectedLocation.id)}
-							<IconThumbLikeFilled class="text-primary h-5 w-5" />
+							<IconThumbLikeFilled class="text-primary size-5" />
 						{:else}
-							<IconThumbLike class="h-5 w-5" />
+							<IconThumbLike class="size-5" />
 						{/if}
 						<span class="font-medium">{selectedLocation.likes}</span>
 					</button>
@@ -662,7 +673,7 @@
 					{#if currentTrip}
 						{#if isInCurrentTrip(selectedLocation.id)}
 							<button class="btn btn-outline flex-1 gap-2" disabled>
-								<IconPlaylistAdd class="h-5 w-5" />
+								<FluentList24Regular class="size-5" />
 								In Trip
 							</button>
 						{:else}
@@ -673,7 +684,7 @@
 									closeBottomSheet();
 								}}
 							>
-								<IconPlaylistAdd class="h-5 w-5" />
+								<FluentList24Regular class="size-5" />
 								Add to Trip
 							</button>
 						{/if}
@@ -685,7 +696,7 @@
 								closeBottomSheet();
 							}}
 						>
-							<IconPlaylistAdd class="h-5 w-5" />
+							<FluentList24Regular class="size-5" />
 							Add to Trip
 						</button>
 					{/if}
@@ -702,7 +713,7 @@
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-xl font-bold">New Trip</h2>
 				<button class="btn btn-ghost btn-sm btn-circle" onclick={() => (showNewTripDialog = false)}>
-					<IconDismiss class="h-5 w-5" />
+					<IconDismiss class="size-5" />
 				</button>
 			</div>
 
@@ -735,7 +746,7 @@
 						onclick={createTrip}
 						disabled={!newTripName.trim()}
 					>
-						<IconSave class="h-4 w-4" />
+						<IconSave class="size-4" />
 						Create
 					</button>
 				</div>
@@ -743,18 +754,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	@keyframes slide-up {
-		from {
-			transform: translateY(100%);
-		}
-		to {
-			transform: translateY(0);
-		}
-	}
-
-	.animate-slide-up {
-		animation: slide-up 0.3s ease-out;
-	}
-</style>
