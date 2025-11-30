@@ -46,7 +46,7 @@ async function checkNearbyLocations(
 		LIMIT 1
 	`);
 
-	return result.rows[0] as { id: number; title: string; distance: number } | undefined;
+	return result[0] as { id: number; title: string; distance: number } | undefined;
 }
 
 export const actions: Actions = {
@@ -116,7 +116,7 @@ export const actions: Actions = {
 				})
 				.returning();
 
-			throw redirect(303, `/locations/${newLocation.id}`);
+			return redirect(303, `/location/${newLocation.id}`);
 		} catch (err) {
 			if (err instanceof Response) throw err;
 			console.error('Error creating location:', err);

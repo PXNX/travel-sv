@@ -114,7 +114,33 @@ export const tipLikes = pgTable(
 	})
 );
 
+export const trips = pgTable('trips', {
+	id: serial('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	name: varchar('name', { length: 255 }).notNull(),
+	description: text('description'),
+	startDate: timestamp('start_date', { withTimezone: true }),
+	endDate: timestamp('end_date', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export const tripLocations = pgTable('trip_locations', {
+	id: serial('id').primaryKey(),
+	tripId: integer('trip_id')
+		.notNull()
+		.references(() => trips.id, { onDelete: 'cascade' }),
+	locationId: integer('location_id')
+		.notNull()
+		.references(() => travelTips.id, { onDelete: 'cascade' }),
+	order: integer('order').notNull().default(0),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+});
+
 export type TravelTip = typeof travelTips.$inferSelect;
+export type Trip = typeof trips.$inferSelect;
+export type TripLocation = typeof tripLocations.$inferSelect;
 export type NewTravelTip = typeof travelTips.$inferInsert;
 export type PendingEdit = typeof pendingEdits.$inferSelect;
 export type NewPendingEdit = typeof pendingEdits.$inferInsert;
