@@ -100,7 +100,7 @@
 	}
 
 	function cancel() {
-		goto('/map');
+		goto(resolve('/'));
 	}
 </script>
 
