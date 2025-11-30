@@ -55,6 +55,19 @@
 	let selectedLocation = $state<TravelTip | null>(null);
 	let userLikes = $state<Set<number>>(new Set());
 
+	// Add location dialog state
+	let showAddLocationDialog = $state(false);
+	let showSignInPrompt = $state(false);
+	let pendingLocationLat = $state(0);
+	let pendingLocationLng = $state(0);
+	let newLocationLat = $state(0);
+	let newLocationLng = $state(0);
+	let newLocationTitle = $state('');
+	let newLocationDescription = $state('');
+	let newLocationCategory = $state<Category>('food');
+	let newLocationDuration = $state(60);
+	let newLocationAddress = $state('');
+
 	// Trip planning
 	let trips = $state<Trip[]>([]);
 	let currentTrip = $state<Trip | null>(null);
@@ -76,7 +89,7 @@
 	);
 
 	// Get locations map for quick lookup
-	const locationsMap = $derived(locations.map((loc) => [loc.id, loc]));
+	const locationsMap = $derived(new Map(locations.map((loc) => [loc.id, loc])));
 
 	// Current trip stops with details
 	const currentTripStops = $derived(
@@ -139,16 +152,14 @@
 	function toggleLike(locationId: number) {
 		if (userLikes.has(locationId)) {
 			userLikes.delete(locationId);
-			// Update location likes count
 			const location = locations.find((l) => l.id === locationId);
 			if (location) location.likes--;
 		} else {
 			userLikes.add(locationId);
-			// Update location likes count
 			const location = locations.find((l) => l.id === locationId);
 			if (location) location.likes++;
 		}
-		userLikes = new SvelteSet(userLikes); // Trigger reactivity
+		userLikes = new SvelteSet(userLikes);
 		saveLikes();
 	}
 
@@ -164,25 +175,41 @@
 	}
 
 	function handleMapClick(e: L.LeafletMouseEvent) {
+		// Don't handle if clicking on a marker directly
+		if ((e.originalEvent.target as HTMLElement).closest('.leaflet-marker-icon')) {
+			return;
+		}
+
 		const clickedLat = e.latlng.lat;
 		const clickedLng = e.latlng.lng;
 
-		// Check if user clicked on/near an existing location (within ~50m)
-		const nearbyLocation = locations.find((loc) => {
-			const distance = mapInstance?.distance(
-				[clickedLat, clickedLng],
-				[loc.latitude, loc.longitude]
-			);
-			return distance && distance < 50;
-		});
+		if (data.isSignedIn) {
+			// Show add location dialog
+			newLocationLat = clickedLat;
+			newLocationLng = clickedLng;
+			newLocationTitle = '';
+			newLocationDescription = '';
+			newLocationCategory = 'food';
+			newLocationDuration = 60;
+			newLocationAddress = '';
+			showAddLocationDialog = true;
 
-		if (nearbyLocation) {
-			// Show location in bottom sheet
-			selectedLocation = nearbyLocation;
-			showBottomSheet = true;
-		} else if (data.isSignedIn) {
-			// Navigate to new location page with coordinates
-			goto(resolve(`/location/new?lat=${clickedLat.toFixed(6)}&lng=${clickedLng.toFixed(6)}`));
+			// Reverse geocode to get address
+			fetch(
+				`https://nominatim.openstreetmap.org/reverse?format=json&lat=${clickedLat}&lon=${clickedLng}`
+			)
+				.then((res) => res.json())
+				.then((result) => {
+					if (result.display_name) {
+						newLocationAddress = result.display_name;
+					}
+				})
+				.catch((err) => console.error('Reverse geocode error:', err));
+		} else {
+			// Show sign in prompt
+			pendingLocationLat = clickedLat;
+			pendingLocationLng = clickedLng;
+			showSignInPrompt = true;
 		}
 	}
 
@@ -196,6 +223,54 @@
 	function closeBottomSheet() {
 		showBottomSheet = false;
 		selectedLocation = null;
+	}
+
+	function closeAddLocationDialog() {
+		showAddLocationDialog = false;
+	}
+
+	function closeSignInPrompt() {
+		showSignInPrompt = false;
+	}
+
+	function goToSignIn() {
+		const newLocationUrl = `/location/new?lat=${pendingLocationLat.toFixed(6)}&lng=${pendingLocationLng.toFixed(6)}`;
+		goto(resolve(`/auth/login?next=${encodeURIComponent(newLocationUrl)}`));
+	}
+
+	async function saveNewLocation() {
+		if (!newLocationTitle.trim() || !newLocationDescription.trim()) return;
+
+		// In a real app, this would POST to an API endpoint
+		// For now, we'll just add it to the local array
+		const newLocation: TravelTip = {
+			id: Date.now(), // Temporary ID
+			title: newLocationTitle,
+			description: newLocationDescription,
+			latitude: newLocationLat,
+			longitude: newLocationLng,
+			address: newLocationAddress,
+			category: newLocationCategory,
+			durationMinutes: newLocationDuration,
+			likes: 0,
+			imageUrl: null,
+			userId: data.user?.id || '',
+			userName: data.user?.name || '',
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			bestTimeToVisit: null,
+			googleMapsUrl: null,
+			tags: []
+		};
+
+		locations = [...locations, newLocation];
+		closeAddLocationDialog();
+
+		// TODO: Send POST request to server to save location
+		// await fetch('/api/locations', {
+		//   method: 'POST',
+		//   body: JSON.stringify(newLocation)
+		// });
 	}
 
 	function searchLocation() {
@@ -242,7 +317,6 @@
 			return;
 		}
 
-		// Check if already in trip
 		if (currentTrip.stops.some((s) => s.tipId === location.id)) {
 			return;
 		}
@@ -284,7 +358,6 @@
 		currentTrip = trip;
 		showTripPlanner = true;
 
-		// Fit map to show all stops
 		if (trip.stops.length > 0) {
 			const bounds = L.latLngBounds(
 				trip.stops
@@ -335,6 +408,11 @@
 				<div class="alert alert-sm bg-primary-focus text-primary-content mt-3 border-0">
 					<IconPin class="size-4" />
 					<span class="text-xs">Click anywhere on map to add new location</span>
+				</div>
+			{:else}
+				<div class="alert alert-sm bg-primary-focus text-primary-content mt-3 border-0">
+					<IconPin class="size-4" />
+					<span class="text-xs">Sign in to add new locations</span>
 				</div>
 			{/if}
 		</div>
@@ -706,6 +784,102 @@
 	</div>
 {/if}
 
+<!-- Add Location Dialog -->
+{#if showAddLocationDialog}
+	<div class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+		<div class="bg-base-100 w-full max-w-lg rounded-lg p-6 shadow-xl">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-xl font-bold">Add New Location</h2>
+				<button class="btn btn-ghost btn-sm btn-circle" onclick={closeAddLocationDialog}>
+					<IconDismiss class="size-5" />
+				</button>
+			</div>
+
+			<div class="space-y-4">
+				<div class="form-control">
+					<label class="label"><span class="label-text">Coordinates</span></label>
+					<div class="flex gap-2">
+						<input
+							type="text"
+							class="input input-bordered input-sm flex-1"
+							value={newLocationLat.toFixed(6)}
+							readonly
+						/>
+						<input
+							type="text"
+							class="input input-bordered input-sm flex-1"
+							value={newLocationLng.toFixed(6)}
+							readonly
+						/>
+					</div>
+				</div>
+
+				<div class="form-control">
+					<label class="label"><span class="label-text">Title *</span></label>
+					<input
+						type="text"
+						class="input input-bordered"
+						bind:value={newLocationTitle}
+						placeholder="Name of the place"
+					/>
+				</div>
+
+				<div class="form-control">
+					<label class="label"><span class="label-text">Description *</span></label>
+					<textarea
+						class="textarea textarea-bordered"
+						bind:value={newLocationDescription}
+						placeholder="What makes this place special?"
+						rows="3"
+					></textarea>
+				</div>
+
+				<div class="form-control">
+					<label class="label"><span class="label-text">Category *</span></label>
+					<select class="select select-bordered" bind:value={newLocationCategory}>
+						{#each Object.values(categoryInfo) as cat}
+							<option value={cat.value}>{cat.icon} {cat.label}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="form-control">
+					<label class="label"><span class="label-text">Duration (minutes)</span></label>
+					<input
+						type="number"
+						class="input input-bordered"
+						bind:value={newLocationDuration}
+						min="15"
+						step="15"
+					/>
+				</div>
+
+				<div class="form-control">
+					<label class="label"><span class="label-text">Address</span></label>
+					<textarea
+						class="textarea textarea-bordered"
+						bind:value={newLocationAddress}
+						placeholder="Auto-detected address"
+						rows="2"
+					></textarea>
+				</div>
+
+				<div class="flex gap-3">
+					<button class="btn btn-ghost flex-1" onclick={closeAddLocationDialog}> Cancel </button>
+					<button
+						class="btn btn-primary flex-1"
+						onclick={saveNewLocation}
+						disabled={!newLocationTitle.trim() || !newLocationDescription.trim()}
+					>
+						<IconSave class="size-4" />
+						Save Location
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <!-- New Trip Dialog -->
 {#if showNewTripDialog}
 	<div class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
@@ -749,6 +923,40 @@
 						<IconSave class="size-4" />
 						Create
 					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Sign In Prompt Dialog -->
+{#if showSignInPrompt}
+	<div class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+		<div class="bg-base-100 w-full max-w-md rounded-lg p-6 shadow-xl">
+			<div class="mb-4 flex items-center justify-between">
+				<h2 class="text-xl font-bold">Sign In Required</h2>
+				<button class="btn btn-ghost btn-sm btn-circle" onclick={closeSignInPrompt}>
+					<IconDismiss class="size-5" />
+				</button>
+			</div>
+
+			<div class="space-y-4">
+				<div class="flex flex-col items-center gap-4 py-4">
+					<IconLocationIcon class="text-primary size-16" />
+					<p class="text-base-content/80 text-center">
+						You need to sign in to add new locations to the map.
+					</p>
+					<div class="text-base-content/60 text-sm">
+						<p>Selected coordinates:</p>
+						<p class="font-mono">
+							{pendingLocationLat.toFixed(6)}, {pendingLocationLng.toFixed(6)}
+						</p>
+					</div>
+				</div>
+
+				<div class="flex gap-3">
+					<button class="btn btn-ghost flex-1" onclick={closeSignInPrompt}> Cancel </button>
+					<button class="btn btn-primary flex-1" onclick={goToSignIn}> Sign In </button>
 				</div>
 			</div>
 		</div>

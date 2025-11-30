@@ -19,7 +19,16 @@
 	"display": "standalone",
 	"dir": "ltr",
 	"lang": "en",
-	"name": "Train Stations",
-	"short_name": "Train Stations",
-	"description": "Search for train stations in Germany. Find sleeping spots, outlets, toilets & station info"
+	"name": "Travel Tips",
+	"short_name": "Travel Tips",
+	"description": "Search for train stations in Germany. Find sleeping spots, outlets, toilets & station info",
+	"share_target": {
+		"action": "/share-location",
+		"method": "GET",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url"
+		}
+	}
 }
