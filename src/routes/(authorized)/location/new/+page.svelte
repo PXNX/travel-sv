@@ -13,6 +13,7 @@
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconLocation from '~icons/fluent/location-24-regular';
 	import IconWarning from '~icons/fluent/warning-24-regular';
+	import { resolve } from '$app/paths';
 
 	interface Props {
 		data: {
