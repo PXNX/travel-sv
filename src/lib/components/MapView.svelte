@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { Map, TileLayer, Marker, Polyline } from 'sveaflet';
 	import L from 'leaflet';
-	import type { Category, TravelTip, Trip } from '$lib/types';
+	import type { Category, TravelTip, Trip, TransportSegment } from '$lib/types';
 	import { categoryInfo } from '$lib/types';
 
-	// --- NEW: Import fluent icons ---
-	// Adjust these imports to match your categories and desired icons
+	// ... existing fluent icon imports ...
 	import IconFood from '~icons/fluent/food-24-regular';
 	import IconLodging from '~icons/fluent/bed-24-regular';
 	import IconPoi from '~icons/fluent/location-24-regular';
@@ -39,16 +38,12 @@
 		allLocations
 	}: Props = $props();
 
-	// Confirmation dialog state
+	// ... existing state and tileLayers ...
 	let showConfirmDialog = $state(false);
 	let pendingLat = $state(0);
 	let pendingLng = $state(0);
-
-	// Store marker instances and track if marker was clicked
 	let markerInstances: Record<number, L.Marker> = {};
 	let markerClickedRecently = false;
-
-	// Tile Layer State
 	let selectedTileLayer = $state('osm'); // 'osm', 'topo', 'satellite'
 
 	const tileLayers = {
@@ -75,9 +70,6 @@
 		}
 	};
 
-	// --- NEW: Map category keys to icon components ---
-	// IMPORTANT: Adjust the keys ('food', 'lodging', etc.) to match
-	// the exact string values of your `Category` type.
 	const categoryIconComponents: Record<string, typeof IconFood> = {
 		food: IconFood,
 		lodging: IconLodging,
@@ -86,9 +78,8 @@
 		transport: IconTransport,
 		other: IconOther
 	};
-	// --- End NEW ---
 
-	// Calculate distance between two coordinates in meters
+	// ... existing calculateDistance, findNearbyLocation, onMapClick, confirmAddLocation, $effect blocks ...
 	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
 		const R = 6371e3; // Earth's radius in meters
 		const φ1 = (lat1 * Math.PI) / 180;
@@ -183,7 +174,6 @@
 			};
 		}
 	});
-
 	// Get trip order for a location
 	function getTripOrder(locationId: number): number | null {
 		if (!currentTrip) return null;
@@ -206,7 +196,38 @@
 		return location.durationMinutes;
 	}
 
-	// --- REMOVED: getCategoryIcon function is no longer needed ---
+	// NEW: Logic to extract walking paths
+	const walkingPaths = $derived(() => {
+		if (!currentTrip || currentTrip.stops.length < 2) return [];
+
+		const paths: [number, number][][] = [];
+
+		for (let i = 0; i < currentTrip.stops.length - 1; i++) {
+			const currentStop = currentTrip.stops[i];
+			const nextStop = currentTrip.stops[i + 1];
+
+			const transport: TransportSegment | undefined = nextStop.transport;
+
+			if (transport && transport.mode === 'walk') {
+				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
+				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
+
+				if (fromLocation && toLocation) {
+					// NOTE: In a real-world scenario, you would fetch the actual
+					// walking route (polyline) from an API here (e.g., OpenRouteService).
+					// Since we don't have that, we draw a direct line between the stops
+					// as a placeholder for the walking path.
+					paths.push([
+						[fromLocation.latitude, fromLocation.longitude],
+						[toLocation.latitude, toLocation.longitude]
+					]);
+				}
+			}
+		}
+
+		return paths;
+	});
+	
 </script>
 
 <div class="relative flex-1">
@@ -224,13 +245,27 @@
 			<Polyline
 				latLngs={routeCoordinates}
 				options={{
-					color: '#3b82f6',
+					color: '#3b82f6', // Blue (original line)
 					weight: 4,
 					opacity: 0.7,
-					dashArray: '10, 10'
+					dashArray: '10, 10' // Dashed
 				}}
 			/>
 		{/if}
+
+		{#each walkingPaths as path}
+			<Polyline
+				latLngs={path}
+				options={{
+					color: '#10b981', // Emerald Green for walking
+					weight: 6, // Thicker for emphasis
+					opacity: 0.9,
+					lineCap: 'round',
+					dashArray: '' // Solid line
+				}}
+			/>
+		{/each}
+
 
 		{#each filteredLocations as location (location.id)}
 			{@const info = categoryInfo[location.category]}
@@ -268,7 +303,7 @@
 				</svelte:fragment>
 			</Marker>
 		{/each}
-		</Map>
+	</Map>
 
 	<div
 		class="absolute top-4 right-4 z-[1000] rounded-lg bg-base-100 p-2 shadow-lg"
@@ -312,16 +347,11 @@
 		</div>
 	</div>
 
-
-
 	<Modal bind:open={showConfirmDialog} title="Add New Location?">
-				<p class="text-gray-600 mb-6">Do you want to add a new travel tip at this location?</p>
+		<p class="text-gray-600 mb-6">Do you want to add a new travel tip at this location?</p>
 
-				<div class="flex gap-3 justify-end">
-				
-					<button onclick={confirmAddLocation} class="btn btn-primary"> Add Location </button>
-				</div>
-		
-
-</Modal>
+		<div class="flex gap-3 justify-end">
+			<button onclick={confirmAddLocation} class="btn btn-primary"> Add Location </button>
+		</div>
+	</Modal>
 </div>
