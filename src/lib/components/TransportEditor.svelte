@@ -4,6 +4,7 @@
     import { transportInfo } from '$lib/types';
     import IconDismiss from '~icons/fluent/dismiss-24-regular';
     import IconSave from '~icons/fluent/save-24-regular';
+	import Modal from './Modal.svelte';
 
     interface Props {
         show: boolean;
@@ -66,15 +67,9 @@
     }
 </script>
 
-{#if show}
-    <div class="fixed inset-0 z-[2500] flex items-center justify-center bg-black/50 p-4" onclick={oncancel}>
-        <div class="bg-base-100 w-full max-w-lg rounded-lg shadow-xl" onclick={(e) => e.stopPropagation()}>
-            <div class="border-base-300 flex items-center justify-between border-b p-4">
-                <h2 class="text-lg font-bold">Transportation Details</h2>
-                <button class="btn btn-ghost btn-sm btn-circle" onclick={oncancel}>
-                    <IconDismiss class="size-5" />
-                </button>
-            </div>
+<Modal bind:open={show} title="Transportation Details">
+  
+          
 
             <div class="space-y-4 p-4">
                 <!-- Route -->
@@ -171,13 +166,11 @@
 
                 <!-- Actions -->
                 <div class="flex gap-3">
-                    <button class="btn btn-ghost flex-1" onclick={oncancel}>Cancel</button>
+                  
                     <button class="btn btn-primary flex-1" onclick={handleSave}>
                         <IconSave class="size-4" />
                         Save
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
-{/if}
+       </Modal>

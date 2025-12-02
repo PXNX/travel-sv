@@ -124,19 +124,7 @@
 
     <!-- Category Filter & Trip Toggle -->
     <div class="bg-base-100 border-base-300 space-y-3 border-b p-4">
-        <div>
-            <div class="mb-2 flex items-center gap-2">
-                <IconFilter class="size-4" />
-                <span class="text-sm font-medium">Category</span>
-            </div>
-            <select class="select select-sm select-bordered w-full" bind:value={selectedCategory}>
-                <option value="all">All Categories</option>
-                {#each Object.values(categoryInfo) as cat}
-                    <option value={cat.value}>{cat.icon} {cat.label}</option>
-                {/each}
-            </select>
-        </div>
-
+      
         <div class="flex gap-2">
             <button
                 class="btn btn-sm flex-1"
@@ -314,6 +302,21 @@
                 {/if}
             </div>
         {:else}
+
+
+		
+            <div class="m-2 flex items-center gap-2 ">
+                <IconFilter class="size-4" />
+                <span class="text-sm font-medium">Category</span>
+            </div>
+            <select class="select select-sm select-bordered w-64 px-2" bind:value={selectedCategory}>
+                <option value="all">All Categories</option>
+                {#each Object.values(categoryInfo) as cat}
+                    <option value={cat.value}>{cat.icon} {cat.label}</option>
+                {/each}
+            </select>
+   
+
             <!-- Locations List -->
             <div class="space-y-3 p-4">
                 {#if filteredLocations.length === 0}
