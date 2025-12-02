@@ -5,6 +5,9 @@ export type Category = (typeof CATEGORIES)[number];
 export const BEST_TIMES = ['morning', 'afternoon', 'evening', 'any'] as const;
 export type BestTime = (typeof BEST_TIMES)[number];
 
+export const TRANSPORT_MODES = ['railway', 'bus', 'walking'] as const;
+export type TransportMode = (typeof TRANSPORT_MODES)[number];
+
 export interface TravelTip {
 	id: number;
 	title: string;
@@ -25,20 +28,31 @@ export interface TravelTip {
 	updatedAt: string;
 }
 
-export interface Trip {
-	id: string;
-	name: string;
-	description: string;
-	stops: TripStop[];
-	createdAt: string;
-	updatedAt: string;
+export interface TransportSegment {
+	mode: TransportMode;
+	departureTime?: string; // HH:mm format
+	arrivalTime?: string; // HH:mm format
+	durationMinutes: number;
+	routeName?: string; // e.g., "RE7", "Bus 42"
+	notes?: string;
 }
 
 export interface TripStop {
 	tipId: number;
 	order: number;
-	customDuration?: number;
-	notes: string;
+	customDuration?: number; // Stay duration at location
+	notes?: string;
+	transport?: TransportSegment; // Transport TO this stop from previous
+}
+
+export interface Trip {
+	id: string;
+	name: string;
+	description: string;
+	stops: TripStop[];
+	startDate?: string; // YYYY-MM-DD
+	createdAt: string;
+	updatedAt: string;
 }
 
 export const categoryInfo: Record<
@@ -70,4 +84,28 @@ export const bestTimeInfo: Record<BestTime, { value: BestTime; label: string }> 
 	afternoon: { value: 'afternoon', label: 'Afternoon' },
 	evening: { value: 'evening', label: 'Evening' },
 	any: { value: 'any', label: 'Anytime' }
+};
+
+export const transportInfo: Record<
+	TransportMode,
+	{ value: TransportMode; label: string; icon: string; color: string }
+> = {
+	railway: {
+		value: 'railway',
+		label: 'Train',
+		icon: '🚆',
+		color: '#3b82f6'
+	},
+	bus: {
+		value: 'bus',
+		label: 'Bus',
+		icon: '🚌',
+		color: '#f59e0b'
+	},
+	walking: {
+		value: 'walking',
+		label: 'Walking',
+		icon: '🚶',
+		color: '#10b981'
+	}
 };

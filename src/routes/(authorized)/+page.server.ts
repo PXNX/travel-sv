@@ -1,5 +1,5 @@
 // src/routes/+page.server.ts
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad } from '../$types';
 import { db } from '$lib/server/db';
 import { travelTips, users } from '$lib/server/schema';
 import { eq } from 'drizzle-orm';
