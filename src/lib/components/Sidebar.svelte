@@ -86,7 +86,6 @@
 	let newTripName = $state('');
 	let newTripDescription = $state('');
 	let newTripStartTime = $state('09:00');
-	let viewMode = $state<'list' | 'timeline'>('list');
 	let isOpen = $state(true); // For mobile drawer
 
 	function handleCreateTrip() {
@@ -315,112 +314,13 @@
 								>
 							</div>
 						{:else}
-							<div class="join w-full">
-								<button
-									class="join-item btn btn-sm flex-1 text-xs sm:text-sm"
-									class:btn-primary={viewMode === 'list'}
-									class:btn-outline={viewMode !== 'list'}
-									onclick={() => (viewMode = 'list')}
-								>
-									List
-								</button>
-								<button
-									class="join-item btn btn-sm flex-1 text-xs sm:text-sm"
-									class:btn-primary={viewMode === 'timeline'}
-									class:btn-outline={viewMode !== 'timeline'}
-									onclick={() => (viewMode = 'timeline')}
-								>
-									<IconClock class="size-3 sm:size-4" />
-									Timeline
-								</button>
-							</div>
-
-							{#if viewMode === 'timeline'}
-								<TripTimeline
-									stops={currentTripStops}
-									startTime={currentTrip.startDate || '09:00'}
-									{oneditduration}
-									{onedittransport}
-									onremove={removeFromTrip}
-								/>
-							{:else}
-								<div class="space-y-2">
-									{#each currentTripStops as stop, index (stop.tipId)}
-										{@const location = stop.location!}
-										<div class="card card-compact bg-base-200 border-base-300 border shadow-sm">
-											<div class="card-body p-2 sm:p-3">
-												<div class="flex items-center gap-2 sm:gap-3">
-													<div
-														class="badge badge-lg text-base-content flex-shrink-0"
-														style="background-color: {categoryInfo[location.category]
-															.color}; color: white;"
-													>
-														<span class="text-xs font-bold">{index + 1}</span>
-													</div>
-													<div class="min-w-0 flex-1">
-														<h3 class="truncate text-xs font-semibold sm:text-sm">
-															{location.title}
-														</h3>
-														<div
-															class="text-base-content/70 mt-0.5 flex items-center gap-2 text-xs"
-														>
-															<IconClock class="h-3 w-3 flex-shrink-0" />
-															<span class="font-medium"
-																>{formatDuration(
-																	stop.customDuration || location.durationMinutes
-																)}</span
-															>
-															<button
-																class="btn btn-ghost btn-xs btn-circle text-primary tooltip"
-																data-tip="Edit"
-																onclick={() =>
-																	oneditduration(
-																		location.id,
-																		stop.customDuration || location.durationMinutes
-																	)}
-															>
-																<IconEdit class="size-3" />
-															</button>
-														</div>
-													</div>
-													<button
-														class="btn btn-ghost btn-xs btn-circle text-error tooltip tooltip-left flex-shrink-0"
-														data-tip="Remove"
-														onclick={() => removeFromTrip(location.id)}
-													>
-														<IconDismiss class="size-3 sm:size-4" />
-													</button>
-												</div>
-											</div>
-										</div>
-
-										{#if index < currentTripStops.length - 1 && stop.transport}
-											<div
-												role="alert"
-												class="alert alert-info bg-base-300 p-2 py-1 text-xs shadow-sm"
-											>
-												<IconNavigation class="size-3 shrink-0 sm:size-4" />
-												<span class="text-base-content min-w-0 flex-1 text-xs">
-													Travel: <strong>{formatDuration(stop.transport.durationMinutes)}</strong>
-													by <strong>{stop.transport.mode}</strong>
-												</span>
-												<button
-													class="btn btn-ghost btn-xs btn-circle text-primary tooltip ml-auto flex-shrink-0"
-													data-tip="Edit"
-													onclick={() =>
-														onedittransport(
-															index,
-															location.title,
-															currentTripStops[index + 1].location?.title || ''
-														)}
-												>
-													<IconEdit class="size-3" />
-												</button>
-											</div>
-										{/if}
-									{/each}
-								</div>
-							{/if}
+							<TripTimeline
+								stops={currentTripStops}
+								startTime={currentTrip.startDate || '09:00'}
+								{oneditduration}
+								{onedittransport}
+								onremove={removeFromTrip}
+							/>
 						{/if}
 					</div>
 				{/if}
