@@ -4,8 +4,7 @@
 	import type { Category, TravelTip, Trip, TripStop, TransportSegment } from '$lib/types';
 	import MapView from '$lib/components/MapView.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-		import L from 'leaflet';
-
+	import L from 'leaflet';
 	import LocationSheet from '$lib/components/LocationSheet.svelte';
 	import TransportEditor from '$lib/components/TransportEditor.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -26,6 +25,7 @@
 	let mapCenter = $state<[number, number]>([50, 8]);
 	let mapZoom = $state(6);
 	let mapInstance = $state<L.Map>();
+	let selectedTileLayer = $state('osm');
 
 	// Transport editor state
 	let showTransportEditor = $state(false);
@@ -38,7 +38,7 @@
 	let editingTipId = $state(0);
 	let editingDuration = $state(60);
 
-	// Trips state - load from localStorage
+	// Trips state
 	let trips = $state<Trip[]>([]);
 	let currentTrip = $state<Trip | null>(null);
 	let userLikes = $state<Set<number>>(new Set());
@@ -56,12 +56,6 @@
 				userLikes = new Set(JSON.parse(savedLikes));
 			}
 
-			// Update location likes from localStorage
-			//
-			// ** THE FIX IS HERE **
-			// Read from the 'data.initialLocations' prop, not the 'locations' state
-			// to prevent an infinite reactive loop.
-			//
 			locations = data.initialLocations.map((loc) => ({
 				...loc,
 				likes: parseInt(localStorage.getItem(`likes_${loc.id}`) || '0')
@@ -69,15 +63,12 @@
 		}
 	});
 
-	// Save trips to localStorage
 	function saveTrips() {
 		localStorage.setItem('trips', JSON.stringify(trips));
 	}
 
-	// Create a map of location IDs to locations for quick lookup
 	const locationsMap = $derived(new Map(locations.map((loc) => [loc.id, loc])));
 
-	// Filtered locations based on search and category
 	const filteredLocations = $derived(() => {
 		let filtered = locations;
 
@@ -98,7 +89,6 @@
 		return filtered;
 	});
 
-	// Current trip stops with location data
 	const currentTripStops = $derived(
 		currentTrip
 			? currentTrip.stops.map((stop) => ({
@@ -108,7 +98,6 @@
 			: []
 	);
 
-	// Route coordinates for the map polyline
 	const routeCoordinates = $derived(
 		currentTripStops
 			.map((stop) => stop.location)
@@ -116,7 +105,6 @@
 			.map((loc) => [loc.latitude, loc.longitude] as [number, number])
 	);
 
-	// Functions
 	function searchLocation() {
 		if (searchQuery && filteredLocations().length > 0) {
 			const firstLocation = filteredLocations()[0];
@@ -142,7 +130,6 @@
 		userLikes = newLikes;
 		localStorage.setItem('userLikes', JSON.stringify([...newLikes]));
 
-		// Update location likes count
 		locations = locations.map((loc) => {
 			if (loc.id === locationId) {
 				const delta = newLikes.has(locationId) ? 1 : -1;
@@ -154,7 +141,6 @@
 		});
 	}
 
-	// Trip management
 	function createTrip(name: string, description: string, startTime?: string) {
 		const newTrip: Trip = {
 			id: crypto.randomUUID(),
@@ -224,7 +210,6 @@
 		return currentTrip?.stops.some((s) => s.tipId === tipId) ?? false;
 	}
 
-	// Duration editor
 	function openDurationEditor(tipId: number, currentDuration: number) {
 		editingTipId = tipId;
 		editingDuration = currentDuration;
@@ -237,9 +222,7 @@
 		currentTrip = {
 			...currentTrip,
 			stops: currentTrip.stops.map((stop) =>
-				stop.tipId === editingTipId
-					? { ...stop, customDuration: editingDuration }
-					: stop
+				stop.tipId === editingTipId ? { ...stop, customDuration: editingDuration } : stop
 			),
 			updatedAt: new Date().toISOString()
 		};
@@ -249,7 +232,6 @@
 		showDurationEditor = false;
 	}
 
-	// Transport editor
 	function openTransportEditor(stopIndex: number, fromLocation: string, toLocation: string) {
 		editingStopIndex = stopIndex;
 		transportFromLocation = fromLocation;
@@ -284,7 +266,6 @@
 	function handleCreateNewTrip() {
 		showLocationSheet = false;
 		showTripPlanner = true;
-		// Trigger new trip dialog in sidebar
 		setTimeout(() => {
 			const newTripBtn = document.querySelector(
 				'[onclick*="showNewTripDialog"]'
@@ -293,29 +274,37 @@
 		}, 100);
 	}
 </script>
-<div class="flex h-screen overflow-hidden">
-    <Sidebar
-        bind:searchQuery
-        bind:selectedCategory
-        bind:showTripPlanner
-        filteredLocations={filteredLocations()}
-        {trips}
-        {currentTrip}
-        currentTripStops={currentTripStops}
-        {locationsMap}
-        {userLikes}
-        {searchLocation}
-        handleLocationClick={handleLocationClick}
-        {createTrip}
-        {selectTrip}
-        {deleteTrip}
-        {removeFromTrip}
-        oncleartrip={clearTrip}
-        oneditduration={openDurationEditor}
-        onedittransport={openTransportEditor}
-    />
 
-   <MapView
+<svelte:head>
+	<meta
+		name="viewport"
+		content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+	/>
+</svelte:head>
+
+<div class="flex h-screen overflow-hidden">
+	<Sidebar
+		bind:searchQuery
+		bind:selectedCategory
+		bind:showTripPlanner
+		filteredLocations={filteredLocations()}
+		{trips}
+		{currentTrip}
+		{currentTripStops}
+		{locationsMap}
+		{userLikes}
+		{searchLocation}
+		{handleLocationClick}
+		{createTrip}
+		{selectTrip}
+		{deleteTrip}
+		{removeFromTrip}
+		oncleartrip={clearTrip}
+		oneditduration={openDurationEditor}
+		onedittransport={openTransportEditor}
+	/>
+
+	<MapView
 		{mapCenter}
 		{mapZoom}
 		filteredLocations={filteredLocations()}
@@ -325,59 +314,73 @@
 		onmarkerclick={handleMarkerClick}
 		onlocationselect={handleLocationClick}
 		allLocations={locations}
-    />
+	/>
 
-    <LocationSheet
-        bind:show={showLocationSheet}
-        location={selectedLocation}
-        {userLikes}
-        {currentTrip}
-        {isInCurrentTrip}
-        {toggleLike}
-        {addToTrip}
-        oncreatenewtip={handleCreateNewTrip}
-    />
+	<LocationSheet
+		bind:show={showLocationSheet}
+		location={selectedLocation}
+		{userLikes}
+		{currentTrip}
+		{isInCurrentTrip}
+		{toggleLike}
+		{addToTrip}
+		oncreatenewtip={handleCreateNewTrip}
+	/>
 
-    <TransportEditor
-        bind:show={showTransportEditor}
-        transport={currentTrip?.stops[editingStopIndex]?.transport || null}
-        fromLocation={transportFromLocation}
-        toLocation={transportToLocation}
-        onsave={saveTransport}
-        oncancel={() => (showTransportEditor = false)}
-    />
+	<TransportEditor
+		bind:show={showTransportEditor}
+		transport={currentTrip?.stops[editingStopIndex]?.transport || null}
+		fromLocation={transportFromLocation}
+		toLocation={transportToLocation}
+		onsave={saveTransport}
+		oncancel={() => (showTransportEditor = false)}
+	/>
 
-    <!-- Duration Editor Dialog -->
-    {#if showDurationEditor}
-        <div class="fixed inset-0 z-[2500] flex items-center justify-center bg-black/50 p-4" onclick={() => showDurationEditor = false}>
-            <div class="bg-base-100 w-full max-w-sm rounded-lg p-6 shadow-xl" onclick={(e) => e.stopPropagation()}>
-                <h3 class="mb-4 text-lg font-bold">Edit Stay Duration</h3>
-                
-                <div class="form-control mb-4">
-                    <label class="label"><span class="label-text">Duration (minutes)</span></label>
-                    <input
-                        type="number"
-                        class="input input-bordered"
-                        bind:value={editingDuration}
-                        min="1"
-                        step="15"
-                    />
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">
-                            {Math.floor(editingDuration / 60)}h {editingDuration % 60}min
-                        </span>
-                    </label>
-                </div>
+	<!-- Duration Editor Dialog -->
+	{#if showDurationEditor}
+		<div
+			class="fixed inset-0 z-[2500] flex items-center justify-center bg-black/50 p-3 sm:p-4"
+			onclick={() => (showDurationEditor = false)}
+		>
+			<div
+				class="bg-base-100 w-full max-w-sm rounded-lg p-4 shadow-xl sm:p-6"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<h3 class="mb-3 text-base font-bold sm:mb-4 sm:text-lg">Edit Stay Duration</h3>
 
-                <div class="flex gap-3">
-                    <button class="btn btn-ghost flex-1" onclick={() => showDurationEditor = false}>
-                        Cancel
-                    </button>
-                    <button class="btn btn-primary flex-1" onclick={saveDuration}>
-                        Save
-                    </button>
-                </div>
-            </div>
-        </div>
-    {/if}
+				<div class="form-control mb-3 sm:mb-4">
+					<label class="label"
+						><span class="label-text text-xs sm:text-sm">Duration (minutes)</span></label
+					>
+					<input
+						type="number"
+						class="input input-bordered text-sm"
+						bind:value={editingDuration}
+						min="1"
+						step="15"
+					/>
+					<label class="label">
+						<span class="label-text-alt text-base-content/60 text-xs">
+							{Math.floor(editingDuration / 60)}h {editingDuration % 60}min
+						</span>
+					</label>
+				</div>
+
+				<div class="flex gap-2 sm:gap-3">
+					<button
+						class="btn btn-ghost btn-sm sm:btn-md flex-1 text-xs sm:text-sm"
+						onclick={() => (showDurationEditor = false)}
+					>
+						Cancel
+					</button>
+					<button
+						class="btn btn-primary btn-sm sm:btn-md flex-1 text-xs sm:text-sm"
+						onclick={saveDuration}
+					>
+						Save
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
