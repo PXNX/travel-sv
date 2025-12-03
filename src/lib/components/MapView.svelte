@@ -4,7 +4,6 @@
 	import type { Category, TravelTip, Trip, TransportSegment } from '$lib/types';
 	import { categoryInfo } from '$lib/types';
 
-	// ... existing fluent icon imports ...
 	import IconFood from '~icons/fluent/food-24-regular';
 	import IconLodging from '~icons/fluent/bed-24-regular';
 	import IconPoi from '~icons/fluent/location-24-regular';
@@ -12,7 +11,6 @@
 	import IconTransport from '~icons/fluent/vehicle-bus-24-regular';
 	import IconOther from '~icons/fluent/star-24-regular';
 	import Modal from './Modal.svelte';
-	// --- End NEW ---
 
 	interface Props {
 		mapCenter: [number, number];
@@ -20,10 +18,11 @@
 		filteredLocations: TravelTip[];
 		currentTrip: Trip | null;
 		routeCoordinates: [number, number][];
+		selectedTileLayer: string;
 		mapInstance?: L.Map;
 		onmarkerclick: (location: TravelTip) => void;
 		onlocationselect: (location: TravelTip) => void;
-		allLocations: TravelTip[]; // All locations for proximity check
+		allLocations: TravelTip[];
 	}
 
 	let {
@@ -38,7 +37,6 @@
 		allLocations
 	}: Props = $props();
 
-	// ... existing state and tileLayers ...
 	let showConfirmDialog = $state(false);
 	let pendingLat = $state(0);
 	let pendingLng = $state(0);
@@ -79,9 +77,8 @@
 		other: IconOther
 	};
 
-	// ... existing calculateDistance, findNearbyLocation, onMapClick, confirmAddLocation, $effect blocks ...
 	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-		const R = 6371e3; // Earth's radius in meters
+		const R = 6371e3;
 		const φ1 = (lat1 * Math.PI) / 180;
 		const φ2 = (lat2 * Math.PI) / 180;
 		const Δφ = ((lat2 - lat1) * Math.PI) / 180;
@@ -92,13 +89,12 @@
 			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
 		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-		return R * c; // Distance in meters
+		return R * c;
 	}
 
-	// Find the closest location within 15m
 	function findNearbyLocation(lat: number, lng: number): TravelTip | null {
 		let closestLocation: TravelTip | null = null;
-		let minDistance = 15; // The threshold in meters
+		let minDistance = 15;
 
 		for (const location of allLocations) {
 			const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
@@ -110,9 +106,7 @@
 		return closestLocation;
 	}
 
-	// Handle map click with proximity check
 	function onMapClick(e: L.LeafletMouseEvent) {
-		// If a marker was just clicked, ignore this map click
 		if (markerClickedRecently) {
 			markerClickedRecently = false;
 			return;
@@ -121,17 +115,13 @@
 		const lat = e.latlng.lat;
 		const lng = e.latlng.lng;
 
-		// Check if there's a location nearby
 		const nearbyLocation = findNearbyLocation(lat, lng);
 
 		if (nearbyLocation) {
-			// **FIX:** Location exists nearby, call the direct 'select' prop
-			// This bypasses the 'add to trip' logic.
 			onlocationselect(nearbyLocation);
 			return;
 		}
 
-		// No nearby location, show confirmation
 		pendingLat = lat;
 		pendingLng = lng;
 		showConfirmDialog = true;
@@ -139,17 +129,13 @@
 
 	function confirmAddLocation() {
 		showConfirmDialog = false;
-		// Navigate to new location page
 		window.location.href = `/location/new?lat=${pendingLat}&lng=${pendingLng}`;
 	}
 
-
-	// Attach map click handler and marker click handlers
 	$effect(() => {
 		if (mapInstance) {
 			mapInstance.on('click', onMapClick);
 
-			// Add click handlers to all markers
 			Object.entries(markerInstances).forEach(([locationId, marker]) => {
 				if (marker) {
 					marker.on('click', (e: L.LeafletMouseEvent) => {
@@ -157,7 +143,6 @@
 						markerClickedRecently = true;
 						const location = allLocations.find((loc) => loc.id === parseInt(locationId));
 						if (location) {
-							// This is a TRUE marker click, so we call the markerclick prop
 							onmarkerclick(location);
 						}
 					});
@@ -174,14 +159,13 @@
 			};
 		}
 	});
-	// Get trip order for a location
+
 	function getTripOrder(locationId: number): number | null {
 		if (!currentTrip) return null;
 		const index = currentTrip.stops.findIndex((s) => s.tipId === locationId);
 		return index !== -1 ? index + 1 : null;
 	}
 
-	// Get duration for a location (custom or default)
 	function getDuration(locationId: number): number {
 		const location = allLocations.find((l) => l.id === locationId);
 		if (!location) return 60;
@@ -196,7 +180,6 @@
 		return location.durationMinutes;
 	}
 
-	// NEW: Logic to extract walking paths
 	const walkingPaths = $derived(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) return [];
 
@@ -213,10 +196,6 @@
 				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
 
 				if (fromLocation && toLocation) {
-					// NOTE: In a real-world scenario, you would fetch the actual
-					// walking route (polyline) from an API here (e.g., OpenRouteService).
-					// Since we don't have that, we draw a direct line between the stops
-					// as a placeholder for the walking path.
 					paths.push([
 						[fromLocation.latitude, fromLocation.longitude],
 						[toLocation.latitude, toLocation.longitude]
@@ -227,12 +206,11 @@
 
 		return paths;
 	});
-	
 </script>
 
 <div class="relative flex-1">
 	<Map
-		options={{ center: mapCenter, zoom: mapZoom, minZoom: 2, maxZoom: 18, zoomControl: false }}
+		options={{ center: mapCenter, zoom: mapZoom, minZoom: 2, maxZoom: 18, zoomControl: true }}
 		class="h-full w-full"
 		bind:instance={mapInstance}
 	>
@@ -245,10 +223,10 @@
 			<Polyline
 				latLngs={routeCoordinates}
 				options={{
-					color: '#3b82f6', // Blue (original line)
+					color: '#3b82f6',
 					weight: 4,
 					opacity: 0.7,
-					dashArray: '10, 10' // Dashed
+					dashArray: '10, 10'
 				}}
 			/>
 		{/if}
@@ -257,15 +235,14 @@
 			<Polyline
 				latLngs={path}
 				options={{
-					color: '#10b981', // Emerald Green for walking
-					weight: 6, // Thicker for emphasis
+					color: '#10b981',
+					weight: 6,
 					opacity: 0.9,
 					lineCap: 'round',
-					dashArray: '' // Solid line
+					dashArray: ''
 				}}
 			/>
 		{/each}
-
 
 		{#each filteredLocations as location (location.id)}
 			{@const info = categoryInfo[location.category]}
@@ -306,7 +283,7 @@
 	</Map>
 
 	<div
-		class="absolute top-4 right-4 z-[1000] rounded-lg bg-base-100 p-2 shadow-lg"
+		class="bg-base-100 absolute top-4 right-4 z-[1000] rounded-lg p-2 shadow-lg"
 		onclick={(e) => e.stopPropagation()}
 	>
 		<div class="form-control">
@@ -348,10 +325,23 @@
 	</div>
 
 	<Modal bind:open={showConfirmDialog} title="Add New Location?">
-		<p class="text-gray-600 mb-6">Do you want to add a new travel tip at this location?</p>
+		<p class="text-base-content/70 mb-4 text-sm sm:mb-6">
+			Do you want to add a new travel tip at this location?
+		</p>
 
-		<div class="flex gap-3 justify-end">
-			<button onclick={confirmAddLocation} class="btn btn-primary"> Add Location </button>
+		<div class="flex justify-end gap-2 sm:gap-3">
+			<button
+				onclick={() => (showConfirmDialog = false)}
+				class="btn btn-ghost btn-sm sm:btn-md text-xs sm:text-sm"
+			>
+				Cancel
+			</button>
+			<button
+				onclick={confirmAddLocation}
+				class="btn btn-primary btn-sm sm:btn-md text-xs sm:text-sm"
+			>
+				Add Location
+			</button>
 		</div>
 	</Modal>
 </div>
