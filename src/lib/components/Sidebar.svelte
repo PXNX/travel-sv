@@ -18,21 +18,19 @@
 	import IconThumbLikeFilled from '~icons/fluent/thumb-like-24-filled';
 	import IconSave from '~icons/fluent/save-24-regular';
 	import IconCalendar from '~icons/fluent/calendar-24-regular';
-	import IconImage from '~icons/fluent/image-24-regular';
 	import IconMenu from '~icons/fluent/navigation-24-regular';
 	import Modal from './Modal.svelte';
 
 	const categoryColorClasses = (category: Category) => {
 		const info = categoryInfo[category];
 		switch (info.value) {
-			case 'attraction':
+			case 'nature':
 				return 'badge-info';
 			case 'food':
 				return 'badge-warning';
-			case 'accommodation':
+			case 'museum':
 				return 'badge-success';
-			case 'transport':
-				return 'badge-neutral';
+
 			default:
 				return 'badge-primary';
 		}

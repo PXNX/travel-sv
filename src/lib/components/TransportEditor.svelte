@@ -2,6 +2,7 @@
 <script lang="ts">
 	import type { TransportSegment, TransportMode } from '$lib/types';
 	import { transportInfo } from '$lib/types';
+	import { getWalkingRoute, calculateWalkingDuration } from '$lib/utils/routing';
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconSave from '~icons/fluent/save-24-regular';
 	import Modal from './Modal.svelte';
@@ -11,6 +12,8 @@
 		transport: TransportSegment | null;
 		fromLocation: string;
 		toLocation: string;
+		fromCoords?: [number, number];
+		toCoords?: [number, number];
 		onsave: (transport: TransportSegment) => void;
 		oncancel: () => void;
 	}
@@ -20,6 +23,8 @@
 		transport,
 		fromLocation,
 		toLocation,
+		fromCoords,
+		toCoords,
 		onsave,
 		oncancel
 	}: Props = $props();
@@ -30,6 +35,7 @@
 	let durationMinutes = $state(30);
 	let routeName = $state('');
 	let notes = $state('');
+	let isCalculatingWalking = $state(false);
 
 	$effect(() => {
 		if (show && transport) {
@@ -59,6 +65,45 @@
 			if (totalMinutes < 0) totalMinutes += 24 * 60; // Handle overnight
 
 			durationMinutes = totalMinutes;
+		}
+	}
+
+	// Calculate walking duration when mode changes to walking
+	$effect(() => {
+		if (mode === 'walking' && fromCoords && toCoords && show) {
+			calculateWalkingTime();
+		}
+	});
+
+	async function calculateWalkingTime() {
+		if (!fromCoords || !toCoords) return;
+
+		isCalculatingWalking = true;
+
+		try {
+			// Try to get accurate route from OSRM
+			const route = await getWalkingRoute(fromCoords, toCoords);
+
+			if (route) {
+				durationMinutes = route.duration;
+				const distanceKm = (route.distance / 1000).toFixed(2);
+				notes = `Distance: ${distanceKm} km (calculated at 3.5 km/h)`;
+			} else {
+				// Fallback to straight-line calculation
+				const duration = calculateWalkingDuration(fromCoords, toCoords);
+				durationMinutes = duration;
+				notes = 'Approximate walking time (straight-line distance)';
+			}
+		} catch (error) {
+			console.error('Error calculating walking time:', error);
+			// Use fallback calculation
+			if (fromCoords && toCoords) {
+				const duration = calculateWalkingDuration(fromCoords, toCoords);
+				durationMinutes = duration;
+				notes = 'Approximate walking time (straight-line distance)';
+			}
+		} finally {
+			isCalculatingWalking = false;
 		}
 	}
 
@@ -103,6 +148,13 @@
 			</div>
 		</div>
 
+		{#if mode === 'walking' && isCalculatingWalking}
+			<div class="alert">
+				<span class="loading loading-spinner loading-sm"></span>
+				<span class="text-sm">Calculating walking route...</span>
+			</div>
+		{/if}
+
 		<!-- Times -->
 		<div class="grid grid-cols-2 gap-3">
 			<div class="form-control">
@@ -127,13 +179,25 @@
 
 		<!-- Duration -->
 		<div class="form-control">
-			<label class="label"><span class="label-text">Duration (minutes)</span></label>
+			<label class="label">
+				<span class="label-text">Duration (minutes)</span>
+				{#if mode === 'walking'}
+					<button
+						class="btn btn-xs btn-ghost"
+						onclick={calculateWalkingTime}
+						disabled={isCalculatingWalking || !fromCoords || !toCoords}
+					>
+						Recalculate
+					</button>
+				{/if}
+			</label>
 			<input
 				type="number"
 				class="input input-bordered"
 				bind:value={durationMinutes}
 				min="1"
 				step="1"
+				disabled={mode === 'walking' && isCalculatingWalking}
 			/>
 			<label class="label">
 				<span class="label-text-alt text-base-content/60">
@@ -172,7 +236,7 @@
 
 		<!-- Actions -->
 		<div class="flex gap-3">
-			<button class="btn btn-primary flex-1" onclick={handleSave}>
+			<button class="btn btn-primary flex-1" onclick={handleSave} disabled={isCalculatingWalking}>
 				<IconSave class="size-4" />
 				Save
 			</button>

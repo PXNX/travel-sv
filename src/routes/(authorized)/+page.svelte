@@ -32,6 +32,8 @@
 	let editingStopIndex = $state(0);
 	let transportFromLocation = $state('');
 	let transportToLocation = $state('');
+	let transportFromCoords = $state<[number, number] | undefined>(undefined);
+	let transportToCoords = $state<[number, number] | undefined>(undefined);
 
 	// Duration editor state
 	let showDurationEditor = $state(false);
@@ -43,7 +45,7 @@
 	let currentTrip = $state<Trip | null>(null);
 	let userLikes = $state<Set<number>>(new Set());
 
-	// Load trips and likes from localStorage
+	// Load trips and likes from localStorage - only run on client
 	$effect(() => {
 		if (typeof window !== 'undefined') {
 			const savedTrips = localStorage.getItem('trips');
@@ -64,7 +66,9 @@
 	});
 
 	function saveTrips() {
-		localStorage.setItem('trips', JSON.stringify(trips));
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('trips', JSON.stringify(trips));
+		}
 	}
 
 	const locationsMap = $derived(new Map(locations.map((loc) => [loc.id, loc])));
@@ -128,13 +132,18 @@
 			newLikes.add(locationId);
 		}
 		userLikes = newLikes;
-		localStorage.setItem('userLikes', JSON.stringify([...newLikes]));
+
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('userLikes', JSON.stringify([...newLikes]));
+		}
 
 		locations = locations.map((loc) => {
 			if (loc.id === locationId) {
 				const delta = newLikes.has(locationId) ? 1 : -1;
 				const newCount = Math.max(0, loc.likes + delta);
-				localStorage.setItem(`likes_${locationId}`, newCount.toString());
+				if (typeof window !== 'undefined') {
+					localStorage.setItem(`likes_${locationId}`, newCount.toString());
+				}
 				return { ...loc, likes: newCount };
 			}
 			return loc;
@@ -236,22 +245,41 @@
 		editingStopIndex = stopIndex;
 		transportFromLocation = fromLocation;
 		transportToLocation = toLocation;
+
+		// Get coordinates for the locations
+		if (currentTrip && stopIndex > 0) {
+			const fromStop = currentTrip.stops[stopIndex - 1];
+			const toStop = currentTrip.stops[stopIndex];
+
+			const fromLoc = locationsMap.get(fromStop.tipId);
+			const toLoc = locationsMap.get(toStop.tipId);
+
+			if (fromLoc && toLoc) {
+				transportFromCoords = [fromLoc.latitude, fromLoc.longitude];
+				transportToCoords = [toLoc.latitude, toLoc.longitude];
+			}
+		}
+
 		showTransportEditor = true;
 	}
 
-	function saveTransport(transport: TransportSegment) {
+	function updateStopTransport(stopIndex: number, transport: TransportSegment) {
 		if (!currentTrip) return;
 
 		currentTrip = {
 			...currentTrip,
 			stops: currentTrip.stops.map((stop, index) =>
-				index === editingStopIndex ? { ...stop, transport } : stop
+				index === stopIndex ? { ...stop, transport } : stop
 			),
 			updatedAt: new Date().toISOString()
 		};
 
 		trips = trips.map((t) => (t.id === currentTrip!.id ? currentTrip! : t));
 		saveTrips();
+	}
+
+	function saveTransport(transport: TransportSegment) {
+		updateStopTransport(editingStopIndex, transport);
 		showTransportEditor = false;
 	}
 
@@ -299,6 +327,8 @@
 		{selectTrip}
 		{deleteTrip}
 		{removeFromTrip}
+		updateStopDuration={openDurationEditor}
+		{updateStopTransport}
 		oncleartrip={clearTrip}
 		oneditduration={openDurationEditor}
 		onedittransport={openTransportEditor}
@@ -332,6 +362,8 @@
 		transport={currentTrip?.stops[editingStopIndex]?.transport || null}
 		fromLocation={transportFromLocation}
 		toLocation={transportToLocation}
+		fromCoords={transportFromCoords}
+		toCoords={transportToCoords}
 		onsave={saveTransport}
 		oncancel={() => (showTransportEditor = false)}
 	/>
@@ -347,7 +379,6 @@
 				onclick={(e) => e.stopPropagation()}
 			>
 				<h3 class="mb-3 text-base font-bold sm:mb-4 sm:text-lg">Edit Stay Duration</h3>
-
 				<div class="form-control mb-3 sm:mb-4">
 					<label class="label"
 						><span class="label-text text-xs sm:text-sm">Duration (minutes)</span></label
@@ -365,7 +396,6 @@
 						</span>
 					</label>
 				</div>
-
 				<div class="flex gap-2 sm:gap-3">
 					<button
 						class="btn btn-ghost btn-sm sm:btn-md flex-1 text-xs sm:text-sm"
