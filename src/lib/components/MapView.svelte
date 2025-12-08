@@ -3,14 +3,9 @@
 	import L from 'leaflet';
 	import type { Category, TravelTip, Trip, TransportSegment } from '$lib/types';
 	import { categoryInfo } from '$lib/types';
-
-	import IconFood from '~icons/fluent/food-24-regular';
-	import IconLodging from '~icons/fluent/bed-24-regular';
-	import IconPoi from '~icons/fluent/location-24-regular';
-	import IconActivity from '~icons/fluent/ticket-24-regular';
-	import IconTransport from '~icons/fluent/vehicle-bus-24-regular';
-	import IconOther from '~icons/fluent/star-24-regular';
+	import { getWalkingRoute, type RouteResult } from '$lib/utils/routing';
 	import Modal from './Modal.svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		mapCenter: [number, number];
@@ -18,7 +13,6 @@
 		filteredLocations: TravelTip[];
 		currentTrip: Trip | null;
 		routeCoordinates: [number, number][];
-		selectedTileLayer: string;
 		mapInstance?: L.Map;
 		onmarkerclick: (location: TravelTip) => void;
 		onlocationselect: (location: TravelTip) => void;
@@ -42,7 +36,8 @@
 	let pendingLng = $state(0);
 	let markerInstances: Record<number, L.Marker> = {};
 	let markerClickedRecently = false;
-	let selectedTileLayer = $state('osm'); // 'osm', 'topo', 'satellite'
+	let selectedTileLayer = $state('osm');
+	let walkingRoutes = new SvelteMap<string, RouteResult>();
 
 	const tileLayers = {
 		osm: {
@@ -68,38 +63,32 @@
 		}
 	};
 
-	const categoryIconComponents: Record<string, typeof IconFood> = {
-		food: IconFood,
-		lodging: IconLodging,
-		poi: IconPoi,
-		activity: IconActivity,
-		transport: IconTransport,
-		other: IconOther
+	const categoryEmojis: Record<string, string> = {
+		food: '🍽️',
+		nature: '🛏️',
+		museum: '🚌',
+		other: '⭐'
 	};
 
-	function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-		const R = 6371e3;
-		const φ1 = (lat1 * Math.PI) / 180;
-		const φ2 = (lat2 * Math.PI) / 180;
-		const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-		const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-		const a =
-			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-		return R * c;
-	}
-
 	function findNearbyLocation(lat: number, lng: number): TravelTip | null {
+		if (!mapInstance) return null;
+
 		let closestLocation: TravelTip | null = null;
-		let minDistance = 15;
+		let minDistancePixels = 30;
 
 		for (const location of allLocations) {
-			const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
-			if (distance <= minDistance) {
-				minDistance = distance;
+			const locationLatLng = L.latLng(location.latitude, location.longitude);
+			const clickLatLng = L.latLng(lat, lng);
+
+			const locationPoint = mapInstance.latLngToContainerPoint(locationLatLng);
+			const clickPoint = mapInstance.latLngToContainerPoint(clickLatLng);
+
+			const pixelDistance = Math.sqrt(
+				Math.pow(locationPoint.x - clickPoint.x, 2) + Math.pow(locationPoint.y - clickPoint.y, 2)
+			);
+
+			if (pixelDistance <= minDistancePixels) {
+				minDistancePixels = pixelDistance;
 				closestLocation = location;
 			}
 		}
@@ -160,6 +149,66 @@
 		}
 	});
 
+	// Fetch walking routes when trip changes
+	$effect(() => {
+		if (!currentTrip || currentTrip.stops.length < 2) {
+			walkingRoutes = new SvelteMap();
+			return;
+		}
+
+		async function fetchWalkingRoutes() {
+			const newRoutes = new SvelteMap<string, RouteResult>();
+			const promises: Promise<void>[] = [];
+
+			for (let i = 0; i < currentTrip!.stops.length - 1; i++) {
+				const currentStop = currentTrip!.stops[i];
+				const nextStop = currentTrip!.stops[i + 1];
+
+				const transport: TransportSegment | undefined = nextStop.transport;
+
+				if (transport && transport.mode === 'walking') {
+					const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
+					const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
+
+					if (fromLocation && toLocation) {
+						const key = `${fromLocation.id}-${toLocation.id}`;
+
+						// Check if we already have this route
+						if (walkingRoutes.has(key)) {
+							newRoutes.set(key, walkingRoutes.get(key)!);
+						} else {
+							// Fetch new route
+							const promise = getWalkingRoute(
+								[fromLocation.latitude, fromLocation.longitude],
+								[toLocation.latitude, toLocation.longitude]
+							)
+								.then((route) => {
+									if (route) {
+										console.log(
+											`Fetched walking route with ${route.coordinates.length} points`,
+											route
+										);
+										newRoutes.set(key, route);
+									}
+								})
+								.catch((err) => {
+									console.error('Error fetching route:', err);
+								});
+
+							promises.push(promise);
+						}
+					}
+				}
+			}
+
+			// Wait for all routes to be fetched
+			await Promise.all(promises);
+			walkingRoutes = newRoutes;
+		}
+
+		fetchWalkingRoutes();
+	});
+
 	function getTripOrder(locationId: number): number | null {
 		if (!currentTrip) return null;
 		const index = currentTrip.stops.findIndex((s) => s.tipId === locationId);
@@ -180,10 +229,10 @@
 		return location.durationMinutes;
 	}
 
-	const walkingPaths = $derived(() => {
+	const walkingPaths = $derived.by(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) return [];
 
-		const paths: [number, number][][] = [];
+		const paths: { coordinates: [number, number][]; key: string }[] = [];
 
 		for (let i = 0; i < currentTrip.stops.length - 1; i++) {
 			const currentStop = currentTrip.stops[i];
@@ -191,15 +240,28 @@
 
 			const transport: TransportSegment | undefined = nextStop.transport;
 
-			if (transport && transport.mode === 'walk') {
+			if (transport && transport.mode === 'walking') {
 				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
 				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
 
 				if (fromLocation && toLocation) {
-					paths.push([
-						[fromLocation.latitude, fromLocation.longitude],
-						[toLocation.latitude, toLocation.longitude]
-					]);
+					const key = `${fromLocation.id}-${toLocation.id}`;
+					const route = walkingRoutes.get(key);
+
+					if (route && route.coordinates.length > 1) {
+						console.log(`Rendering walking path ${key} with ${route.coordinates.length} points`);
+						paths.push({ coordinates: route.coordinates, key });
+					} else {
+						console.log(`Using fallback straight line for ${key}`);
+						// Fallback to straight line if route not loaded yet
+						paths.push({
+							coordinates: [
+								[fromLocation.latitude, fromLocation.longitude],
+								[toLocation.latitude, toLocation.longitude]
+							],
+							key: `fallback-${key}`
+						});
+					}
 				}
 			}
 		}
@@ -231,9 +293,9 @@
 			/>
 		{/if}
 
-		{#each walkingPaths as path}
+		{#each walkingPaths as path (path.key)}
 			<Polyline
-				latLngs={path}
+				latLngs={path.coordinates}
 				options={{
 					color: '#10b981',
 					weight: 6,
@@ -248,36 +310,38 @@
 			{@const info = categoryInfo[location.category]}
 			{@const tripOrder = getTripOrder(location.id)}
 			{@const duration = getDuration(location.id)}
-			{@const iconComponent = categoryIconComponents[location.category] || IconOther}
+			{@const emoji = categoryEmojis[location.category] || categoryEmojis.other}
 
 			<Marker
 				latLng={[location.latitude, location.longitude]}
 				bind:instance={markerInstances[location.id]}
 			>
-				<svelte:fragment slot="icon">
-					{#if tripOrder !== null}
+				{#if tripOrder !== null}
+					<div
+						class="flex -translate-x-6 -translate-y-[70px] cursor-pointer flex-col items-center gap-1"
+					>
 						<div
-							style="position: relative; top: -70px; left: -24px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;"
+							class="flex h-12 min-w-12 items-center justify-center rounded-full border-4 border-white text-2xl font-bold text-white shadow-lg"
+							style="background-color: {info.color};"
 						>
-							<div
-								style="background-color: {info.color}; min-width: 48px; height: 48px; border-radius: 50%; border: 4px solid white; box-shadow: 0 3px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white;"
-							>
-								{tripOrder}
-							</div>
-							<div
-								style="background-color: rgba(0,0,0,0.75); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"
-							>
-								{duration} min
-							</div>
+							{tripOrder}
 						</div>
-					{:else}
 						<div
-							style="position: relative; top: -16px; left: -16px; background-color: {info.color}; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; cursor: pointer;"
+							class="bg-base-content/75 text-base-100 rounded-xl px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap shadow-md"
 						>
-							<svelte:component this={iconComponent} style="font-size: 18px; color: white;" />
+							{duration} min
 						</div>
-					{/if}
-				</svelte:fragment>
+					</div>
+				{:else}
+					<div
+						class="flex h-10 w-10 -translate-x-5 -translate-y-5 cursor-pointer items-center justify-center rounded-full border-3 border-white shadow-lg"
+						style="background-color: {info.color};"
+					>
+						<span class="text-xl leading-none">
+							{emoji}
+						</span>
+					</div>
+				{/if}
 			</Marker>
 		{/each}
 	</Map>
