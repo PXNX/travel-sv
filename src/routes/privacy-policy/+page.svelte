@@ -14,8 +14,9 @@
 		We at <strong>Militaernews</strong> (“we”, “us”, or “our”) are committed to protecting your
 		privacy. This Privacy Policy explains how we collect, use, and safeguard your personal data when
 		you visit our website
-		<a class="link link-primary" href="https://travel-sv.vercel.app/">https://travel-sv.vercel.app/</a> (the
-		“Site”), in accordance with the General Data Protection Regulation (EU) 2016/679 (“GDPR”).
+		<a class="link link-primary" href="https://travel-sv.vercel.app/"
+			>https://travel-sv.vercel.app/</a
+		> (the “Site”), in accordance with the General Data Protection Regulation (EU) 2016/679 (“GDPR”).
 	</p>
 
 	<h2 class="mt-6 text-2xl font-semibold">2. Data Controller</h2>
