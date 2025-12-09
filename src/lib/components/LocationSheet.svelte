@@ -46,6 +46,8 @@
 			close();
 		}
 	}
+
+	const icon = $derived(location ? categoryInfo[location?.category].icon : undefined);
 </script>
 
 {#if show && location}
@@ -71,7 +73,7 @@
 
 				<!-- Title and Category -->
 				<div class="mb-4 flex items-start gap-3">
-					<span class="text-4xl">{categoryInfo[location.category].icon}</span>
+					<icon class="text-4xl" />
 					<div class="flex-1">
 						<h2 class="text-2xl font-bold">{location.title}</h2>
 						<div

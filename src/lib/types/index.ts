@@ -1,3 +1,12 @@
+import type { SvelteComponent } from 'svelte';
+import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
+import IconMuseum from '~icons/fluent-emoji/classical-building';
+import IconLeisure from '~icons/fluent-emoji/bed';
+import IconNature from '~icons/fluent-emoji/evergreen-tree';
+import IconTrain from '~icons/fluent-emoji/locomotive';
+import IconBus from '~icons/fluent-emoji/bus';
+import IconWalking from '~icons/fluent-emoji/person-walking';
+
 // src/lib/types.ts
 export const CATEGORIES = ['food', 'museum', 'nature', 'leisure'] as const;
 export type Category = (typeof CATEGORIES)[number];
@@ -56,26 +65,33 @@ export interface Trip {
 	updatedAt: string;
 }
 
-export const categoryInfo: Record<Category, { value: Category; label: string; color: string }> = {
+export const categoryInfo: Record<
+	Category,
+	{ value: Category; label: string; color: string; icon: typeof SvelteComponent }
+> = {
 	food: {
 		value: 'food',
 		label: 'Food & Dining',
-		color: '#f59e0b' // amber
+		color: '#f59e0b', // amber
+		icon: IconFoodApple
 	},
 	museum: {
 		value: 'museum',
 		label: 'Museum & Culture',
-		color: '#8b5cf6' // purple
+		color: '#8b5cf6', // purple
+		icon: IconMuseum
 	},
 	leisure: {
 		value: 'leisure',
 		label: 'Sleep & Leisure',
-		color: '#3b82f6' // blue
+		color: '#3b82f6', // blue
+		icon: IconLeisure
 	},
 	nature: {
 		value: 'nature',
 		label: 'Nature & Outdoors',
-		color: '#10b981' // green
+		color: '#10b981', // green
+		icon: IconNature
 	}
 };
 
@@ -88,21 +104,24 @@ export const bestTimeInfo: Record<BestTime, { value: BestTime; label: string }> 
 
 export const transportInfo: Record<
 	TransportMode,
-	{ value: TransportMode; label: string; color: string }
+	{ value: TransportMode; label: string; color: string; icon: typeof SvelteComponent }
 > = {
 	railway: {
 		value: 'railway',
 		label: 'Train',
-		color: '#3b82f6' // blue
+		color: '#3b82f6', // blue
+		icon: IconTrain
 	},
 	bus: {
 		value: 'bus',
 		label: 'Bus',
-		color: '#f59e0b' // amber
+		color: '#f59e0b', // amber
+		icon: IconBus
 	},
 	walking: {
 		value: 'walking',
 		label: 'Walking',
-		color: '#10b981' // green
+		color: '#10b981', // green
+		icon: IconWalking
 	}
 };
