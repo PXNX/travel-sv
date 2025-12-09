@@ -6,13 +6,7 @@
 	import IconClock from '~icons/fluent/clock-24-regular';
 	import IconDelete from '~icons/fluent/delete-24-regular';
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
-	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
-	import IconMuseum from '~icons/fluent-emoji/classical-building';
-	import IconLeisure from '~icons/fluent-emoji/bed';
-	import IconNature from '~icons/fluent-emoji/evergreen-tree';
-	import IconTrain from '~icons/fluent-emoji/locomotive';
-	import IconBus from '~icons/fluent-emoji/bus';
-	import IconWalking from '~icons/fluent-emoji/person-walking';
+
 	import Modal from './Modal.svelte';
 
 	interface Props {
@@ -27,19 +21,6 @@
 
 	let showDeleteStopDialog = $state(false);
 	let stopToDelete: number | null = $state(null);
-
-	const categoryIcons = {
-		food: IconFoodApple,
-		museum: IconMuseum,
-		leisure: IconLeisure,
-		nature: IconNature
-	};
-
-	const transportIcons = {
-		railway: IconTrain,
-		bus: IconBus,
-		walking: IconWalking
-	};
 
 	function confirmRemoveStop(tipId: number) {
 		stopToDelete = tipId;
@@ -92,14 +73,14 @@
 	{#each stops as stop, index (stop.tipId)}
 		{@const location = stop.location!}
 		{@const timing = timelineData[index]}
-		{@const CategoryIcon = categoryIcons[location.category]}
+		{@const categoryStyle = categoryInfo[location.category]}
 
 		<div class="relative flex gap-4">
 			<!-- Location Card -->
 			<div
 				class="card bg-base-100 mb-4 flex-1 cursor-pointer shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl"
 				onclick={() => oneditduration(location.id, timing.stayDuration)}
-				style="background-color: {categoryInfo[location.category].color}"
+				style="background-color: {categoryStyle.color}"
 			>
 				<div class="card-body p-4">
 					<div class="flex items-start justify-between gap-3">
@@ -107,12 +88,12 @@
 						<div class="flex flex-col items-center">
 							<div
 								class="flex size-10 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg"
-								style="background-color: {categoryInfo[location.category].color}"
+								style="background-color: {categoryStyle.color}"
 							>
 								{index + 1}
 							</div>
 
-							<CategoryIcon class="size-6" />
+							<categoryStyle.icon class="size-6" />
 						</div>
 						<div class="flex-1">
 							<div class="flex items-center gap-3">
@@ -150,9 +131,9 @@
 		<!-- Transport Segment -->
 		{#if index < stops.length - 1}
 			{@const nextStop = stops[index + 1]}
-			{@const transport = nextStop.transport}
 			{@const nextTiming = timelineData[index + 1]}
-			{@const TransportIcon = transport ? transportIcons[transport.mode] : null}
+			{@const transport = nextStop.transport}
+			{@const transportStyle = transport ? transportInfo[transport?.mode] : null}
 			{@const nextLocation = nextStop.location!}
 
 			<div class="relative mb-4 flex gap-4">
@@ -161,10 +142,10 @@
 					<div class="relative w-1 flex-1" style="min-height: 80px;">
 						<div
 							class="absolute inset-0 w-1 rounded-full"
-							style="background: repeating-linear-gradient(to bottom, {transport
-								? transportInfo[transport.mode].color
-								: '#94a3b8'} 0px, {transport
-								? transportInfo[transport.mode].color
+							style="background: repeating-linear-gradient(to bottom, {transportStyle
+								? transportStyle.color
+								: '#94a3b8'} 0px, {transportStyle
+								? transportStyle.color
 								: '#94a3b8'} 8px, transparent 8px, transparent 16px); opacity: 0.5;"
 						></div>
 					</div>
@@ -179,25 +160,21 @@
 							<div class="flex items-center gap-3">
 								<div
 									class="flex size-8 items-center justify-center rounded-lg"
-									style="background-color: {transportInfo[transport.mode].color}; "
+									style="background-color: {transportStyle?.color}; "
 								>
-									<TransportIcon class="size-5" />
+									<transportStyle.icon class="size-5" />
 								</div>
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
-										<span
-											class="text-base font-semibold"
-											style="color: {transportInfo[transport.mode].color}"
-										>
-											{transportInfo[transport.mode].label}
+										<span class="text-base font-semibold" style="color: {transportStyle.color}">
+											{transport.label}
 										</span>
-										{#if transport.routeName}
+										{#if nextStop.transport.routeName}
 											<span
 												class="badge badge-sm"
-												style="background-color: {transportInfo[transport.mode]
-													.color}; color: white;"
+												style="background-color: {transportStyle.color}; color: white;"
 											>
-												{transport.routeName}
+												{nextStop.transport.routeName}
 											</span>
 										{/if}
 									</div>
@@ -208,15 +185,17 @@
 											<strong>{nextTiming.arrivalTime}</strong></span
 										>
 										<span>•</span>
-										<span><strong>{formatDuration(transport.durationMinutes)}</strong></span>
-										{#if transport.distanceKm}
+										<span
+											><strong>{formatDuration(nextStop.transport.durationMinutes)}</strong></span
+										>
+										{#if nextStop.transport.distanceKm}
 											<span>•</span>
-											<span>{transport.distanceKm.toFixed(1)} km</span>
+											<span>{nextStop.transport.distanceKm.toFixed(1)} km</span>
 										{/if}
 									</div>
-									{#if transport.notes}
+									{#if nextStop.transport.notes}
 										<div class="text-base-content/60 mt-1 text-xs italic">
-											{transport.notes}
+											{nextStop.transport.notes}
 										</div>
 									{/if}
 								</div>

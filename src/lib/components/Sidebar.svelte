@@ -21,18 +21,9 @@
 	import IconMenu from '~icons/fluent/navigation-24-regular';
 	import IconDistance from '~icons/fluent/arrow-routing-24-regular';
 	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
-	import IconMuseum from '~icons/fluent-emoji/classical-building';
-	import IconLeisure from '~icons/fluent-emoji/bed';
-	import IconNature from '~icons/fluent-emoji/evergreen-tree';
+
 	import Modal from './Modal.svelte';
 	import { haversineDistance } from '$lib/utils/routing';
-
-	const categoryIcons = {
-		food: IconFoodApple,
-		museum: IconMuseum,
-		leisure: IconLeisure,
-		nature: IconNature
-	};
 
 	interface Props {
 		searchQuery: string;
@@ -370,7 +361,7 @@
 					</div>
 				{:else}
 					{#each filteredLocations as location (location.id)}
-						{@const CategoryIcon = categoryIcons[location.category]}
+						{@const categoryStyle = categoryInfo[location.category]}
 						<div
 							class="card card-compact bg-base-200 border-base-300 cursor-pointer border shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
 							onclick={() => handleLocationClick(location)}
@@ -379,9 +370,9 @@
 								<div class="flex items-start gap-3">
 									<div
 										class="flex size-12 flex-shrink-0 items-center justify-center rounded-lg"
-										style="background-color: {categoryInfo[location.category].color}; "
+										style="background-color: {categoryStyle.color}; "
 									>
-										<svelte:component this={CategoryIcon} class="size-7" />
+										<categoryStyle.icon class="size-6" />
 									</div>
 
 									<div class="min-w-0 flex-1">
