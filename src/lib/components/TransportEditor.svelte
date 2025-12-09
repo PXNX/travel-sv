@@ -3,7 +3,6 @@
 	import type { TransportSegment, TransportMode } from '$lib/types';
 	import { transportInfo } from '$lib/types';
 	import { getWalkingRoute, calculateWalkingDuration } from '$lib/utils/routing';
-	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconSave from '~icons/fluent/save-24-regular';
 	import Modal from './Modal.svelte';
 
@@ -25,8 +24,7 @@
 		toLocation,
 		fromCoords,
 		toCoords,
-		onsave,
-		oncancel
+		onsave
 	}: Props = $props();
 
 	let mode = $state<TransportMode>('railway');
@@ -120,7 +118,7 @@
 </script>
 
 <Modal bind:open={show} title="Transportation Details">
-	<div class="space-y-4 p-4">
+	<div class="space-y-4">
 		<!-- Route -->
 		<div class="alert alert-info">
 			<span class="text-sm">
@@ -161,7 +159,7 @@
 				<label class="label"><span class="label-text">Departure Time</span></label>
 				<input
 					type="time"
-					class="input input-bordered"
+					class="input input-bordered input-sm"
 					bind:value={departureTime}
 					oninput={updateDuration}
 				/>
@@ -170,7 +168,7 @@
 				<label class="label"><span class="label-text">Arrival Time</span></label>
 				<input
 					type="time"
-					class="input input-bordered"
+					class="input input-bordered input-sm"
 					bind:value={arrivalTime}
 					oninput={updateDuration}
 				/>
@@ -193,7 +191,7 @@
 			</label>
 			<input
 				type="number"
-				class="input input-bordered"
+				class="input input-bordered input-sm"
 				bind:value={durationMinutes}
 				min="1"
 				step="1"
@@ -216,7 +214,7 @@
 				</label>
 				<input
 					type="text"
-					class="input input-bordered"
+					class="input input-bordered input-sm"
 					bind:value={routeName}
 					placeholder={mode === 'railway' ? 'e.g., RE7, ICE 123' : 'e.g., Bus 42'}
 				/>
@@ -227,7 +225,7 @@
 		<div class="form-control">
 			<label class="label"><span class="label-text">Notes (optional)</span></label>
 			<textarea
-				class="textarea textarea-bordered"
+				class="textarea textarea-bordered textarea-sm"
 				bind:value={notes}
 				placeholder="Platform info, transfer details, etc."
 				rows="2"
@@ -235,10 +233,10 @@
 		</div>
 
 		<!-- Actions -->
-		<div class="flex gap-3">
-			<button class="btn btn-primary flex-1" onclick={handleSave} disabled={isCalculatingWalking}>
+		<div class="modal-action">
+			<button class="btn btn-primary" onclick={handleSave} disabled={isCalculatingWalking}>
 				<IconSave class="size-4" />
-				Save
+				Save Transportation
 			</button>
 		</div>
 	</div>

@@ -8,6 +8,8 @@
 	import IconThumbLikeFilled from '~icons/fluent/thumb-like-24-filled';
 	import FluentList24Regular from '~icons/fluent/list-24-regular';
 
+	import { resolve } from '$app/paths';
+
 	interface Props {
 		show: boolean;
 		location: TravelTip | null;
@@ -35,7 +37,7 @@
 	}
 
 	function viewLocationDetail(locationId: number) {
-		goto(`/location/${locationId}`);
+		goto(resolve(`/location/${locationId}`));
 	}
 
 	function handleAddToTrip() {

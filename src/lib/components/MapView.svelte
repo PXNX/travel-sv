@@ -36,10 +36,13 @@
 	let pendingLng = $state(0);
 	let markerInstances: Record<number, L.Marker> = {};
 	let markerClickedRecently = false;
-	let selectedTileLayer = $state('osm');
+
+	type TileLayerKey = 'osm' | 'topo' | 'satellite';
+	let selectedTileLayer = $state<TileLayerKey>('osm');
+
 	let walkingRoutes = new SvelteMap<string, RouteResult>();
 
-	const tileLayers = {
+	const tileLayers: Record<TileLayerKey, { url: string; options: { attribution: string } }> = {
 		osm: {
 			url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
 			options: {
@@ -65,8 +68,9 @@
 
 	const categoryEmojis: Record<string, string> = {
 		food: '🍽️',
-		nature: '🛏️',
-		museum: '🚌',
+		nature: '🌲',
+		museum: '🏛️',
+		leisure: '🛏️',
 		other: '⭐'
 	};
 
@@ -251,22 +255,44 @@
 					if (route && route.coordinates.length > 1) {
 						console.log(`Rendering walking path ${key} with ${route.coordinates.length} points`);
 						paths.push({ coordinates: route.coordinates, key });
-					} else {
-						console.log(`Using fallback straight line for ${key}`);
-						// Fallback to straight line if route not loaded yet
-						paths.push({
-							coordinates: [
-								[fromLocation.latitude, fromLocation.longitude],
-								[toLocation.latitude, toLocation.longitude]
-							],
-							key: `fallback-${key}`
-						});
 					}
 				}
 			}
 		}
 
 		return paths;
+	});
+
+	// Generate non-walking route coordinates (dotted lines)
+	const nonWalkingRoutes = $derived.by(() => {
+		if (!currentTrip || currentTrip.stops.length < 2) return [];
+
+		const segments: { coordinates: [number, number][]; key: string }[] = [];
+
+		for (let i = 0; i < currentTrip.stops.length - 1; i++) {
+			const currentStop = currentTrip.stops[i];
+			const nextStop = currentTrip.stops[i + 1];
+
+			const transport: TransportSegment | undefined = nextStop.transport;
+
+			// Only add dotted line if NOT walking
+			if (!transport || transport.mode !== 'walking') {
+				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
+				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
+
+				if (fromLocation && toLocation) {
+					segments.push({
+						coordinates: [
+							[fromLocation.latitude, fromLocation.longitude],
+							[toLocation.latitude, toLocation.longitude]
+						],
+						key: `route-${fromLocation.id}-${toLocation.id}`
+					});
+				}
+			}
+		}
+
+		return segments;
 	});
 </script>
 
@@ -281,16 +307,18 @@
 			<TileLayer url={tile.url} options={tile.options} />
 		{/key}
 
-		{#if currentTrip && routeCoordinates.length > 1}
-			<Polyline
-				latLngs={routeCoordinates}
-				options={{
-					color: '#3b82f6',
-					weight: 4,
-					opacity: 0.7,
-					dashArray: '10, 10'
-				}}
-			/>
+		{#if currentTrip && nonWalkingRoutes.length > 0}
+			{#each nonWalkingRoutes as segment (segment.key)}
+				<Polyline
+					latLngs={segment.coordinates}
+					options={{
+						color: '#3b82f6',
+						weight: 4,
+						opacity: 0.7,
+						dashArray: '10, 10'
+					}}
+				/>
+			{/each}
 		{/if}
 
 		{#each walkingPaths as path (path.key)}

@@ -25,7 +25,6 @@
 	let mapCenter = $state<[number, number]>([50, 8]);
 	let mapZoom = $state(6);
 	let mapInstance = $state<L.Map>();
-	let selectedTileLayer = $state('osm');
 
 	// Transport editor state
 	let showTransportEditor = $state(false);

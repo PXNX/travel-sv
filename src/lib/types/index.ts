@@ -1,5 +1,5 @@
 // src/lib/types.ts
-export const CATEGORIES = ['food', 'museum', 'nature'] as const;
+export const CATEGORIES = ['food', 'museum', 'nature', 'leisure'] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const BEST_TIMES = ['morning', 'afternoon', 'evening', 'any'] as const;
@@ -30,19 +30,20 @@ export interface TravelTip {
 
 export interface TransportSegment {
 	mode: TransportMode;
-	departureTime?: string; // HH:mm format
-	arrivalTime?: string; // HH:mm format
+	departureTime?: string;
+	arrivalTime?: string;
 	durationMinutes: number;
-	routeName?: string; // e.g., "RE7", "Bus 42"
+	routeName?: string;
 	notes?: string;
+	distanceKm?: number; // Add distance in kilometers
 }
 
 export interface TripStop {
 	tipId: number;
 	order: number;
-	customDuration?: number; // Stay duration at location
+	customDuration?: number;
 	notes?: string;
-	transport?: TransportSegment; // Transport TO this stop from previous
+	transport?: TransportSegment;
 }
 
 export interface Trip {
@@ -50,32 +51,31 @@ export interface Trip {
 	name: string;
 	description: string;
 	stops: TripStop[];
-	startDate?: string; // YYYY-MM-DD
+	startDate?: string;
 	createdAt: string;
 	updatedAt: string;
 }
 
-export const categoryInfo: Record<
-	Category,
-	{ value: Category; label: string; icon: string; color: string }
-> = {
+export const categoryInfo: Record<Category, { value: Category; label: string; color: string }> = {
 	food: {
 		value: 'food',
 		label: 'Food & Dining',
-		icon: '🍽️',
-		color: '#ef4444'
+		color: '#f59e0b' // amber
 	},
 	museum: {
 		value: 'museum',
 		label: 'Museum & Culture',
-		icon: '🏛️',
-		color: '#8b5cf6'
+		color: '#8b5cf6' // purple
+	},
+	leisure: {
+		value: 'leisure',
+		label: 'Sleep & Leisure',
+		color: '#3b82f6' // blue
 	},
 	nature: {
 		value: 'nature',
 		label: 'Nature & Outdoors',
-		icon: '🌲',
-		color: '#10b981'
+		color: '#10b981' // green
 	}
 };
 
@@ -88,24 +88,21 @@ export const bestTimeInfo: Record<BestTime, { value: BestTime; label: string }> 
 
 export const transportInfo: Record<
 	TransportMode,
-	{ value: TransportMode; label: string; icon: string; color: string }
+	{ value: TransportMode; label: string; color: string }
 > = {
 	railway: {
 		value: 'railway',
 		label: 'Train',
-		icon: '🚆',
-		color: '#3b82f6'
+		color: '#3b82f6' // blue
 	},
 	bus: {
 		value: 'bus',
 		label: 'Bus',
-		icon: '🚌',
-		color: '#f59e0b'
+		color: '#f59e0b' // amber
 	},
 	walking: {
 		value: 'walking',
 		label: 'Walking',
-		icon: '🚶',
-		color: '#10b981'
+		color: '#10b981' // green
 	}
 };
