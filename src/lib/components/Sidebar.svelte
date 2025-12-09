@@ -1,7 +1,7 @@
 <!-- src/lib/components/Sidebar.svelte -->
 <script lang="ts">
 	import type { Category, TravelTip, Trip, TripStop } from '$lib/types';
-	import { categoryInfo, calculateDistance } from '$lib/types';
+	import { categoryInfo } from '$lib/types';
 	import { formatDuration, getTotalTripDuration } from '$lib/utils/calculations';
 	import TripTimeline from './TripTimeline.svelte';
 	import IconSearch from '~icons/fluent/search-24-regular';
@@ -11,7 +11,6 @@
 	import IconLocationIcon from '~icons/fluent/location-24-regular';
 	import IconNavigation from '~icons/fluent/navigation-24-regular';
 	import IconAdd from '~icons/fluent/add-24-regular';
-	import IconEdit from '~icons/fluent/edit-24-regular';
 	import IconDelete from '~icons/fluent/delete-24-regular';
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconClock from '~icons/fluent/clock-24-regular';
@@ -26,22 +25,7 @@
 	import IconLeisure from '~icons/fluent-emoji/bed';
 	import IconNature from '~icons/fluent-emoji/evergreen-tree';
 	import Modal from './Modal.svelte';
-
-	const categoryColorClasses = (category: Category) => {
-		const info = categoryInfo[category];
-		switch (info.value) {
-			case 'nature':
-				return 'badge-success';
-			case 'food':
-				return 'badge-warning';
-			case 'museum':
-				return 'badge-secondary';
-			case 'leisure':
-				return 'badge-info';
-			default:
-				return 'badge-primary';
-		}
-	};
+	import { haversineDistance } from '$lib/utils/routing';
 
 	const categoryIcons = {
 		food: IconFoodApple,
@@ -99,6 +83,8 @@
 	let newTripDescription = $state('');
 	let newTripStartTime = $state('09:00');
 	let isOpen = $state(true);
+	let showDeleteTripDialog = $state(false);
+	let tripToDelete: string | null = $state(null);
 
 	function handleCreateTrip() {
 		if (!newTripName.trim()) return;
@@ -107,6 +93,19 @@
 		newTripDescription = '';
 		newTripStartTime = '09:00';
 		showNewTripDialog = false;
+	}
+
+	function confirmDeleteTrip(tripId: string) {
+		tripToDelete = tripId;
+		showDeleteTripDialog = true;
+	}
+
+	function handleDeleteTrip() {
+		if (tripToDelete) {
+			deleteTrip(tripToDelete);
+			tripToDelete = null;
+		}
+		showDeleteTripDialog = false;
 	}
 
 	const totalTripDuration = $derived(
@@ -131,11 +130,9 @@
 			const nextLoc = locationsMap.get(currentTrip.stops[i + 1].tipId);
 
 			if (currentLoc && nextLoc) {
-				distance += calculateDistance(
-					currentLoc.latitude,
-					currentLoc.longitude,
-					nextLoc.latitude,
-					nextLoc.longitude
+				distance += haversineDistance(
+					[currentLoc.latitude, currentLoc.longitude],
+					[nextLoc.latitude, nextLoc.longitude]
 				);
 			}
 		}
@@ -254,7 +251,8 @@
 								<h3 class="text-base-content/70 text-xs font-semibold sm:text-sm">Saved Trips:</h3>
 								{#each trips as trip (trip.id)}
 									<div
-										class="card card-compact bg-base-200 border-base-300 border shadow transition-shadow hover:shadow-lg"
+										class="card card-compact bg-base-200 border-base-300 cursor-pointer border shadow transition-shadow hover:shadow-lg"
+										onclick={() => selectTrip(trip)}
 									>
 										<div class="card-body p-3 sm:p-4">
 											<div class="flex items-start justify-between">
@@ -290,16 +288,12 @@
 												</div>
 												<div class="ml-2 flex gap-1">
 													<button
-														class="btn btn-ghost btn-xs tooltip tooltip-left"
-														data-tip="Edit"
-														onclick={() => selectTrip(trip)}
-													>
-														<IconEdit class="size-3 sm:size-4" />
-													</button>
-													<button
-														class="btn btn-ghost btn-xs text-error tooltip tooltip-left"
+														class="btn btn-ghost btn-xs text-error tooltip tooltip-left z-10"
 														data-tip="Delete"
-														onclick={() => deleteTrip(trip.id)}
+														onclick={(e) => {
+															e.stopPropagation();
+															confirmDeleteTrip(trip.id);
+														}}
 													>
 														<IconDelete class="size-3 sm:size-4" />
 													</button>
@@ -385,21 +379,14 @@
 								<div class="flex items-start gap-3">
 									<div
 										class="flex size-12 flex-shrink-0 items-center justify-center rounded-lg"
-										style="background-color: {categoryInfo[location.category]
-											.color}; opacity: 0.15;"
+										style="background-color: {categoryInfo[location.category].color}; "
 									>
 										<svelte:component this={CategoryIcon} class="size-7" />
 									</div>
 
 									<div class="min-w-0 flex-1">
 										<h3 class="card-title line-clamp-1 text-sm sm:text-base">{location.title}</h3>
-										<span
-											class="badge badge-sm mt-1"
-											style="background-color: {categoryInfo[location.category]
-												.color}; color: white;"
-										>
-											{categoryInfo[location.category].label}
-										</span>
+
 										<p class="text-base-content/70 mt-2 line-clamp-2 text-xs sm:text-sm">
 											{location.description}
 										</p>
@@ -492,6 +479,33 @@
 			>
 				<IconSave class="size-4 sm:size-5" />
 				Create Trip
+			</button>
+		</div>
+	</div>
+</Modal>
+
+<Modal bind:open={showDeleteTripDialog} title="Delete Trip?">
+	<div class="space-y-4">
+		<p class="text-base-content/80 text-sm">
+			Are you sure you want to delete this trip? This action cannot be undone.
+		</p>
+
+		<div class="modal-action mt-6 flex gap-2 sm:gap-3">
+			<button
+				class="btn btn-ghost btn-sm sm:btn-md flex-1 text-xs sm:text-sm"
+				onclick={() => {
+					showDeleteTripDialog = false;
+					tripToDelete = null;
+				}}
+			>
+				Cancel
+			</button>
+			<button
+				class="btn btn-error btn-sm sm:btn-md flex-1 text-xs sm:text-sm"
+				onclick={handleDeleteTrip}
+			>
+				<IconDelete class="size-4 sm:size-5" />
+				Delete
 			</button>
 		</div>
 	</div>

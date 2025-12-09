@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Map, TileLayer, Marker, Polyline } from 'sveaflet';
+	import { Map, TileLayer, Polyline } from 'sveaflet';
 	import L from 'leaflet';
 	import type { Category, TravelTip, Trip, TransportSegment } from '$lib/types';
 	import { categoryInfo } from '$lib/types';
@@ -125,31 +125,114 @@
 		window.location.href = `/location/new?lat=${pendingLat}&lng=${pendingLng}`;
 	}
 
+	function getTripOrder(locationId: number): number | null {
+		if (!currentTrip) return null;
+		const index = currentTrip.stops.findIndex((s) => s.tipId === locationId);
+		return index !== -1 ? index + 1 : null;
+	}
+
+	function getDuration(locationId: number): number {
+		const location = allLocations.find((l) => l.id === locationId);
+		if (!location) return 60;
+
+		if (currentTrip) {
+			const stop = currentTrip.stops.find((s) => s.tipId === locationId);
+			if (stop && typeof stop.customDuration === 'number') {
+				return stop.customDuration;
+			}
+		}
+
+		return location.durationMinutes;
+	}
+
+	function createMarkerIcon(location: TravelTip): L.DivIcon {
+		const info = categoryInfo[location.category];
+		const tripOrder = getTripOrder(location.id);
+		const duration = getDuration(location.id);
+		const emoji = categoryEmojis[location.category] || categoryEmojis.other;
+
+		let html = '';
+		if (tripOrder !== null) {
+			html = `
+				<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
+					<div style="display: flex; align-items: center; justify-content: center; height: 48px; min-width: 48px; border-radius: 9999px; border: 4px solid white; font-size: 24px; font-weight: bold; color: white; background-color: ${info.color}; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
+						${tripOrder}
+					</div>
+					<div style="background-color: rgba(0, 0, 0, 0.75); color: white; border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+						${duration} min
+					</div>
+				</div>
+			`;
+		} else {
+			html = `
+				<div style="display: flex; align-items: center; justify-content: center; height: 40px; width: 40px; border-radius: 9999px; border: 3px solid white; background-color: ${info.color}; cursor: pointer; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
+					<span style="font-size: 20px; line-height: 1;">
+						${emoji}
+					</span>
+				</div>
+			`;
+		}
+
+		return L.divIcon({
+			className: 'custom-div-icon',
+			html: html,
+			iconSize: tripOrder !== null ? [60, 80] : [40, 40],
+			iconAnchor: tripOrder !== null ? [30, 40] : [20, 20]
+		});
+	}
+
+	function updateMarkers() {
+		if (!mapInstance) return;
+
+		// Remove existing markers
+		Object.values(markerInstances).forEach((marker) => {
+			if (marker) {
+				mapInstance.removeLayer(marker);
+			}
+		});
+		markerInstances = {};
+
+		// Add new markers
+		filteredLocations.forEach((location) => {
+			const icon = createMarkerIcon(location);
+			const marker = L.marker([location.latitude, location.longitude], {
+				icon: icon,
+				zIndexOffset: 1000
+			});
+
+			marker.on('click', (e: L.LeafletMouseEvent) => {
+				L.DomEvent.stopPropagation(e);
+				markerClickedRecently = true;
+				onmarkerclick(location);
+			});
+
+			marker.addTo(mapInstance);
+			markerInstances[location.id] = marker;
+		});
+	}
+
 	$effect(() => {
 		if (mapInstance) {
-			mapInstance.on('click', onMapClick);
+			// Set proper z-index for marker pane
+			const markerPane = mapInstance.getPane('markerPane');
+			if (markerPane) {
+				markerPane.style.zIndex = '650';
+			}
 
-			Object.entries(markerInstances).forEach(([locationId, marker]) => {
-				if (marker) {
-					marker.on('click', (e: L.LeafletMouseEvent) => {
-						L.DomEvent.stopPropagation(e);
-						markerClickedRecently = true;
-						const location = allLocations.find((loc) => loc.id === parseInt(locationId));
-						if (location) {
-							onmarkerclick(location);
-						}
-					});
-				}
-			});
+			mapInstance.on('click', onMapClick);
 
 			return () => {
 				mapInstance.off('click', onMapClick);
-				Object.values(markerInstances).forEach((marker) => {
-					if (marker) {
-						marker.off('click');
-					}
-				});
 			};
+		}
+	});
+
+	// Update markers when locations or trip changes
+	$effect(() => {
+		if (mapInstance && filteredLocations) {
+			// Access currentTrip to make this effect reactive to it
+			const _ = currentTrip;
+			updateMarkers();
 		}
 	});
 
@@ -177,11 +260,9 @@
 					if (fromLocation && toLocation) {
 						const key = `${fromLocation.id}-${toLocation.id}`;
 
-						// Check if we already have this route
 						if (walkingRoutes.has(key)) {
 							newRoutes.set(key, walkingRoutes.get(key)!);
 						} else {
-							// Fetch new route
 							const promise = getWalkingRoute(
 								[fromLocation.latitude, fromLocation.longitude],
 								[toLocation.latitude, toLocation.longitude]
@@ -205,33 +286,12 @@
 				}
 			}
 
-			// Wait for all routes to be fetched
 			await Promise.all(promises);
 			walkingRoutes = newRoutes;
 		}
 
 		fetchWalkingRoutes();
 	});
-
-	function getTripOrder(locationId: number): number | null {
-		if (!currentTrip) return null;
-		const index = currentTrip.stops.findIndex((s) => s.tipId === locationId);
-		return index !== -1 ? index + 1 : null;
-	}
-
-	function getDuration(locationId: number): number {
-		const location = allLocations.find((l) => l.id === locationId);
-		if (!location) return 60;
-
-		if (currentTrip) {
-			const stop = currentTrip.stops.find((s) => s.tipId === locationId);
-			if (stop && typeof stop.customDuration === 'number') {
-				return stop.customDuration;
-			}
-		}
-
-		return location.durationMinutes;
-	}
 
 	const walkingPaths = $derived.by(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) return [];
@@ -263,7 +323,6 @@
 		return paths;
 	});
 
-	// Generate non-walking route coordinates (dotted lines)
 	const nonWalkingRoutes = $derived.by(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) return [];
 
@@ -275,7 +334,6 @@
 
 			const transport: TransportSegment | undefined = nextStop.transport;
 
-			// Only add dotted line if NOT walking
 			if (!transport || transport.mode !== 'walking') {
 				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
 				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
@@ -296,17 +354,27 @@
 	});
 </script>
 
+<svelte:head>
+	<style>
+		.custom-div-icon {
+			background: transparent !important;
+			border: none !important;
+		}
+		.leaflet-marker-pane {
+			z-index: 650 !important;
+		}
+		.leaflet-tile-pane {
+			z-index: 200 !important;
+		}
+	</style>
+</svelte:head>
+
 <div class="relative flex-1">
 	<Map
 		options={{ center: mapCenter, zoom: mapZoom, minZoom: 2, maxZoom: 18, zoomControl: true }}
 		class="h-full w-full"
 		bind:instance={mapInstance}
 	>
-		{#key selectedTileLayer}
-			{@const tile = tileLayers[selectedTileLayer]}
-			<TileLayer url={tile.url} options={tile.options} />
-		{/key}
-
 		{#if currentTrip && nonWalkingRoutes.length > 0}
 			{#each nonWalkingRoutes as segment (segment.key)}
 				<Polyline
@@ -334,44 +402,10 @@
 			/>
 		{/each}
 
-		{#each filteredLocations as location (location.id)}
-			{@const info = categoryInfo[location.category]}
-			{@const tripOrder = getTripOrder(location.id)}
-			{@const duration = getDuration(location.id)}
-			{@const emoji = categoryEmojis[location.category] || categoryEmojis.other}
-
-			<Marker
-				latLng={[location.latitude, location.longitude]}
-				bind:instance={markerInstances[location.id]}
-			>
-				{#if tripOrder !== null}
-					<div
-						class="flex -translate-x-6 -translate-y-[70px] cursor-pointer flex-col items-center gap-1"
-					>
-						<div
-							class="flex h-12 min-w-12 items-center justify-center rounded-full border-4 border-white text-2xl font-bold text-white shadow-lg"
-							style="background-color: {info.color};"
-						>
-							{tripOrder}
-						</div>
-						<div
-							class="bg-base-content/75 text-base-100 rounded-xl px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap shadow-md"
-						>
-							{duration} min
-						</div>
-					</div>
-				{:else}
-					<div
-						class="flex h-10 w-10 -translate-x-5 -translate-y-5 cursor-pointer items-center justify-center rounded-full border-3 border-white shadow-lg"
-						style="background-color: {info.color};"
-					>
-						<span class="text-xl leading-none">
-							{emoji}
-						</span>
-					</div>
-				{/if}
-			</Marker>
-		{/each}
+		{#key selectedTileLayer}
+			{@const tile = tileLayers[selectedTileLayer]}
+			<TileLayer url={tile.url} options={tile.options} />
+		{/key}
 	</Map>
 
 	<div
