@@ -1,6 +1,7 @@
+<!-- src/lib/components/Sidebar.svelte -->
 <script lang="ts">
 	import type { Category, TravelTip, Trip, TripStop } from '$lib/types';
-	import { categoryInfo } from '$lib/types';
+	import { categoryInfo, calculateDistance } from '$lib/types';
 	import { formatDuration, getTotalTripDuration } from '$lib/utils/calculations';
 	import TripTimeline from './TripTimeline.svelte';
 	import IconSearch from '~icons/fluent/search-24-regular';
@@ -19,21 +20,34 @@
 	import IconSave from '~icons/fluent/save-24-regular';
 	import IconCalendar from '~icons/fluent/calendar-24-regular';
 	import IconMenu from '~icons/fluent/navigation-24-regular';
+	import IconDistance from '~icons/fluent/arrow-routing-24-regular';
+	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
+	import IconMuseum from '~icons/fluent-emoji/classical-building';
+	import IconLeisure from '~icons/fluent-emoji/bed';
+	import IconNature from '~icons/fluent-emoji/evergreen-tree';
 	import Modal from './Modal.svelte';
 
 	const categoryColorClasses = (category: Category) => {
 		const info = categoryInfo[category];
 		switch (info.value) {
 			case 'nature':
-				return 'badge-info';
+				return 'badge-success';
 			case 'food':
 				return 'badge-warning';
 			case 'museum':
-				return 'badge-success';
-
+				return 'badge-secondary';
+			case 'leisure':
+				return 'badge-info';
 			default:
 				return 'badge-primary';
 		}
+	};
+
+	const categoryIcons = {
+		food: IconFoodApple,
+		museum: IconMuseum,
+		leisure: IconLeisure,
+		nature: IconNature
 	};
 
 	interface Props {
@@ -84,7 +98,7 @@
 	let newTripName = $state('');
 	let newTripDescription = $state('');
 	let newTripStartTime = $state('09:00');
-	let isOpen = $state(true); // For mobile drawer
+	let isOpen = $state(true);
 
 	function handleCreateTrip() {
 		if (!newTripName.trim()) return;
@@ -106,6 +120,27 @@
 			return acc + (stop.transport?.durationMinutes || 0);
 		}, 0);
 		return stayTime + transportTime;
+	});
+
+	const totalDistance = $derived(() => {
+		if (!currentTrip || currentTrip.stops.length < 2) return 0;
+		let distance = 0;
+
+		for (let i = 0; i < currentTrip.stops.length - 1; i++) {
+			const currentLoc = locationsMap.get(currentTrip.stops[i].tipId);
+			const nextLoc = locationsMap.get(currentTrip.stops[i + 1].tipId);
+
+			if (currentLoc && nextLoc) {
+				distance += calculateDistance(
+					currentLoc.latitude,
+					currentLoc.longitude,
+					nextLoc.latitude,
+					nextLoc.longitude
+				);
+			}
+		}
+
+		return distance;
 	});
 </script>
 
@@ -178,7 +213,6 @@
 		</div>
 
 		{#if !showTripPlanner}
-			<!-- Category Filter -->
 			<div class="flex items-center gap-2">
 				<IconFilter class="text-primary size-3 flex-shrink-0 sm:size-4" />
 				<span class="text-xs font-semibold sm:text-sm">Filter:</span>
@@ -188,7 +222,7 @@
 				>
 					<option value="all">All</option>
 					{#each Object.values(categoryInfo) as cat}
-						<option value={cat.value}>{cat.icon} {cat.label}</option>
+						<option value={cat.value}>{cat.label}</option>
 					{/each}
 				</select>
 			</div>
@@ -303,6 +337,16 @@
 									{formatDuration(totalTripDuration)} at locations
 								</div>
 							</div>
+							{#if totalDistance() > 0}
+								<div class="stat p-2 sm:p-3">
+									<div class="stat-title text-base-content/70 text-[10px] sm:text-xs">Distance</div>
+									<div class="stat-value text-lg sm:text-xl">{totalDistance().toFixed(1)} km</div>
+									<div class="stat-desc text-base-content/60 mt-1 text-[10px] sm:text-xs">
+										<IconDistance class="mr-1 inline size-2 align-bottom sm:size-3" />
+										Total travel
+									</div>
+								</div>
+							{/if}
 						</div>
 
 						{#if currentTripStops.length === 0}
@@ -332,41 +376,45 @@
 					</div>
 				{:else}
 					{#each filteredLocations as location (location.id)}
+						{@const CategoryIcon = categoryIcons[location.category]}
 						<div
-							class="card card-compact bg-base-200 border-base-300 cursor-pointer border shadow-md transition-shadow hover:shadow-xl"
+							class="card card-compact bg-base-200 border-base-300 cursor-pointer border shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
 							onclick={() => handleLocationClick(location)}
 						>
 							<div class="card-body p-3 sm:p-4">
-								<div class="flex items-start justify-between gap-2 sm:gap-3">
+								<div class="flex items-start gap-3">
 									<div
-										class="badge badge-lg {categoryColorClasses(
-											location.category
-										)} min-w-8 flex-shrink-0 sm:min-w-10"
+										class="flex size-12 flex-shrink-0 items-center justify-center rounded-lg"
+										style="background-color: {categoryInfo[location.category]
+											.color}; opacity: 0.15;"
 									>
-										<span class="text-base sm:text-lg">{categoryInfo[location.category].icon}</span>
+										<svelte:component this={CategoryIcon} class="size-7" />
 									</div>
 
 									<div class="min-w-0 flex-1">
 										<h3 class="card-title line-clamp-1 text-sm sm:text-base">{location.title}</h3>
-										<p class="text-base-content/70 mt-0.5 line-clamp-2 text-xs sm:text-sm">
+										<span
+											class="badge badge-sm mt-1"
+											style="background-color: {categoryInfo[location.category]
+												.color}; color: white;"
+										>
+											{categoryInfo[location.category].label}
+										</span>
+										<p class="text-base-content/70 mt-2 line-clamp-2 text-xs sm:text-sm">
 											{location.description}
 										</p>
 										{#if location.address}
 											<p class="text-base-content/60 mt-1 line-clamp-1 text-[10px] sm:text-xs">
-												{location.address}
+												📍 {location.address}
 											</p>
 										{/if}
 									</div>
 								</div>
 
-								<div class="border-base-300 mt-2 flex items-center justify-between border-t pt-2">
-									<div
-										class="text-base-content/70 flex items-center gap-2 text-xs sm:gap-3 sm:text-sm"
-									>
-										<div class="flex items-center gap-1">
-											<IconClock class="text-primary size-3 flex-shrink-0 sm:size-4" />
-											<span class="font-medium">{formatDuration(location.durationMinutes)}</span>
-										</div>
+								<div class="border-base-300 mt-3 flex items-center justify-between border-t pt-2">
+									<div class="flex items-center gap-2 text-xs sm:text-sm">
+										<IconClock class="text-primary size-3 flex-shrink-0 sm:size-4" />
+										<span class="font-medium">{formatDuration(location.durationMinutes)}</span>
 									</div>
 									<div class="text-base-content/70 flex items-center gap-1 text-xs sm:text-sm">
 										{#if userLikes.has(location.id)}
@@ -394,9 +442,9 @@
 <Modal bind:open={showNewTripDialog} title="Create New Trip">
 	<div class="space-y-3 sm:space-y-4">
 		<div class="form-control">
-			<label class="label"
-				><span class="label-text text-xs font-semibold sm:text-sm">Trip Name *</span></label
-			>
+			<label class="label">
+				<span class="label-text text-xs font-semibold sm:text-sm">Trip Name *</span>
+			</label>
 			<input
 				type="text"
 				class="input input-bordered input-primary text-sm"
@@ -406,9 +454,9 @@
 		</div>
 
 		<div class="form-control">
-			<label class="label"
-				><span class="label-text text-xs font-semibold sm:text-sm">Description</span></label
-			>
+			<label class="label">
+				<span class="label-text text-xs font-semibold sm:text-sm">Description</span>
+			</label>
 			<textarea
 				class="textarea textarea-bordered h-16 text-sm sm:h-20"
 				bind:value={newTripDescription}
@@ -417,9 +465,9 @@
 		</div>
 
 		<div class="form-control">
-			<label class="label"
-				><span class="label-text text-xs font-semibold sm:text-sm">Start Time</span></label
-			>
+			<label class="label">
+				<span class="label-text text-xs font-semibold sm:text-sm">Start Time</span>
+			</label>
 			<div class="flex items-center gap-2">
 				<IconClock class="text-secondary size-4 flex-shrink-0 sm:size-5" />
 				<input
