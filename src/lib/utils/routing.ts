@@ -83,7 +83,7 @@ export function calculateWalkingDuration(from: [number, number], to: [number, nu
  * @param to [lat, lng]
  * @returns Distance in kilometers
  */
-function haversineDistance(from: [number, number], to: [number, number]): number {
+export function haversineDistance(from: [number, number], to: [number, number]): number {
 	const R = 6371; // Earth's radius in km
 	const dLat = toRad(to[0] - from[0]);
 	const dLon = toRad(to[1] - from[1]);

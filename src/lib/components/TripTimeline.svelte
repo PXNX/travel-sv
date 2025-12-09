@@ -4,7 +4,6 @@
 	import { categoryInfo, transportInfo } from '$lib/types';
 	import { formatDuration } from '$lib/utils/calculations';
 	import IconClock from '~icons/fluent/clock-24-regular';
-	import IconEdit from '~icons/fluent/edit-24-regular';
 	import IconDelete from '~icons/fluent/delete-24-regular';
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
@@ -96,46 +95,29 @@
 		{@const CategoryIcon = categoryIcons[location.category]}
 
 		<div class="relative flex gap-4">
-			<!-- Timeline Line (Left Side) -->
-			<div class="flex flex-col items-center">
-				<div
-					class="flex size-10 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-md"
-					style="background-color: {categoryInfo[location.category].color}"
-				>
-					{index + 1}
-				</div>
-				{#if index < stops.length - 1}
-					<div
-						class="w-1 flex-1 rounded-full"
-						style="background-color: {categoryInfo[location.category]
-							.color}; opacity: 0.3; min-height: 120px;"
-					></div>
-				{/if}
-			</div>
-
 			<!-- Location Card -->
 			<div
 				class="card bg-base-100 mb-4 flex-1 cursor-pointer shadow-lg transition-all hover:scale-[1.01] hover:shadow-xl"
 				onclick={() => oneditduration(location.id, timing.stayDuration)}
+				style="background-color: {categoryInfo[location.category].color}"
 			>
 				<div class="card-body p-4">
 					<div class="flex items-start justify-between gap-3">
+						<!-- Timeline Circle (Left Side) -->
+						<div class="flex flex-col items-center">
+							<div
+								class="flex size-10 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg"
+								style="background-color: {categoryInfo[location.category].color}"
+							>
+								{index + 1}
+							</div>
+
+							<CategoryIcon class="size-6" />
+						</div>
 						<div class="flex-1">
 							<div class="flex items-center gap-3">
-								<div
-									class="flex size-8 items-center justify-center rounded-lg"
-									style="background-color: {categoryInfo[location.category].color}; opacity: 0.15;"
-								>
-									<svelte:component this={CategoryIcon} class="size-5" />
-								</div>
 								<div class="flex-1">
 									<h3 class="text-base font-bold">{location.title}</h3>
-									<span
-										class="badge badge-sm"
-										style="background-color: {categoryInfo[location.category].color}; color: white;"
-									>
-										{categoryInfo[location.category].label}
-									</span>
 								</div>
 							</div>
 
@@ -143,18 +125,16 @@
 								<div class="flex items-center gap-2">
 									<IconClock class="size-4 flex-shrink-0" />
 									<span>
-										<strong>{timing.arrivalTime}</strong> - <strong>{timing.departureTime}</strong>
+										<strong>{timing.arrivalTime}</strong> → <strong>{timing.departureTime}</strong>
 									</span>
-								</div>
-								<div class="flex items-center gap-2">
-									<span>Duration: <strong>{formatDuration(timing.stayDuration)}</strong></span>
-									<IconEdit class="size-3 opacity-50" />
+									<span class="text-base-content/50">•</span>
+									<span><strong>{formatDuration(timing.stayDuration)}</strong></span>
 								</div>
 							</div>
 						</div>
 
 						<button
-							class="btn btn-ghost btn-sm btn-square text-error z-10"
+							class="btn btn-ghost btn-sm btn-square z-10 text-white"
 							onclick={(e) => {
 								e.stopPropagation();
 								confirmRemoveStop(location.id);
@@ -173,38 +153,65 @@
 			{@const transport = nextStop.transport}
 			{@const nextTiming = timelineData[index + 1]}
 			{@const TransportIcon = transport ? transportIcons[transport.mode] : null}
+			{@const nextLocation = nextStop.location!}
 
 			<div class="relative mb-4 flex gap-4">
-				<div class="w-10 flex-shrink-0"></div>
+				<!-- Dashed line for transport -->
+				<div class="flex w-10 flex-col items-center">
+					<div class="relative w-1 flex-1" style="min-height: 80px;">
+						<div
+							class="absolute inset-0 w-1 rounded-full"
+							style="background: repeating-linear-gradient(to bottom, {transport
+								? transportInfo[transport.mode].color
+								: '#94a3b8'} 0px, {transport
+								? transportInfo[transport.mode].color
+								: '#94a3b8'} 8px, transparent 8px, transparent 16px); opacity: 0.5;"
+						></div>
+					</div>
+				</div>
 
 				<button
-					class="card bg-base-200 hover:bg-base-300 flex-1 cursor-pointer transition-colors"
+					class="card bg-base-200 hover:bg-base-300 w-full cursor-pointer transition-colors"
 					onclick={() => onedittransport(index + 1, location.title, nextStop.location?.title || '')}
 				>
 					<div class="card-body p-4">
 						{#if transport}
 							<div class="flex items-center gap-3">
 								<div
-									class="flex size-10 items-center justify-center rounded-lg"
-									style="background-color: {transportInfo[transport.mode].color}; opacity: 0.15;"
+									class="flex size-8 items-center justify-center rounded-lg"
+									style="background-color: {transportInfo[transport.mode].color}; "
 								>
-									<svelte:component this={TransportIcon} class="size-6" />
+									<TransportIcon class="size-5" />
 								</div>
 								<div class="flex-1">
-									<div class="font-semibold" style="color: {transportInfo[transport.mode].color}">
-										{transportInfo[transport.mode].label}
+									<div class="flex items-center gap-2">
+										<span
+											class="text-base font-semibold"
+											style="color: {transportInfo[transport.mode].color}"
+										>
+											{transportInfo[transport.mode].label}
+										</span>
+										{#if transport.routeName}
+											<span
+												class="badge badge-sm"
+												style="background-color: {transportInfo[transport.mode]
+													.color}; color: white;"
+											>
+												{transport.routeName}
+											</span>
+										{/if}
 									</div>
-									<div class="text-base-content/70 flex flex-wrap items-center gap-2 text-sm">
-										<span>{timing.departureTime} → {nextTiming.arrivalTime}</span>
+									<div class="text-base-content/70 mt-1 flex flex-wrap items-center gap-2 text-sm">
+										<IconClock class="size-4 flex-shrink-0" />
+										<span
+											><strong>{timing.departureTime}</strong> →
+											<strong>{nextTiming.arrivalTime}</strong></span
+										>
 										<span>•</span>
-										<span>{formatDuration(transport.durationMinutes)}</span>
+										<span><strong>{formatDuration(transport.durationMinutes)}</strong></span>
 										{#if transport.distanceKm}
 											<span>•</span>
 											<span>{transport.distanceKm.toFixed(1)} km</span>
-										{/if}
-										{#if transport.routeName}
-											<span>•</span>
-											<span class="font-medium">{transport.routeName}</span>
 										{/if}
 									</div>
 									{#if transport.notes}
@@ -213,12 +220,10 @@
 										</div>
 									{/if}
 								</div>
-								<IconEdit class="size-4 flex-shrink-0 opacity-50" />
 							</div>
 						{:else}
-							<div class="text-base-content/50 flex items-center justify-between">
+							<div class="text-base-content/50 flex items-center justify-center py-2">
 								<span class="text-sm">Click to add transportation</span>
-								<IconEdit class="size-4" />
 							</div>
 						{/if}
 					</div>
