@@ -4,6 +4,8 @@
 	import { categoryInfo } from '$lib/types';
 	import { formatDuration, getTotalTripDuration } from '$lib/utils/calculations';
 	import TripTimeline from './TripTimeline.svelte';
+	import SearchAutocomplete from './SearchAutocomplete.svelte';
+	import type { SearchResult } from '$lib/services/searchService';
 	import IconSearch from '~icons/fluent/search-24-regular';
 	import IconMap from '~icons/fluent/map-24-regular';
 	import IconPin from '~icons/fluent/pin-24-filled';
@@ -21,6 +23,7 @@
 	import IconMenu from '~icons/fluent/navigation-24-regular';
 	import IconDistance from '~icons/fluent/arrow-routing-24-regular';
 	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
+	import IconSettings from '~icons/fluent/settings-24-regular';
 
 	import Modal from './Modal.svelte';
 	import { haversineDistance } from '$lib/utils/routing';
@@ -46,6 +49,11 @@
 		oncleartrip: () => void;
 		oneditduration: (tipId: number, currentDuration: number) => void;
 		onedittransport: (stopIndex: number, fromLocation: string, toLocation: string) => void;
+		locationSearchResults: any[];
+		isSearchingLocation: boolean;
+		showLocationResults: boolean;
+		selectSearchResult: (result: any) => void;
+		onhidelocationresults: () => void;
 	}
 
 	let {
@@ -66,7 +74,12 @@
 		removeFromTrip,
 		oncleartrip,
 		oneditduration,
-		onedittransport
+		onedittransport,
+		locationSearchResults,
+		isSearchingLocation,
+		showLocationResults,
+		selectSearchResult,
+		onhidelocationresults
 	}: Props = $props();
 
 	let showNewTripDialog = $state(false);
@@ -76,6 +89,8 @@
 	let isOpen = $state(true);
 	let showDeleteTripDialog = $state(false);
 	let tripToDelete: string | null = $state(null);
+	let showPlaceSearch = $state(false); // Toggle between location and place search
+	let mapCenterForSearch = $state<{ lat: number; lon: number } | undefined>(undefined);
 
 	function handleCreateTrip() {
 		if (!newTripName.trim()) return;
@@ -130,6 +145,21 @@
 
 		return distance;
 	});
+
+	// Helper function to map OSM place types to our categories
+	function mapPlaceTypeToCategory(type: string): Category {
+		const foodTypes = ['restaurant', 'cafe', 'bar', 'pub', 'fast_food', 'food_court'];
+		const museumTypes = ['museum', 'gallery', 'theatre', 'cinema', 'arts_centre', 'historic'];
+		const leisureTypes = ['hotel', 'hostel', 'guest_house', 'motel', 'bed_and_breakfast', 'attraction', 'theme_park', 'zoo', 'aquarium'];
+		const natureTypes = ['park', 'garden', 'nature_reserve', 'beach', 'water_park', 'viewpoint'];
+		
+		if (foodTypes.includes(type)) return 'food';
+		if (museumTypes.includes(type)) return 'museum';
+		if (natureTypes.includes(type)) return 'nature';
+		if (leisureTypes.includes(type)) return 'leisure';
+		
+		return 'leisure'; // default
+	}
 </script>
 
 <!-- Mobile Toggle Button -->
@@ -153,28 +183,79 @@
 				<IconMap class="text-primary h-5 w-5 sm:h-6 sm:w-6" />
 				<h1 class="text-base-content text-lg font-bold sm:text-xl">Travel Planner</h1>
 			</div>
-			<button class="btn btn-ghost btn-sm btn-circle lg:hidden" onclick={() => (isOpen = false)}>
-				<IconDismiss class="size-5" />
+			<div class="flex items-center gap-1">
+				<a href="/settings" class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom" data-tip="Settings">
+					<IconSettings class="size-5" />
+				</a>
+				<button class="btn btn-ghost btn-sm btn-circle lg:hidden" onclick={() => (isOpen = false)}>
+					<IconDismiss class="size-5" />
+				</button>
+			</div>
+		</div>
+
+		<!-- Search Type Toggle -->
+		<div class="mb-2 flex items-center gap-2">
+			<button
+				class="btn btn-xs flex-1"
+				class:btn-primary={!showPlaceSearch}
+				class:btn-ghost={showPlaceSearch}
+				onclick={() => (showPlaceSearch = false)}
+			>
+				<IconLocationIcon class="size-3" />
+				Locations
+			</button>
+			<button
+				class="btn btn-xs flex-1"
+				class:btn-primary={showPlaceSearch}
+				class:btn-ghost={!showPlaceSearch}
+				onclick={() => (showPlaceSearch = true)}
+			>
+				<IconPin class="size-3" />
+				Places
 			</button>
 		</div>
 
-		<div class="join mb-3 w-full">
-			<input
-				type="text"
-				placeholder="Search location..."
-				class="input input-sm input-bordered join-item flex-grow text-sm"
-				bind:value={searchQuery}
-				onkeydown={(e) => e.key === 'Enter' && searchLocation()}
-			/>
-			<button class="btn btn-sm btn-square join-item btn-primary" onclick={searchLocation}>
-				<IconSearch class="size-4 sm:size-5" />
-			</button>
-		</div>
+		<!-- Search Autocomplete -->
+		{#if showPlaceSearch}
+			<div class="mb-3">
+				<SearchAutocomplete
+					placeholder="Search places (restaurants, museums...)..."
+					searchType="place"
+					compact={true}
+					limit={8}
+					nearCoords={mapCenterForSearch}
+					onselect={(result) => {
+						selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
+					}}
+				/>
+			</div>
+		{:else}
+			<div class="mb-3">
+				<SearchAutocomplete
+					placeholder="Search cities, addresses..."
+					searchType="location"
+					compact={true}
+					limit={8}
+					onselect={(result) => {
+						selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
+					}}
+				/>
+			</div>
+		{/if}
 
-		<div class="text-base-content/70 flex items-center gap-2 text-xs">
-			<IconPin class="text-secondary size-3 flex-shrink-0 sm:size-4" />
-			<span class="text-xs sm:text-sm">Click map to add a new location tip.</span>
-		</div>
+		{#if currentTrip}
+			<div class="alert alert-info p-2">
+				<IconLocationIcon class="size-4 flex-shrink-0" />
+				<span class="text-xs">
+					Search for any location and click to add it to your trip!
+				</span>
+			</div>
+		{:else}
+			<div class="text-base-content/70 flex items-center gap-2 text-xs">
+				<IconPin class="text-secondary size-3 flex-shrink-0 sm:size-4" />
+				<span class="text-xs sm:text-sm">Click map to add a new location tip.</span>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Main Controls -->
@@ -337,8 +418,14 @@
 						{#if currentTripStops.length === 0}
 							<div role="alert" class="alert alert-info p-3">
 								<IconLocationIcon class="size-4 flex-shrink-0 sm:size-5" />
-								<span class="text-xs sm:text-sm">Browse the map to add locations to your trip.</span
-								>
+								<div class="text-xs sm:text-sm">
+									<p class="font-semibold mb-1">Add locations to your trip:</p>
+									<ul class="list-disc list-inside space-y-1">
+										<li>Search for any city, address, or place</li>
+										<li>Click on map markers to add saved locations</li>
+										<li>Browse existing locations below</li>
+									</ul>
+								</div>
 							</div>
 						{:else}
 							<TripTimeline

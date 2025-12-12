@@ -34,6 +34,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			...location,
 			likes: 0, // Will be loaded from localStorage
 			tags: location.tags ? JSON.parse(location.tags) : []
-		}))
+		})),
+		user: locals.user
 	};
 };

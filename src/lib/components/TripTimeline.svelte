@@ -169,7 +169,7 @@
 										<span class="text-base font-semibold" style="color: {transportStyle.color}">
 											{transport.label}
 										</span>
-										{#if nextStop.transport.routeName}
+										{#if nextStop.transport.routeName && nextStop.transport.mode !== 'walking'}
 											<span
 												class="badge badge-sm"
 												style="background-color: {transportStyle.color}; color: white;"

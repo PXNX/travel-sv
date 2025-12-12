@@ -26,6 +26,11 @@
 	let mapZoom = $state(6);
 	let mapInstance = $state<L.Map>();
 
+	// Location search state
+	let locationSearchResults = $state<any[]>([]);
+	let isSearchingLocation = $state(false);
+	let showLocationResults = $state(false);
+
 	// Transport editor state
 	let showTransportEditor = $state(false);
 	let editingStopIndex = $state(0);
@@ -33,6 +38,7 @@
 	let transportToLocation = $state('');
 	let transportFromCoords = $state<[number, number] | undefined>(undefined);
 	let transportToCoords = $state<[number, number] | undefined>(undefined);
+	let suggestedDepartureTime = $state<Date | undefined>(undefined);
 
 	// Duration editor state
 	let showDurationEditor = $state(false);
@@ -108,12 +114,89 @@
 			.map((loc) => [loc.latitude, loc.longitude] as [number, number])
 	);
 
-	function searchLocation() {
+	async function searchLocation() {
+		// First check if there are matching existing locations
 		if (searchQuery && filteredLocations().length > 0) {
 			const firstLocation = filteredLocations()[0];
 			mapCenter = [firstLocation.latitude, firstLocation.longitude];
 			mapZoom = 13;
+			showLocationResults = false;
+			return;
 		}
+
+		// If no existing locations match, search for actual locations
+		if (!searchQuery.trim()) {
+			showLocationResults = false;
+			return;
+		}
+
+		isSearchingLocation = true;
+		showLocationResults = true;
+
+		try {
+			const response = await fetch(
+				`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(searchQuery)}`
+			);
+			const results = await response.json();
+			locationSearchResults = results;
+
+			// If there's exactly one result, zoom to it
+			if (results.length === 1) {
+				mapCenter = [parseFloat(results[0].lat), parseFloat(results[0].lon)];
+				mapZoom = 13;
+			}
+		} catch (error) {
+			console.error('Location search error:', error);
+			locationSearchResults = [];
+		} finally {
+			isSearchingLocation = false;
+		}
+	}
+
+	function selectSearchResult(result: any) {
+		const lat = parseFloat(result.lat);
+		const lon = parseFloat(result.lon);
+
+		// Center map on the location
+		mapCenter = [lat, lon];
+		mapZoom = 15;
+
+		// If in trip planning mode with an active trip, add as a custom location
+		if (currentTrip) {
+			// Parse display name to get a better title
+			const nameParts = result.display_name.split(',');
+			const title = nameParts[0].trim();
+			const description = nameParts.slice(0, 3).join(', ').trim();
+
+			// Create a temporary location for this search result
+			const tempLocation: TravelTip = {
+				id: Date.now(), // Temporary ID based on timestamp
+				title: title,
+				description: description,
+				latitude: lat,
+				longitude: lon,
+				address: result.display_name,
+				category: 'leisure', // Default category
+				durationMinutes: 60, // Default duration
+				userId: data.user?.id || 'anonymous',
+				userName: data.user?.name || 'Anonymous',
+				likes: 0,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString()
+			};
+
+			// Add to locations list (temporary)
+			locations = [...locations, tempLocation];
+
+			// Add to trip
+			addToTrip(tempLocation);
+		} else {
+			// Not in trip mode, just show the location on map
+			// Could potentially show a sheet to create a trip or add this location
+		}
+
+		showLocationResults = false;
+		searchQuery = '';
 	}
 
 	function handleLocationClick(location: TravelTip) {
@@ -257,9 +340,49 @@
 				transportFromCoords = [fromLoc.latitude, fromLoc.longitude];
 				transportToCoords = [toLoc.latitude, toLoc.longitude];
 			}
+
+			// Calculate suggested departure time based on previous stop
+			suggestedDepartureTime = calculateSuggestedDepartureTime(stopIndex);
 		}
 
 		showTransportEditor = true;
+	}
+
+	function calculateSuggestedDepartureTime(stopIndex: number): Date | undefined {
+		if (!currentTrip || stopIndex <= 0) return undefined;
+
+		const previousStop = currentTrip.stops[stopIndex - 1];
+		const previousLocation = locationsMap.get(previousStop.tipId);
+		
+		if (!previousLocation) return undefined;
+
+		// Start with trip start date or today
+		const baseDate = currentTrip.startDate ? new Date(currentTrip.startDate) : new Date();
+		
+		// Calculate cumulative time up to this point
+		let cumulativeMinutes = 0;
+		
+		for (let i = 0; i < stopIndex; i++) {
+			const stop = currentTrip.stops[i];
+			const location = locationsMap.get(stop.tipId);
+			
+			if (!location) continue;
+			
+			// Add stay duration at this location
+			const stayDuration = stop.customDuration || location.durationMinutes || 60;
+			cumulativeMinutes += stayDuration;
+			
+			// Add transport duration to next location
+			if (i < stopIndex - 1 && currentTrip.stops[i + 1].transport) {
+				cumulativeMinutes += currentTrip.stops[i + 1].transport.durationMinutes;
+			}
+		}
+		
+		// Calculate suggested departure time
+		const suggestedTime = new Date(baseDate);
+		suggestedTime.setMinutes(suggestedTime.getMinutes() + cumulativeMinutes);
+		
+		return suggestedTime;
 	}
 
 	function updateStopTransport(stopIndex: number, transport: TransportSegment) {
@@ -331,6 +454,11 @@
 		oncleartrip={clearTrip}
 		oneditduration={openDurationEditor}
 		onedittransport={openTransportEditor}
+		{locationSearchResults}
+		{isSearchingLocation}
+		{showLocationResults}
+		{selectSearchResult}
+		onhidelocationresults={() => (showLocationResults = false)}
 	/>
 
 	<MapView
@@ -363,6 +491,7 @@
 		toLocation={transportToLocation}
 		fromCoords={transportFromCoords}
 		toCoords={transportToCoords}
+		suggestedDepartureTime={suggestedDepartureTime}
 		onsave={saveTransport}
 		oncancel={() => (showTransportEditor = false)}
 	/>

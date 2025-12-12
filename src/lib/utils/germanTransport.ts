@@ -28,6 +28,10 @@ interface Journey {
 	}>;
 }
 
+// Using public-transport/hafas-client API - free and open source
+// This is the same API used by bahn.expert and other open projects
+// See: https://github.com/public-transport/hafas-client
+// Alternative stable endpoint: https://v6.bahn.guru
 const DB_API_BASE = 'https://v6.db.transport.rest';
 
 /**
