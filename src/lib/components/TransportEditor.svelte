@@ -334,6 +334,7 @@
 			notes = 'Direct connection';
 		}
 
+		console.log('Selected connection:', connection);
 		showManualEntry = true;
 	}
 
@@ -382,16 +383,71 @@
 	}
 
 	/**
+	 * Extract route coordinates from selected connection
+	 */
+	function extractRouteCoordinates(): [number, number][] | undefined {
+		if (!selectedConnection) return undefined;
+
+		const allCoordinates: [number, number][] = [];
+
+		// Process each leg of the journey
+		for (const leg of selectedConnection.legs) {
+			// Skip walking legs
+			if (!leg.line) continue;
+
+			// Try to use polyline data if available (most detailed)
+			if (leg.polyline?.features && leg.polyline.features.length > 0) {
+				console.log('Found polyline data for leg');
+				for (const feature of leg.polyline.features) {
+					if (feature.geometry?.coordinates) {
+						// Polyline coordinates are in [lng, lat] format, convert to [lat, lng]
+						const coords = feature.geometry.coordinates.map(
+							(coord: number[]) => [coord[1], coord[0]] as [number, number]
+						);
+						console.log(`Added ${coords.length} polyline points`);
+						allCoordinates.push(...coords);
+					}
+				}
+			} else if (leg.stopovers && leg.stopovers.length > 0) {
+				// Use stopover locations to create route through stations
+				console.log(`Found ${leg.stopovers.length} stopovers for leg`);
+				
+				// Get origin coordinates from the leg
+				// We need to make another API call or use fromCoords/toCoords
+				// For now, just use stopovers
+				for (const stopover of leg.stopovers) {
+					if (stopover.stop?.location) {
+						allCoordinates.push([
+							stopover.stop.location.latitude,
+							stopover.stop.location.longitude
+						]);
+					}
+				}
+			}
+		}
+
+		if (allCoordinates.length > 0) {
+			console.log(`Extracted ${allCoordinates.length} route coordinates from connection`);
+			return allCoordinates;
+		}
+
+		return undefined;
+	}
+
+	/**
 	 * Save transportation details
 	 */
 	function handleSave() {
+		const routeCoordinates = extractRouteCoordinates();
+		
 		onsave({
 			mode,
 			departureTime: departureTime || undefined,
 			arrivalTime: arrivalTime || undefined,
 			durationMinutes,
 			routeName: mode === 'walking' ? undefined : (routeName || undefined),
-			notes: notes || undefined
+			notes: notes || undefined,
+			routeCoordinates
 		});
 	}
 

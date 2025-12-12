@@ -49,6 +49,21 @@ export interface ConnectionLeg {
     to: string;
     duration: number; // seconds
     distance?: number; // meters
+    stopovers?: Array<{
+        stop: {
+            name: string;
+            location: { latitude: number; longitude: number };
+        };
+    }>;
+    polyline?: {
+        features: Array<{
+            type: string;
+            geometry: {
+                type: string;
+                coordinates: number[][];
+            };
+        }>;
+    };
 }
 
 const DB_API_BASE = 'https://v6.db.transport.rest';
@@ -327,7 +342,8 @@ export async function searchConnections(
         }
 
         params.append('results', maxResults.toString());
-        params.append('stopovers', 'false');
+        params.append('stopovers', 'true'); // Get all intermediate stops for route visualization
+        params.append('polyline', 'true'); // Get route polyline for map visualization
 
         // Apply Deutschland Ticket filter (exclude long-distance trains)
         if (options?.deutschlandTicketOnly) {
@@ -373,7 +389,9 @@ export async function searchConnections(
                     from: leg.origin?.name || '',
                     to: leg.destination?.name || '',
                     duration: leg.duration || 0,
-                    distance: leg.distance
+                    distance: leg.distance,
+                    stopovers: leg.stopovers, // Preserve stopovers for route visualization
+                    polyline: leg.polyline // Preserve polyline for route visualization
                 };
             });
 
