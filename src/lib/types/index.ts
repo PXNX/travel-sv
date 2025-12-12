@@ -67,31 +67,35 @@ export interface Trip {
 
 export const categoryInfo: Record<
 	Category,
-	{ value: Category; label: string; color: string; icon: typeof SvelteComponent }
+	{ value: Category; label: string; color: string; icon: typeof SvelteComponent; emoji: string }
 > = {
 	food: {
 		value: 'food',
 		label: 'Food & Dining',
 		color: '#f59e0b', // amber
-		icon: IconFoodApple
+		icon: IconFoodApple,
+		emoji: '🍽️'
 	},
 	museum: {
 		value: 'museum',
 		label: 'Museum & Culture',
 		color: '#8b5cf6', // purple
-		icon: IconMuseum
+		icon: IconMuseum,
+		emoji: '🏛️'
 	},
 	leisure: {
 		value: 'leisure',
 		label: 'Sleep & Leisure',
 		color: '#3b82f6', // blue
-		icon: IconLeisure
+		icon: IconLeisure,
+		emoji: '🛏️'
 	},
 	nature: {
 		value: 'nature',
 		label: 'Nature & Outdoors',
 		color: '#10b981', // green
-		icon: IconNature
+		icon: IconNature,
+		emoji: '🌲'
 	}
 };
 
