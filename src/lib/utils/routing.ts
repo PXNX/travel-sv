@@ -1,4 +1,5 @@
 // src/lib/utils/routing.ts
+import { getTransitRoute } from './germanTransport';
 
 export interface RouteResult {
 	coordinates: [number, number][];
@@ -61,6 +62,46 @@ export async function getWalkingRoute(
 		};
 	} catch (error) {
 		console.error('Error fetching walking route:', error);
+		return null;
+	}
+}
+
+/**
+ * Fetch actual transit route (train/bus) from German transport API
+ * This provides station-to-station routes following actual tracks/roads
+ * @param from [lat, lng]
+ * @param to [lat, lng]
+ * @returns Route with coordinates following transit paths
+ */
+export async function getPublicTransitRoute(
+	from: [number, number],
+	to: [number, number]
+): Promise<RouteResult | null> {
+	try {
+		const coordinates = await getTransitRoute(from, to);
+
+		if (!coordinates || coordinates.length === 0) {
+			console.log('No transit route found');
+			return null;
+		}
+
+		// Calculate approximate distance
+		let totalDistance = 0;
+		for (let i = 0; i < coordinates.length - 1; i++) {
+			totalDistance += haversineDistance(coordinates[i], coordinates[i + 1]);
+		}
+
+		console.log(
+			`Transit route fetched: ${coordinates.length} points, ${totalDistance.toFixed(2)} km`
+		);
+
+		return {
+			coordinates,
+			distance: totalDistance * 1000, // convert to meters
+			duration: 0 // Duration will be set from transport segment
+		};
+	} catch (error) {
+		console.error('Error fetching transit route:', error);
 		return null;
 	}
 }

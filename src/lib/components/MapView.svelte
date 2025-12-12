@@ -3,7 +3,7 @@
 	import L from 'leaflet';
 	import type { Category, TravelTip, Trip, TransportSegment } from '$lib/types';
 	import { categoryInfo } from '$lib/types';
-	import { getWalkingRoute, type RouteResult } from '$lib/utils/routing';
+	import { getWalkingRoute, getPublicTransitRoute, type RouteResult } from '$lib/utils/routing';
 	import Modal from './Modal.svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -41,6 +41,7 @@
 	let selectedTileLayer = $state<TileLayerKey>('osm');
 
 	let walkingRoutes = new SvelteMap<string, RouteResult>();
+	let transitRoutes = new SvelteMap<string, RouteResult>();
 
 	const tileLayers: Record<TileLayerKey, { url: string; options: { attribution: string } }> = {
 		osm: {
@@ -236,15 +237,17 @@
 		}
 	});
 
-	// Fetch walking routes when trip changes
+	// Fetch walking and transit routes when trip changes
 	$effect(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) {
 			walkingRoutes = new SvelteMap();
+			transitRoutes = new SvelteMap();
 			return;
 		}
 
-		async function fetchWalkingRoutes() {
-			const newRoutes = new SvelteMap<string, RouteResult>();
+		async function fetchRoutes() {
+			const newWalkingRoutes = new SvelteMap<string, RouteResult>();
+			const newTransitRoutes = new SvelteMap<string, RouteResult>();
 			const promises: Promise<void>[] = [];
 
 			for (let i = 0; i < currentTrip!.stops.length - 1; i++) {
@@ -252,45 +255,83 @@
 				const nextStop = currentTrip!.stops[i + 1];
 
 				const transport: TransportSegment | undefined = nextStop.transport;
+				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
+				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
+
+				if (!fromLocation || !toLocation) continue;
+
+				const key = `${fromLocation.id}-${toLocation.id}`;
 
 				if (transport && transport.mode === 'walking') {
-					const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
-					const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
+					// Check if route coordinates are already stored in transport segment
+					if (transport.routeCoordinates && transport.routeCoordinates.length > 1) {
+						newWalkingRoutes.set(key, {
+							coordinates: transport.routeCoordinates,
+							distance: 0,
+							duration: transport.durationMinutes
+						});
+					} else if (walkingRoutes.has(key)) {
+						newWalkingRoutes.set(key, walkingRoutes.get(key)!);
+					} else {
+						const promise = getWalkingRoute(
+							[fromLocation.latitude, fromLocation.longitude],
+							[toLocation.latitude, toLocation.longitude]
+						)
+							.then((route) => {
+								if (route) {
+									console.log(
+										`Fetched walking route with ${route.coordinates.length} points`,
+										route
+									);
+									newWalkingRoutes.set(key, route);
+								}
+							})
+							.catch((err) => {
+								console.error('Error fetching walking route:', err);
+							});
 
-					if (fromLocation && toLocation) {
-						const key = `${fromLocation.id}-${toLocation.id}`;
+						promises.push(promise);
+					}
+				} else if (transport && (transport.mode === 'railway' || transport.mode === 'bus')) {
+					// Fetch routes for rail and bus segments
+					// Check if route coordinates are already stored in transport segment
+					if (transport.routeCoordinates && transport.routeCoordinates.length > 1) {
+						newTransitRoutes.set(key, {
+							coordinates: transport.routeCoordinates,
+							distance: 0,
+							duration: transport.durationMinutes
+						});
+					} else if (transitRoutes.has(key)) {
+						newTransitRoutes.set(key, transitRoutes.get(key)!);
+					} else {
+						const promise = getPublicTransitRoute(
+							[fromLocation.latitude, fromLocation.longitude],
+							[toLocation.latitude, toLocation.longitude]
+						)
+							.then((route) => {
+								if (route) {
+									console.log(
+										`Fetched ${transport.mode} route with ${route.coordinates.length} points`,
+										route
+									);
+									newTransitRoutes.set(key, route);
+								}
+							})
+							.catch((err) => {
+								console.error('Error fetching transit route:', err);
+							});
 
-						if (walkingRoutes.has(key)) {
-							newRoutes.set(key, walkingRoutes.get(key)!);
-						} else {
-							const promise = getWalkingRoute(
-								[fromLocation.latitude, fromLocation.longitude],
-								[toLocation.latitude, toLocation.longitude]
-							)
-								.then((route) => {
-									if (route) {
-										console.log(
-											`Fetched walking route with ${route.coordinates.length} points`,
-											route
-										);
-										newRoutes.set(key, route);
-									}
-								})
-								.catch((err) => {
-									console.error('Error fetching route:', err);
-								});
-
-							promises.push(promise);
-						}
+						promises.push(promise);
 					}
 				}
 			}
 
 			await Promise.all(promises);
-			walkingRoutes = newRoutes;
+			walkingRoutes = newWalkingRoutes;
+			transitRoutes = newTransitRoutes;
 		}
 
-		fetchWalkingRoutes();
+		fetchRoutes();
 	});
 
 	const walkingPaths = $derived.by(() => {
@@ -323,10 +364,15 @@
 		return paths;
 	});
 
-	const nonWalkingRoutes = $derived.by(() => {
+	const transitPaths = $derived.by(() => {
 		if (!currentTrip || currentTrip.stops.length < 2) return [];
 
-		const segments: { coordinates: [number, number][]; key: string }[] = [];
+		const paths: {
+			coordinates: [number, number][];
+			key: string;
+			mode: TransportMode;
+			color: string;
+		}[] = [];
 
 		for (let i = 0; i < currentTrip.stops.length - 1; i++) {
 			const currentStop = currentTrip.stops[i];
@@ -334,23 +380,36 @@
 
 			const transport: TransportSegment | undefined = nextStop.transport;
 
-			if (!transport || transport.mode !== 'walking') {
+			if (transport && (transport.mode === 'railway' || transport.mode === 'bus')) {
 				const fromLocation = allLocations.find((l) => l.id === currentStop.tipId);
 				const toLocation = allLocations.find((l) => l.id === nextStop.tipId);
 
 				if (fromLocation && toLocation) {
-					segments.push({
-						coordinates: [
-							[fromLocation.latitude, fromLocation.longitude],
-							[toLocation.latitude, toLocation.longitude]
-						],
-						key: `route-${fromLocation.id}-${toLocation.id}`
-					});
+					const key = `${fromLocation.id}-${toLocation.id}`;
+					const route = transitRoutes.get(key);
+
+					if (route && route.coordinates.length > 1) {
+						console.log(`Rendering ${transport.mode} path ${key} with ${route.coordinates.length} points`);
+						const color = transport.mode === 'railway' ? '#3b82f6' : '#f59e0b'; // blue for rail, amber for bus
+						paths.push({ coordinates: route.coordinates, key, mode: transport.mode, color });
+					} else {
+						// Fallback to straight line if no route found
+						const color = transport.mode === 'railway' ? '#3b82f6' : '#f59e0b';
+						paths.push({
+							coordinates: [
+								[fromLocation.latitude, fromLocation.longitude],
+								[toLocation.latitude, toLocation.longitude]
+							],
+							key: `fallback-${fromLocation.id}-${toLocation.id}`,
+							mode: transport.mode,
+							color
+						});
+					}
 				}
 			}
 		}
 
-		return segments;
+		return paths;
 	});
 </script>
 
@@ -375,19 +434,19 @@
 		class="h-full w-full"
 		bind:instance={mapInstance}
 	>
-		{#if currentTrip && nonWalkingRoutes.length > 0}
-			{#each nonWalkingRoutes as segment (segment.key)}
-				<Polyline
-					latLngs={segment.coordinates}
-					options={{
-						color: '#3b82f6',
-						weight: 4,
-						opacity: 0.7,
-						dashArray: '10, 10'
-					}}
-				/>
-			{/each}
-		{/if}
+		{#each transitPaths as path (path.key)}
+			<Polyline
+				latLngs={path.coordinates}
+				options={{
+					color: path.color,
+					weight: 5,
+					opacity: 0.8,
+					lineCap: 'round',
+					lineJoin: 'round',
+					dashArray: ''
+				}}
+			/>
+		{/each}
 
 		{#each walkingPaths as path (path.key)}
 			<Polyline

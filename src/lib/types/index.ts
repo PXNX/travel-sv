@@ -45,6 +45,7 @@ export interface TransportSegment {
 	routeName?: string;
 	notes?: string;
 	distanceKm?: number; // Add distance in kilometers
+	routeCoordinates?: [number, number][]; // Route polyline for displaying on map
 }
 
 export interface TripStop {
