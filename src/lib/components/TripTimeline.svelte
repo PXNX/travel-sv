@@ -67,6 +67,39 @@
 	}
 
 	const timelineData = $derived(getTimelineData());
+
+	function extractCityFromAddress(address: string): string {
+		// Try to extract city/town name from address
+		// Address format is typically: "Street HouseNumber PostalCode City"
+		const parts = address.split(',').map(p => p.trim());
+		
+		if (parts.length > 1) {
+			// If address has commas, the city is usually the last or second-to-last part
+			return parts[parts.length - 1];
+		}
+		
+		// If no commas, try to find the city after postal code
+		const tokens = address.split(' ');
+		let foundPostalCode = false;
+		
+		for (let i = 0; i < tokens.length; i++) {
+			// German postal codes are 5 digits
+			if (/^\d{5}$/.test(tokens[i])) {
+				foundPostalCode = true;
+				// Return everything after the postal code
+				if (i + 1 < tokens.length) {
+					return tokens.slice(i + 1).join(' ');
+				}
+			}
+		}
+		
+		// If no postal code found, return last 1-2 words as city name
+		if (tokens.length >= 2) {
+			return tokens.slice(-2).join(' ');
+		}
+		
+		return '';
+	}
 </script>
 
 <div class="relative space-y-0">
@@ -99,6 +132,12 @@
 							<div class="flex items-center gap-3">
 								<div class="flex-1">
 									<h3 class="text-base font-bold">{location.title}</h3>
+									{#if location.address}
+										{@const city = extractCityFromAddress(location.address)}
+										{#if city}
+											<p class="text-base-content/60 mt-0.5 text-xs">{city}</p>
+										{/if}
+									{/if}
 								</div>
 							</div>
 

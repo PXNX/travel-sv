@@ -26,6 +26,7 @@
 	import IconSettings from '~icons/fluent/settings-24-regular';
 
 	import Modal from './Modal.svelte';
+	import SettingsModal from './SettingsModal.svelte';
 	import { haversineDistance } from '$lib/utils/routing';
 
 	interface Props {
@@ -91,6 +92,7 @@
 	let tripToDelete: string | null = $state(null);
 	let showPlaceSearch = $state(false); // Toggle between location and place search
 	let mapCenterForSearch = $state<{ lat: number; lon: number } | undefined>(undefined);
+	let showSettings = $state(false);
 
 	function handleCreateTrip() {
 		if (!newTripName.trim()) return;
@@ -184,9 +186,9 @@
 				<h1 class="text-base-content text-lg font-bold sm:text-xl">Travel Planner</h1>
 			</div>
 			<div class="flex items-center gap-1">
-				<a href="/settings" class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom" data-tip="Settings">
+				<button class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom" data-tip="Settings" onclick={() => (showSettings = true)}>
 					<IconSettings class="size-5" />
-				</a>
+				</button>
 				<button class="btn btn-ghost btn-sm btn-circle lg:hidden" onclick={() => (isOpen = false)}>
 					<IconDismiss class="size-5" />
 				</button>
@@ -588,3 +590,5 @@
 		</div>
 	</div>
 </Modal>
+
+<SettingsModal bind:open={showSettings} />

@@ -7,6 +7,7 @@
 	import L from 'leaflet';
 	import LocationSheet from '$lib/components/LocationSheet.svelte';
 	import TransportEditor from '$lib/components/TransportEditor.svelte';
+	import SettingsModal from '$lib/components/SettingsModal.svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
@@ -44,6 +45,9 @@
 	let showDurationEditor = $state(false);
 	let editingTipId = $state(0);
 	let editingDuration = $state(60);
+
+	// Settings modal state
+	let showSettings = $state(false);
 
 	// Trips state
 	let trips = $state<Trip[]>([]);
@@ -494,6 +498,7 @@
 		suggestedDepartureTime={suggestedDepartureTime}
 		onsave={saveTransport}
 		oncancel={() => (showTransportEditor = false)}
+		onopensettings={() => (showSettings = true)}
 	/>
 
 	<!-- Duration Editor Dialog -->
@@ -541,4 +546,6 @@
 			</div>
 		</div>
 	{/if}
+
+	<SettingsModal bind:open={showSettings} />
 </div>

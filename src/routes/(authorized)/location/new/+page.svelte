@@ -14,6 +14,7 @@
 	import IconLocation from '~icons/fluent/location-24-regular';
 	import IconWarning from '~icons/fluent/warning-24-regular';
 	import { resolve } from '$app/paths';
+	import { reverseGeocode } from '$lib/services/searchService';
 
 	interface Props {
 		data: {
@@ -34,6 +35,7 @@
 	// Get coordinates from URL params or use defaults
 	const urlLat = $page.url.searchParams.get('lat');
 	const urlLng = $page.url.searchParams.get('lng');
+	const urlTitle = $page.url.searchParams.get('title');
 
 	let latitude = $state(urlLat ? parseFloat(urlLat) : 51.505);
 	let longitude = $state(urlLng ? parseFloat(urlLng) : -0.09);
@@ -44,6 +46,8 @@
 	let mapInstance: L.Map | undefined = $state();
 	let isSubmitting = $state(false);
 	let addressInput = $state('');
+	let titleInput = $state('');
+	let isLoadingPlaceName = $state(false);
 
 	// Center map on provided coordinates
 	$effect(() => {
@@ -51,6 +55,35 @@
 			mapInstance.setView([latitude, longitude], 15);
 		}
 	});
+
+	// Fetch place name from coordinates on component mount
+	$effect(() => {
+		if (urlLat && urlLng && !urlTitle && !titleInput) {
+			fetchPlaceName(parseFloat(urlLat), parseFloat(urlLng));
+		} else if (urlTitle) {
+			titleInput = urlTitle;
+		}
+	});
+
+	async function fetchPlaceName(lat: number, lng: number) {
+		isLoadingPlaceName = true;
+		try {
+			const result = await reverseGeocode(lat, lng, 18);
+			if (result) {
+				// Prefer the nearby city name for consistency
+				if (result.city) {
+					titleInput = result.city;
+				} else if (result.name) {
+					// Fall back to the place name if no city is available
+					titleInput = result.name;
+				}
+			}
+		} catch (error) {
+			console.error('Failed to fetch place name:', error);
+		} finally {
+			isLoadingPlaceName = false;
+		}
+	}
 
 	function getCategoryIcon(cat: Category) {
 		const info = categoryInfo[cat];
@@ -168,8 +201,15 @@
 								name="title"
 								class="input input-bordered"
 								placeholder="Name of the place"
+								bind:value={titleInput}
+								disabled={isLoadingPlaceName}
 								required
 							/>
+							{#if isLoadingPlaceName}
+								<label class="label">
+									<span class="label-text-alt text-info">Loading place name...</span>
+								</label>
+							{/if}
 						</div>
 
 						<div class="form-control">
@@ -207,7 +247,7 @@
 								<label class="label"><span class="label-text">Category *</span></label>
 								<select class="select select-bordered" bind:value={category}>
 									{#each Object.values(categoryInfo) as cat}
-										<option value={cat.value}>{cat.icon} {cat.label}</option>
+										<option value={cat.value}>{cat.emoji} {cat.label}</option>
 									{/each}
 								</select>
 							</div>

@@ -77,7 +77,7 @@ export const actions: Actions = {
 		if (!description?.trim()) {
 			return fail(400, { error: 'Description is required' });
 		}
-		if (!category || !['food', 'museum', 'nature'].includes(category)) {
+		if (!category || !['food', 'museum', 'nature', 'leisure'].includes(category)) {
 			return fail(400, { error: 'Valid category is required' });
 		}
 		if (durationMinutes < 15) {
@@ -107,7 +107,7 @@ export const actions: Actions = {
 					latitude,
 					longitude,
 					address,
-					category: category as 'food' | 'museum' | 'nature',
+					category: category as 'food' | 'museum' | 'nature' | 'leisure',
 					durationMinutes,
 					bestTimeToVisit: bestTimeToVisit as 'morning' | 'afternoon' | 'evening' | 'any' | null,
 					googleMapsUrl,

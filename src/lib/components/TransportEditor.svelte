@@ -32,6 +32,7 @@
 		suggestedDepartureTime?: Date;
 		onsave: (transport: TransportSegment) => void;
 		oncancel: () => void;
+		onopensettings?: () => void;
 	}
 
 	let {
@@ -42,7 +43,8 @@
 		fromCoords,
 		toCoords,
 		suggestedDepartureTime,
-		onsave
+		onsave,
+		onopensettings
 	}: Props = $props();
 
 	// Load settings
@@ -653,43 +655,80 @@
 						</div>
 					{:else if connections.length > 0}
 						<div>
-							<div class="flex items-center justify-between mb-2">
-								<h3 class="text-sm font-semibold">Available Connections</h3>
-								<span class="text-xs text-base-content/60">{connections.length} found</span>
+							<div class="flex items-center justify-between mb-3">
+								<h3 class="text-sm font-semibold text-base-content">Available Connections</h3>
+								<span class="badge badge-ghost badge-sm">{connections.length} found</span>
 							</div>
 							
-							<div class="max-h-64 space-y-2 overflow-y-auto">
+							<div class="max-h-96 space-y-2.5 overflow-y-auto pr-1">
 								{#each connections as connection}
 									{@const primaryLeg = connection.legs.find((leg) => leg.line) || connection.legs[0]}
 									{@const isRegional = isDeutschlandTicket(connection)}
 									<button
-										class="card bg-base-100 hover:bg-base-300 w-full text-left transition-colors p-3"
-										class:ring-2={selectedConnection === connection}
-										class:ring-primary={selectedConnection === connection}
+										class="group relative w-full text-left transition-all duration-200 ease-in-out rounded-xl border-2 bg-base-100 hover:shadow-lg hover:scale-[1.02]"
+										class:border-primary={selectedConnection === connection}
+										class:bg-primary-5={selectedConnection === connection}
+										class:shadow-md={selectedConnection === connection}
+										class:border-base-300={selectedConnection !== connection}
+										class:hover:border-primary-50={selectedConnection !== connection}
 										onclick={() => selectConnectionOption(connection)}
 									>
-										<div class="flex items-start justify-between gap-2">
-											<div class="flex items-start gap-2 flex-1">
-												<IconClock class="size-4 text-base-content/60 mt-0.5" />
-												<div class="flex-1 min-w-0">
-													<div class="font-semibold text-sm">
-														{formatTime(connection.departure)} → {formatTime(connection.arrival)}
-													</div>
-													<div class="text-xs text-base-content/60 flex flex-wrap gap-x-2">
-														<span>{formatDuration(connection.duration)}</span>
-														<span>• {getTransferInfo(connection)}</span>
-														{#if isRegional}
-															<span class="text-success">• Regional</span>
-														{/if}
+										<div class="p-4">
+											<!-- Time and Duration Header -->
+											<div class="flex items-center justify-between mb-3">
+												<div class="flex items-center gap-3">
+													<IconClock class="size-5 text-primary opacity-70" />
+													<div>
+														<div class="font-bold text-base text-base-content">
+															{formatTime(connection.departure)} → {formatTime(connection.arrival)}
+														</div>
+														<div class="text-xs text-base-content/60 font-medium mt-0.5">
+															{formatDuration(connection.duration)}
+														</div>
 													</div>
 												</div>
+												{#if primaryLeg.line}
+													<span class="badge badge-primary badge-lg font-semibold px-3">
+														{primaryLeg.line}
+													</span>
+												{/if}
 											</div>
-											{#if primaryLeg.line}
-												<span class="badge badge-sm badge-primary flex-shrink-0">
-													{primaryLeg.line}
-												</span>
-											{/if}
+
+											<!-- Connection Info -->
+											<div class="flex items-center gap-2 flex-wrap">
+												{#if connection.transfers === 0}
+													<span class="badge badge-success badge-sm gap-1">
+														<svg class="size-3" fill="currentColor" viewBox="0 0 20 20">
+															<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+														</svg>
+														Direct
+													</span>
+												{:else}
+													<span class="badge badge-info badge-sm gap-1">
+														<IconSwap class="size-3" />
+														{getTransferInfo(connection)}
+													</span>
+												{/if}
+												{#if isRegional}
+													<span class="badge badge-success badge-sm gap-1 badge-outline">
+														<svg class="size-3" fill="currentColor" viewBox="0 0 20 20">
+															<path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+															<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+														</svg>
+														Regional
+													</span>
+												{/if}
+											</div>
 										</div>
+										
+										<!-- Selected indicator -->
+										{#if selectedConnection === connection}
+											<div class="absolute top-3 right-3 size-6 bg-primary rounded-full flex items-center justify-center">
+												<svg class="size-4 text-primary-content" fill="currentColor" viewBox="0 0 20 20">
+													<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+												</svg>
+											</div>
+										{/if}
 									</button>
 								{/each}
 							</div>
@@ -715,14 +754,18 @@
 											<div>• Maximum transfer time: {settings.maxTransferTime} min</div>
 										{/if}
 										<div class="mt-2">
-											<a href="/settings" class="link text-xs" target="_blank">Adjust transfer time settings</a>
+											{#if onopensettings}
+									<button class="link text-xs" onclick={onopensettings}>Adjust transfer time settings</button>
+								{/if}
 										</div>
 									{:else}
 										<div>No connections available between these stations at this time.</div>
 										{#if settings.deutschlandTicketOnly}
 											<div class="mt-1 text-base-content/60">Searching for regional trains only (Deutschland Ticket mode).</div>
 											<div class="mt-1">
-												<a href="/settings" class="link text-xs" target="_blank">Disable Deutschland Ticket mode</a> to see IC/ICE trains.
+												{#if onopensettings}
+										<button class="link text-xs" onclick={onopensettings}>Disable Deutschland Ticket mode</button> to see IC/ICE trains.
+									{/if}
 											</div>
 										{:else}
 											<div class="mt-1 text-base-content/60">There might be no direct route, or services may be limited at this time.</div>
