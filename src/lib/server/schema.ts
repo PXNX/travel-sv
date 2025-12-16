@@ -138,10 +138,35 @@ export const tripLocations = pgTable('trip_locations', {
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 });
 
+export const tripShares = pgTable(
+	'trip_shares',
+	{
+		id: serial('id').primaryKey(),
+		tripId: integer('trip_id')
+			.notNull()
+			.references(() => trips.id, { onDelete: 'cascade' }),
+		sharedWithUserId: text('shared_with_user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		sharedByUserId: text('shared_by_user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		canEdit: boolean('can_edit').notNull().default(false),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(table) => ({
+		tripUserIdx: index('trip_user_idx').on(table.tripId, table.sharedWithUserId)
+	})
+);
+
 export type TravelTip = typeof travelTips.$inferSelect;
 export type Trip = typeof trips.$inferSelect;
 export type TripLocation = typeof tripLocations.$inferSelect;
+export type TripShare = typeof tripShares.$inferSelect;
 export type NewTravelTip = typeof travelTips.$inferInsert;
+export type NewTrip = typeof trips.$inferInsert;
+export type NewTripLocation = typeof tripLocations.$inferInsert;
+export type NewTripShare = typeof tripShares.$inferInsert;
 export type PendingEdit = typeof pendingEdits.$inferSelect;
 export type NewPendingEdit = typeof pendingEdits.$inferInsert;
 export type User = typeof users.$inferSelect;

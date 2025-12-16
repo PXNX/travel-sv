@@ -44,7 +44,9 @@ export interface TransportSegment {
 	durationMinutes: number;
 	routeName?: string;
 	notes?: string;
-	distanceKm?: number; // Add distance in kilometers
+	distanceKm?: number; // Distance in kilometers
+	transfers?: number; // Number of transfers
+	walkingTimeMinutes?: number; // Walking time to/from stations
 	routeCoordinates?: [number, number][]; // Route polyline for displaying on map
 }
 

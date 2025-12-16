@@ -24,9 +24,13 @@
 	import IconDistance from '~icons/fluent/arrow-routing-24-regular';
 	import IconFoodApple from '~icons/fluent-emoji/fork-and-knife-with-plate';
 	import IconSettings from '~icons/fluent/settings-24-regular';
+	import IconShare from '~icons/fluent/share-24-regular';
+	import IconCopy from '~icons/fluent/copy-24-regular';
+	import IconCheckmark from '~icons/fluent/checkmark-24-regular';
 
 	import Modal from './Modal.svelte';
 	import SettingsModal from './SettingsModal.svelte';
+	import ShareTripModal from './ShareTripModal.svelte';
 	import { haversineDistance } from '$lib/utils/routing';
 
 	interface Props {
@@ -93,6 +97,7 @@
 	let showPlaceSearch = $state(false); // Toggle between location and place search
 	let mapCenterForSearch = $state<{ lat: number; lon: number } | undefined>(undefined);
 	let showSettings = $state(false);
+	let showShareTripModal = $state(false);
 
 	function handleCreateTrip() {
 		if (!newTripName.trim()) return;
@@ -195,56 +200,6 @@
 			</div>
 		</div>
 
-		<!-- Search Type Toggle -->
-		<div class="mb-2 flex items-center gap-2">
-			<button
-				class="btn btn-xs flex-1"
-				class:btn-primary={!showPlaceSearch}
-				class:btn-ghost={showPlaceSearch}
-				onclick={() => (showPlaceSearch = false)}
-			>
-				<IconLocationIcon class="size-3" />
-				Locations
-			</button>
-			<button
-				class="btn btn-xs flex-1"
-				class:btn-primary={showPlaceSearch}
-				class:btn-ghost={!showPlaceSearch}
-				onclick={() => (showPlaceSearch = true)}
-			>
-				<IconPin class="size-3" />
-				Places
-			</button>
-		</div>
-
-		<!-- Search Autocomplete -->
-		{#if showPlaceSearch}
-			<div class="mb-3">
-				<SearchAutocomplete
-					placeholder="Search places (restaurants, museums...)..."
-					searchType="place"
-					compact={true}
-					limit={8}
-					nearCoords={mapCenterForSearch}
-					onselect={(result) => {
-						selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
-					}}
-				/>
-			</div>
-		{:else}
-			<div class="mb-3">
-				<SearchAutocomplete
-					placeholder="Search cities, addresses..."
-					searchType="location"
-					compact={true}
-					limit={8}
-					onselect={(result) => {
-						selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
-					}}
-				/>
-			</div>
-		{/if}
-
 		{#if currentTrip}
 			<div class="alert alert-info p-2">
 				<IconLocationIcon class="size-4 flex-shrink-0" />
@@ -284,6 +239,59 @@
 		</div>
 
 		{#if !showTripPlanner}
+			<!-- Location Search (Browse Tab) -->
+			<div class="mb-2">
+				<!-- Search Type Toggle -->
+				<div class="mb-2 flex items-center gap-2">
+					<button
+						class="btn btn-xs flex-1"
+						class:btn-primary={!showPlaceSearch}
+						class:btn-ghost={showPlaceSearch}
+						onclick={() => (showPlaceSearch = false)}
+					>
+						<IconLocationIcon class="size-3" />
+						Locations
+					</button>
+					<button
+						class="btn btn-xs flex-1"
+						class:btn-primary={showPlaceSearch}
+						class:btn-ghost={!showPlaceSearch}
+						onclick={() => (showPlaceSearch = true)}
+					>
+						<IconPin class="size-3" />
+						Places
+					</button>
+				</div>
+
+				<!-- Search Autocomplete -->
+				{#if showPlaceSearch}
+					<div class="mb-3">
+						<SearchAutocomplete
+							placeholder="Search places (restaurants, museums...)..."
+							searchType="place"
+							compact={true}
+							limit={8}
+							nearCoords={mapCenterForSearch}
+							onselect={(result) => {
+								selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
+							}}
+						/>
+					</div>
+				{:else}
+					<div class="mb-3">
+						<SearchAutocomplete
+							placeholder="Search cities, addresses..."
+							searchType="location"
+							compact={true}
+							limit={8}
+							onselect={(result) => {
+								selectSearchResult({ lat: result.latitude, lon: result.longitude, display_name: result.displayName });
+							}}
+						/>
+					</div>
+				{/if}
+			</div>
+
 			<div class="flex items-center gap-2">
 				<IconFilter class="text-primary size-3 flex-shrink-0 sm:size-4" />
 				<span class="text-xs font-semibold sm:text-sm">Filter:</span>
@@ -381,15 +389,24 @@
 					</div>
 				{:else}
 					<div class="space-y-3 sm:space-y-4">
-						<div class="flex items-center justify-between">
-							<h2 class="truncate text-lg font-bold sm:text-xl">{currentTrip.name}</h2>
-							<button
-								class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom"
-								data-tip="Close"
-								onclick={oncleartrip}
-							>
-								<IconDismiss class="size-4 sm:size-5" />
-							</button>
+						<div class="flex items-center justify-between gap-2">
+							<h2 class="truncate flex-1 text-lg font-bold sm:text-xl">{currentTrip.name}</h2>
+							<div class="flex items-center gap-1">
+								<button
+									class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom"
+									data-tip="Share Trip"
+									onclick={() => (showShareTripModal = true)}
+								>
+									<IconShare class="size-4 sm:size-5" />
+								</button>
+								<button
+									class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom"
+									data-tip="Close"
+									onclick={oncleartrip}
+								>
+									<IconDismiss class="size-4 sm:size-5" />
+								</button>
+							</div>
 						</div>
 
 						<div class="stats bg-base-200 border-base-300 w-full border shadow-md">
@@ -592,3 +609,11 @@
 </Modal>
 
 <SettingsModal bind:open={showSettings} />
+
+{#if currentTrip}
+	<ShareTripModal
+		bind:open={showShareTripModal}
+		trip={currentTrip}
+		{locationsMap}
+	/>
+{/if}
