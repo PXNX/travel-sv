@@ -16,6 +16,9 @@
 
 	let { data }: Props = $props();
 
+	// Import page context to read URL params
+	import { page } from '$app/stores';
+
 	// State
 	let locations = $state<TravelTip[]>(data.initialLocations);
 	let searchQuery = $state('');
@@ -71,8 +74,101 @@
 				...loc,
 				likes: parseInt(localStorage.getItem(`likes_${loc.id}`) || '0')
 			}));
+
+			// Check for shared trip in URL parameter
+			importSharedTripFromURL();
 		}
 	});
+
+	function importSharedTripFromURL() {
+		const tripParam = $page.url.searchParams.get('trip');
+		if (!tripParam) return;
+
+		try {
+			// Decode the base64 encoded trip data (handles Unicode properly)
+			const decodedString = atob(tripParam);
+			const jsonString = decodeURIComponent(decodedString.split('').map(c => {
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
+			const tripData = JSON.parse(jsonString);
+			
+			// Merge shared locations into our locations array
+			const tempLocations: TravelTip[] = [];
+			const tempStops: TripStop[] = [];
+			
+			tripData.stops.forEach((stop: any, index: number) => {
+				if (stop.location) {
+					// Create a temporary location from the shared data
+					const tempId = Date.now() + index; // Unique temporary ID
+					const tempLocation: TravelTip = {
+						id: tempId,
+						title: stop.location.title,
+						description: stop.location.description || '',
+						latitude: stop.location.latitude,
+						longitude: stop.location.longitude,
+						address: stop.location.address,
+						category: stop.location.category || 'leisure',
+						durationMinutes: stop.location.durationMinutes || 60,
+						userId: 'shared',
+						userName: 'Shared Location',
+						likes: 0,
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString()
+					};
+					
+					tempLocations.push(tempLocation);
+					
+					// Create stop for this location
+					tempStops.push({
+						tipId: tempId,
+						order: index,
+						notes: '',
+						customDuration: stop.customDuration,
+						transport: stop.transport
+					});
+				}
+			});
+			
+			// Add temporary locations to main locations array
+			locations = [...locations, ...tempLocations];
+			
+			// Create the imported trip
+			const importedTrip: Trip = {
+				id: crypto.randomUUID(),
+				name: tripData.name + ' (Shared)',
+				description: tripData.description,
+				stops: tempStops,
+				startDate: tripData.startTime,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString()
+			};
+			
+			// Add to trips and set as current
+			trips = [...trips, importedTrip];
+			currentTrip = importedTrip;
+			saveTrips();
+			
+			// Open trip planner to show the imported trip
+			showTripPlanner = true;
+			
+			// Center map on first location
+			if (tempLocations.length > 0) {
+				const firstLoc = tempLocations[0];
+				mapCenter = [firstLoc.latitude, firstLoc.longitude];
+				mapZoom = 13;
+			}
+			
+			// Remove the trip parameter from URL to prevent re-importing
+			const newUrl = new URL(window.location.href);
+			newUrl.searchParams.delete('trip');
+			window.history.replaceState({}, '', newUrl.toString());
+			
+			console.log('Imported shared trip:', importedTrip);
+		} catch (error) {
+			console.error('Failed to import shared trip:', error);
+			// Optionally show an error message to the user
+		}
+	}
 
 	function saveTrips() {
 		if (typeof window !== 'undefined') {
@@ -352,6 +448,22 @@
 		showTransportEditor = true;
 	}
 
+	/**
+	 * Calculate suggested departure time for public transport search
+	 * 
+	 * This properly accumulates time based on the trip timeline:
+	 * Example:
+	 * - Start at 8:00 at Location 1
+	 * - Stay 1h at Location 1 → departure at 9:00
+	 * - Walk 30min to Location 2 → arrival at 9:30
+	 * - Stay 45min at Location 2 → departure at 10:15
+	 * - Now searching for public transport departing at 10:15+
+	 * 
+	 * The transport duration includes:
+	 * - Walking time from location to station
+	 * - Train/bus travel time
+	 * - Walking time from station to next location
+	 */
 	function calculateSuggestedDepartureTime(stopIndex: number): Date | undefined {
 		if (!currentTrip || stopIndex <= 0) return undefined;
 
@@ -360,10 +472,19 @@
 		
 		if (!previousLocation) return undefined;
 
-		// Start with trip start date or today
-		const baseDate = currentTrip.startDate ? new Date(currentTrip.startDate) : new Date();
+		// Start with trip start date or today at 09:00
+		let baseDate: Date;
+		if (currentTrip.startDate) {
+			// Parse the startDate which is a time string like "09:00"
+			const [hours, minutes] = currentTrip.startDate.split(':').map(Number);
+			baseDate = new Date();
+			baseDate.setHours(hours, minutes, 0, 0);
+		} else {
+			baseDate = new Date();
+			baseDate.setHours(9, 0, 0, 0); // Default start time 9:00 AM
+		}
 		
-		// Calculate cumulative time up to this point
+		// Calculate cumulative time up to the departure from previous location
 		let cumulativeMinutes = 0;
 		
 		for (let i = 0; i < stopIndex; i++) {
@@ -376,15 +497,19 @@
 			const stayDuration = stop.customDuration || location.durationMinutes || 60;
 			cumulativeMinutes += stayDuration;
 			
-			// Add transport duration to next location
+			// Add transport duration to next location (only if we're not at the stop right before the one we're editing)
 			if (i < stopIndex - 1 && currentTrip.stops[i + 1].transport) {
+				// This includes walking to station, waiting, travel time, and walking from station
 				cumulativeMinutes += currentTrip.stops[i + 1].transport.durationMinutes;
 			}
 		}
 		
-		// Calculate suggested departure time
+		// Calculate suggested departure time = when user finishes at previous location
 		const suggestedTime = new Date(baseDate);
 		suggestedTime.setMinutes(suggestedTime.getMinutes() + cumulativeMinutes);
+		
+		console.log(`Suggested departure time for stop ${stopIndex}: ${suggestedTime.toLocaleTimeString()}`);
+		console.log(`  Based on: ${cumulativeMinutes} minutes from start (${baseDate.toLocaleTimeString()})`);
 		
 		return suggestedTime;
 	}

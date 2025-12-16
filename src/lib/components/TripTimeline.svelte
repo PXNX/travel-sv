@@ -1,23 +1,43 @@
 <!-- src/lib/components/TripTimeline.svelte -->
 <script lang="ts">
+	/**
+	 * TripTimeline Component
+	 * 
+	 * Properly calculates timeline with cumulative time tracking:
+	 * Example: Start at 8:00 at Location 1
+	 * - Stay 1h at Location 1 (8:00 - 9:00)
+	 * - Walk 30min to Location 2 (9:00 - 9:30)
+	 * - Arrive at Location 2 at 9:30
+	 * - Stay 45min at Location 2 (9:30 - 10:15)
+	 * - Public transport search should start at 10:15
+	 * 
+	 * The transport duration includes:
+	 * - Walking time from location to station
+	 * - Waiting time at station
+	 * - Travel time on train/bus
+	 * - Walking time from station to destination
+	 */
 	import type { TripStop, TravelTip } from '$lib/types';
 	import { categoryInfo, transportInfo } from '$lib/types';
 	import { formatDuration } from '$lib/utils/calculations';
 	import IconClock from '~icons/fluent/clock-24-regular';
 	import IconDelete from '~icons/fluent/delete-24-regular';
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
+	import IconShare from '~icons/fluent/share-24-regular';
 
 	import Modal from './Modal.svelte';
 
 	interface Props {
 		stops: (TripStop & { location?: TravelTip })[];
 		startTime?: string;
+		tripName?: string;
 		oneditduration: (tipId: number, currentDuration: number) => void;
 		onedittransport: (stopIndex: number, fromLocation: string, toLocation: string) => void;
 		onremove: (tipId: number) => void;
+		onshare?: () => void;
 	}
 
-	let { stops, startTime = '09:00', oneditduration, onedittransport, onremove }: Props = $props();
+	let { stops, startTime = '09:00', tripName, oneditduration, onedittransport, onremove, onshare }: Props = $props();
 
 	let showDeleteStopDialog = $state(false);
 	let stopToDelete: number | null = $state(null);
@@ -51,9 +71,18 @@
 				departureMinutes
 			};
 
+			// Calculate time for next location
 			if (index < stops.length - 1) {
 				const nextStop = stops[index + 1];
-				currentMinutes = departureMinutes + (nextStop.transport?.durationMinutes || 0);
+				const transport = nextStop.transport;
+				
+				if (transport) {
+					// Add transport duration to get to next location
+					currentMinutes = departureMinutes + transport.durationMinutes;
+				} else {
+					// No transport specified, assume next location is reached immediately
+					currentMinutes = departureMinutes;
+				}
 			}
 
 			return result;
@@ -103,6 +132,19 @@
 </script>
 
 <div class="relative space-y-0">
+	<!-- Share Button -->
+	{#if onshare && stops.length > 0}
+		<div class="mb-4 flex justify-end">
+			<button
+				class="btn btn-primary btn-sm gap-2"
+				onclick={onshare}
+			>
+				<IconShare class="size-4" />
+				Share Trip
+			</button>
+		</div>
+	{/if}
+
 	{#each stops as stop, index (stop.tipId)}
 		{@const location = stop.location!}
 		{@const timing = timelineData[index]}
@@ -219,10 +261,14 @@
 									</div>
 									<div class="text-base-content/70 mt-1 flex flex-wrap items-center gap-2 text-sm">
 										<IconClock class="size-4 flex-shrink-0" />
+										<!-- Show start time (departure from previous location) -->
 										<span
-											><strong>{timing.departureTime}</strong> →
-											<strong>{nextTiming.arrivalTime}</strong></span
+											><strong>{timing.departureTime}</strong></span
 										>
+										{#if nextStop.transport.arrivalTime}
+											<span>→</span>
+											<span><strong>{nextStop.transport.arrivalTime}</strong></span>
+										{/if}
 										<span>•</span>
 										<span
 											><strong>{formatDuration(nextStop.transport.durationMinutes)}</strong></span
@@ -230,6 +276,14 @@
 										{#if nextStop.transport.distanceKm}
 											<span>•</span>
 											<span>{nextStop.transport.distanceKm.toFixed(1)} km</span>
+										{/if}
+										{#if nextStop.transport.transfers !== undefined && nextStop.transport.transfers > 0}
+											<span>•</span>
+											<span>{nextStop.transport.transfers} transfer{nextStop.transport.transfers > 1 ? 's' : ''}</span>
+										{/if}
+										{#if nextStop.transport.walkingTimeMinutes && nextStop.transport.walkingTimeMinutes > 0}
+											<span>•</span>
+											<span>{nextStop.transport.walkingTimeMinutes}min walking</span>
 										{/if}
 									</div>
 									{#if nextStop.transport.notes}

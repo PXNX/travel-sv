@@ -71,10 +71,11 @@ const SEARCH_RADIUS = 5000; // 5km
 
 /**
  * Search for stations near coordinates with DB API first, OSM as fallback
+ * Always returns only the closest 5 stations by default
  */
 export async function findNearbyStations(
     coords: [number, number],
-    maxResults = 8
+    maxResults = 5
 ): Promise<Station[]> {
     const [lat, lon] = coords;
 
@@ -298,6 +299,17 @@ function deduplicateStations(stations: Station[]): Station[] {
 
 /**
  * Search for connections between stations
+ * 
+ * IMPORTANT: The connection duration from the API includes:
+ * - Travel time on the train/bus
+ * - Transfer/waiting times at intermediate stations
+ * 
+ * When planning trips, you should ALSO add:
+ * - Walking time from departure location to the departure station
+ * - Walking time from arrival station to the final destination
+ * 
+ * These walking times are NOT included in the API response and must be
+ * calculated separately (e.g., using getDistanceInMeters and assuming 5 km/h walking speed).
  */
 export async function searchConnections(
     fromStation: Station,
@@ -345,6 +357,13 @@ export async function searchConnections(
         params.append('stopovers', 'true'); // Get all intermediate stops for route visualization
         params.append('polyline', 'true'); // Get route polyline for map visualization
 
+        // Apply transfer time filter at API level
+        if (options?.minTransferTime !== undefined && options.minTransferTime > 0) {
+            // transferTime parameter sets minimum minutes for transfers
+            params.append('transferTime', options.minTransferTime.toString());
+            console.log(`Minimum transfer time: ${options.minTransferTime} minutes`);
+        }
+
         // Apply Deutschland Ticket filter (exclude long-distance trains)
         if (options?.deutschlandTicketOnly) {
             // Exclude IC/ICE/EC trains at API level
@@ -369,7 +388,7 @@ export async function searchConnections(
         const journeys = data.journeys || [];
         console.log(`Found ${journeys.length} journeys`);
 
-        return journeys.map((journey: any) => {
+        const connections = journeys.map((journey: any) => {
             const departure = new Date(journey.legs[0].departure);
             const arrival = new Date(journey.legs[journey.legs.length - 1].arrival);
             const duration = Math.round((arrival.getTime() - departure.getTime()) / 1000);
@@ -406,6 +425,36 @@ export async function searchConnections(
                 price: journey.price
             };
         });
+
+        // Apply client-side max transfer time filter if needed
+        // (API doesn't support max transfer time, only min)
+        if (options?.maxTransferTime !== undefined && options.maxTransferTime < 999) {
+            const filtered = connections.filter((conn) => {
+                if (conn.transfers === 0) return true;
+
+                // Check each transfer time
+                for (let i = 0; i < conn.legs.length - 1; i++) {
+                    const currentLeg = conn.legs[i];
+                    const nextLeg = conn.legs[i + 1];
+
+                    // Skip walking legs in transfer calculation
+                    if (nextLeg.mode === 'walking') continue;
+                    if (!currentLeg.line) continue; // Skip if current leg is walking
+
+                    const transferTime = (nextLeg.departure.getTime() - currentLeg.arrival.getTime()) / 1000 / 60;
+
+                    if (transferTime > options.maxTransferTime) {
+                        console.log(`Filtered connection: transfer time ${transferTime.toFixed(1)}min exceeds max ${options.maxTransferTime}min`);
+                        return false;
+                    }
+                }
+                return true;
+            });
+            console.log(`Filtered ${connections.length - filtered.length} connections by max transfer time`);
+            return filtered;
+        }
+
+        return connections;
     } catch (error) {
         console.error('Error searching connections:', error);
         return [];
@@ -415,7 +464,7 @@ export async function searchConnections(
 /**
  * Calculate distance between two coordinates in meters
  */
-function getDistanceInMeters(
+export function getDistanceInMeters(
     lat1: number,
     lon1: number,
     lat2: number,
@@ -446,13 +495,17 @@ export function formatDistance(meters: number): string {
 }
 
 /**
- * Format duration for display
+ * Format duration for display (converts seconds to hours and minutes)
  */
 export function formatDuration(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const totalMinutes = Math.floor(seconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
 
     if (hours > 0) {
+        if (minutes === 0) {
+            return `${hours}h`;
+        }
         return `${hours}h ${minutes}min`;
     }
     return `${minutes}min`;

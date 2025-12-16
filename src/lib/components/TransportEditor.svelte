@@ -1,4 +1,18 @@
 <!-- src/lib/components/TransportEditor.svelte -->
+<!--
+	Transport Editor Component
+	
+	Handles transportation planning between locations.
+	
+	IMPORTANT: Transport duration should include:
+	1. Walking time from departure location to station
+	2. Waiting time at station
+	3. Travel time on train/bus
+	4. Walking time from arrival station to destination
+	
+	The connection search API only provides #2-3, so when displaying
+	connections to users, remember that actual travel time will be longer.
+-->
 <script lang="ts">
 	import type { TransportSegment, TransportMode } from '$lib/types';
 	import { transportInfo } from '$lib/types';
@@ -9,6 +23,7 @@
 		formatDistance,
 		formatDuration,
 		formatTime,
+		getDistanceInMeters,
 		type Station,
 		type Connection
 	} from '$lib/services/stationService';
@@ -74,6 +89,11 @@
 
 	// Walking calculation state
 	let isCalculatingWalking = $state(false);
+	let walkingDistanceMeters = $state<number | undefined>(undefined);
+
+	// Walking times to/from stations (in minutes)
+	let walkingTimeToFromStation = $state(0);
+	let walkingTimeToToStation = $state(0);
 
 	// UI state
 	let showManualEntry = $state(false);
@@ -105,11 +125,12 @@
 	});
 
 	/**
-	 * Re-filter connections when settings change
+	 * Re-filter connections when max transfer time setting changes
+	 * (min transfer time is handled by API)
 	 */
 	$effect(() => {
 		if (allConnections.length > 0) {
-			connections = filterConnections(allConnections);
+			connections = filterConnectionsByMaxTransferTime(allConnections);
 		}
 	});
 
@@ -205,36 +226,50 @@
 	}
 
 	/**
-	 * Filter connections based on settings (only client-side filters)
+	 * Filter connections by max transfer time (client-side only)
+	 * Min transfer time is handled by the API via transferTime parameter
 	 */
-	function filterConnections(conns: Connection[]): Connection[] {
+	function filterConnectionsByMaxTransferTime(conns: Connection[]): Connection[] {
+		if (settings.maxTransferTime >= 999) {
+			// No max limit, return all
+			return conns;
+		}
+
 		return conns.filter((conn, index) => {
-			// Check transfer times (only filter that needs client-side processing)
-			if (conn.transfers > 0) {
-				for (let i = 0; i < conn.legs.length - 1; i++) {
-					const currentLeg = conn.legs[i];
-					const nextLeg = conn.legs[i + 1];
-					
-					// Skip if next leg is walking
-					if (nextLeg.mode === 'walking') continue;
-					
-					const transferTime = (nextLeg.departure.getTime() - currentLeg.arrival.getTime()) / 1000 / 60;
-					
-					// Check min/max transfer time
-					if (transferTime < settings.minTransferTime || transferTime > settings.maxTransferTime) {
-						console.log(`Connection ${index + 1} filtered: Transfer time ${transferTime}min outside range ${settings.minTransferTime}-${settings.maxTransferTime}min`);
-						return false;
-					}
+			// No transfers = no need to check
+			if (conn.transfers === 0) return true;
+
+			// Check each transfer time
+			for (let i = 0; i < conn.legs.length - 1; i++) {
+				const currentLeg = conn.legs[i];
+				const nextLeg = conn.legs[i + 1];
+				
+				// Skip walking legs in transfer calculation
+				if (nextLeg.mode === 'walking') continue;
+				if (!currentLeg.line) continue; // Skip if current leg is walking
+				
+				const transferTime = (nextLeg.departure.getTime() - currentLeg.arrival.getTime()) / 1000 / 60;
+				
+				// Check max transfer time
+				if (transferTime > settings.maxTransferTime) {
+					console.log(`Connection ${index + 1} filtered: Transfer time ${transferTime.toFixed(1)}min exceeds max ${settings.maxTransferTime}min`);
+					return false;
 				}
 			}
 
-			console.log(`Connection ${index + 1} passed filters`);
+			console.log(`Connection ${index + 1} passed max transfer time filter`);
 			return true;
 		});
 	}
 
 	/**
 	 * Search for connections between selected stations
+	 * 
+	 * The suggestedDepartureTime is calculated based on the timeline:
+	 * - It accounts for all previous locations and their stay times
+	 * - Example: If you finish at Location A at 10:15, we need to:
+	 *   1. Add walking time from location to station (e.g., 5min)
+	 *   2. Search for connections departing at 10:20 or later from the station
 	 */
 	async function loadConnections() {
 		if (!selectedFromStation || !selectedToStation || isLoadingConnections) return;
@@ -244,13 +279,24 @@
 			// Determine departure time for search
 			let searchTime: Date | undefined;
 			if (suggestedDepartureTime) {
-				searchTime = suggestedDepartureTime;
+				// Add walking time to station to get actual departure time from station
+				const actualStationDepartureTime = new Date(suggestedDepartureTime);
+				actualStationDepartureTime.setMinutes(
+					actualStationDepartureTime.getMinutes() + walkingTimeToFromStation
+				);
+				searchTime = actualStationDepartureTime;
+				console.log(
+					`Departure from location: ${formatTime(suggestedDepartureTime)}, ` +
+					`Walking ${walkingTimeToFromStation}min to station, ` +
+					`Searching connections from: ${formatTime(actualStationDepartureTime)}`
+				);
 			} else if (departureTime) {
 				searchTime = parseDepartureTime(departureTime);
 			}
 			// If no time specified, searchTime remains undefined (API will use current time)
 
 			// Search for connections with settings
+			// Note: minTransferTime is applied at API level, maxTransferTime is client-side filtered
 			allConnections = await searchConnections(
 				selectedFromStation,
 				selectedToStation,
@@ -263,9 +309,9 @@
 				}
 			);
 
-			console.log(`Found ${allConnections.length} total connections`);
-			connections = filterConnections(allConnections);
-			console.log(`${connections.length} connections after filtering`);
+			console.log(`Found ${allConnections.length} connections from API (min transfer time ${settings.minTransferTime}min applied)`);
+			connections = filterConnectionsByMaxTransferTime(allConnections);
+			console.log(`${connections.length} connections after applying max transfer time filter (${settings.maxTransferTime}min)`);
 		} catch (error) {
 			console.error('Error loading connections:', error);
 			connections = [];
@@ -286,10 +332,24 @@
 	}
 
 	/**
-	 * Select a departure station
+	 * Select a departure station and calculate walking time from location
 	 */
 	function selectFromStation(station: Station) {
 		selectedFromStation = station;
+		
+		// Calculate walking time from departure location to this station
+		if (fromCoords) {
+			const distanceMeters = getDistanceInMeters(
+				fromCoords[0],
+				fromCoords[1],
+				station.lat,
+				station.lon
+			);
+			// Assume walking speed of 5 km/h = 83.33 m/min
+			walkingTimeToFromStation = Math.ceil(distanceMeters / 83.33);
+			console.log(`Walking time to departure station: ${walkingTimeToFromStation}min (${distanceMeters}m)`);
+		}
+		
 		connections = [];
 		allConnections = [];
 		if (selectedToStation) {
@@ -298,10 +358,24 @@
 	}
 
 	/**
-	 * Select an arrival station
+	 * Select an arrival station and calculate walking time to location
 	 */
 	function selectToStation(station: Station) {
 		selectedToStation = station;
+		
+		// Calculate walking time from this station to arrival location
+		if (toCoords) {
+			const distanceMeters = getDistanceInMeters(
+				station.lat,
+				station.lon,
+				toCoords[0],
+				toCoords[1]
+			);
+			// Assume walking speed of 5 km/h = 83.33 m/min
+			walkingTimeToToStation = Math.ceil(distanceMeters / 83.33);
+			console.log(`Walking time from arrival station: ${walkingTimeToToStation}min (${distanceMeters}m)`);
+		}
+		
 		connections = [];
 		allConnections = [];
 		if (selectedFromStation) {
@@ -311,6 +385,7 @@
 
 	/**
 	 * Select a connection and populate form
+	 * The total duration includes walking to/from stations plus the transit time
 	 */
 	function selectConnectionOption(connection: Connection) {
 		selectedConnection = connection;
@@ -320,7 +395,10 @@
 
 		departureTime = formatTime(connection.departure);
 		arrivalTime = formatTime(connection.arrival);
-		durationMinutes = Math.round(connection.duration / 60);
+		
+		// Duration includes: walking to station + transport + walking from station
+		const transportDurationMinutes = Math.round(connection.duration / 60);
+		durationMinutes = transportDurationMinutes + walkingTimeToFromStation + walkingTimeToToStation;
 
 		const lines = connection.legs
 			.filter((leg) => leg.line)
@@ -328,13 +406,11 @@
 			.join(' → ');
 		routeName = lines || '';
 
-		if (connection.transfers > 0) {
-			notes = `${connection.transfers} transfer${connection.transfers > 1 ? 's' : ''}`;
-		} else {
-			notes = 'Direct connection';
-		}
+		// Clear notes - we'll use proper fields instead
+		notes = connection.transfers === 0 ? 'Direct connection' : '';
 
 		console.log('Selected connection:', connection);
+		console.log(`Total duration: ${durationMinutes}min (transport: ${transportDurationMinutes}min + walking: ${walkingTimeToFromStation + walkingTimeToToStation}min)`);
 		showManualEntry = true;
 	}
 
@@ -350,18 +426,24 @@
 
 			if (route) {
 				durationMinutes = route.duration;
+				walkingDistanceMeters = route.distance;
 				const distanceKm = (route.distance / 1000).toFixed(2);
-				notes = `Distance: ${distanceKm} km`;
+				notes = '';
+				console.log(`Walking route: ${distanceKm} km, ${durationMinutes} min`);
 			} else {
 				const duration = calculateWalkingDuration(fromCoords, toCoords);
 				durationMinutes = duration;
-				notes = 'Approximate walking time (straight-line distance)';
+				// Use straight-line distance as fallback
+				walkingDistanceMeters = getDistanceInMeters(fromCoords[0], fromCoords[1], toCoords[0], toCoords[1]);
+				notes = 'Approximate (straight-line distance)';
 			}
 		} catch (error) {
 			console.error('Error calculating walking time:', error);
 			const duration = calculateWalkingDuration(fromCoords, toCoords);
 			durationMinutes = duration;
-			notes = 'Approximate walking time';
+			// Use straight-line distance as fallback
+			walkingDistanceMeters = getDistanceInMeters(fromCoords[0], fromCoords[1], toCoords[0], toCoords[1]);
+			notes = 'Approximate (straight-line distance)';
 		} finally {
 			isCalculatingWalking = false;
 		}
@@ -440,6 +522,22 @@
 	function handleSave() {
 		const routeCoordinates = extractRouteCoordinates();
 		
+		// Calculate distance from connection or walking route
+		let distanceKm: number | undefined;
+		if (selectedConnection) {
+			// Sum distances from all legs
+			distanceKm = selectedConnection.legs.reduce((sum, leg) => {
+				return sum + (leg.distance || 0);
+			}, 0) / 1000; // Convert meters to km
+		} else if (mode === 'walking' && walkingDistanceMeters !== undefined) {
+			// Use the actual walking route distance that was calculated
+			distanceKm = walkingDistanceMeters / 1000;
+		} else if (mode === 'walking' && fromCoords && toCoords) {
+			// Fallback to straight-line distance if no route was calculated
+			const distanceMeters = getDistanceInMeters(fromCoords[0], fromCoords[1], toCoords[0], toCoords[1]);
+			distanceKm = distanceMeters / 1000;
+		}
+		
 		onsave({
 			mode,
 			departureTime: departureTime || undefined,
@@ -447,6 +545,9 @@
 			durationMinutes,
 			routeName: mode === 'walking' ? undefined : (routeName || undefined),
 			notes: notes || undefined,
+			distanceKm: distanceKm ? Number(distanceKm.toFixed(1)) : undefined,
+			transfers: selectedConnection?.transfers,
+			walkingTimeMinutes: (walkingTimeToFromStation + walkingTimeToToStation) || undefined,
 			routeCoordinates
 		});
 	}
@@ -623,7 +724,7 @@
 
 						{#if fromStations.length > 0}
 							<div class="space-y-2 max-h-48 overflow-y-auto">
-								{#each fromStations.slice(0, 8) as station}
+								{#each fromStations.slice(0, 5) as station}
 									<button
 										class="w-full text-left p-2 rounded-lg border transition-colors"
 										class:border-primary={selectedFromStation?.id === station.id}
@@ -667,7 +768,7 @@
 
 						{#if toStations.length > 0}
 							<div class="space-y-2 max-h-48 overflow-y-auto">
-								{#each toStations.slice(0, 8) as station}
+								{#each toStations.slice(0, 5) as station}
 									<button
 										class="w-full text-left p-2 rounded-lg border transition-colors"
 										class:border-primary={selectedToStation?.id === station.id}
@@ -765,15 +866,6 @@
 														{getTransferInfo(connection)}
 													</span>
 												{/if}
-												{#if isRegional}
-													<span class="badge badge-success badge-sm gap-1 badge-outline">
-														<svg class="size-3" fill="currentColor" viewBox="0 0 20 20">
-															<path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
-															<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
-														</svg>
-														Regional
-													</span>
-												{/if}
 											</div>
 										</div>
 										
@@ -848,43 +940,16 @@
 					<div class="divider my-1 text-xs">Connection Details</div>
 				{/if}
 
-				<!-- Times -->
-				<div class="grid grid-cols-2 gap-3">
-					<div class="form-control">
-						<label class="label py-1"><span class="label-text text-xs">Departure</span></label>
-						<input
-							type="time"
-							class="input input-bordered input-sm"
-							bind:value={departureTime}
-							oninput={updateDuration}
-						/>
-					</div>
-					<div class="form-control">
-						<label class="label py-1"><span class="label-text text-xs">Arrival</span></label>
-						<input
-							type="time"
-							class="input input-bordered input-sm"
-							bind:value={arrivalTime}
-							oninput={updateDuration}
-						/>
-					</div>
-				</div>
-
-				<!-- Duration -->
+				<!-- Duration (Read-only display) -->
 				<div class="form-control">
 					<label class="label py-1">
 						<span class="label-text text-xs">Duration</span>
-						<span class="label-text-alt text-xs text-base-content/60">
+					</label>
+					<div class="input input-bordered input-sm bg-base-200 flex items-center">
+						<span class="text-base-content">
 							{Math.floor(durationMinutes / 60)}h {durationMinutes % 60}min
 						</span>
-					</label>
-					<input
-						type="number"
-						class="input input-bordered input-sm"
-						bind:value={durationMinutes}
-						min="1"
-						step="1"
-					/>
+					</div>
 				</div>
 
 				<!-- Route Name -->

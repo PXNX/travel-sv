@@ -91,6 +91,7 @@ export async function getJourneys(
 		departure?: Date;
 		results?: number;
 		transfers?: number;
+		transferTime?: number; // Minimum transfer time in minutes
 	}
 ): Promise<Journey[]> {
 	try {
@@ -121,6 +122,10 @@ export async function getJourneys(
 
 		if (options?.transfers !== undefined) {
 			params.append('transfers', options.transfers.toString());
+		}
+
+		if (options?.transferTime !== undefined && options.transferTime > 0) {
+			params.append('transferTime', options.transferTime.toString());
 		}
 
 		// Request polyline data for route visualization
