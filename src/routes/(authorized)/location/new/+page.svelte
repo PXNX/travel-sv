@@ -6,6 +6,9 @@
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
+	import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
+	import type { SearchResult } from '$lib/services/searchService';
+	import { mapSearchResultToPlaceData } from '$lib/services/osmMapper';
 
 	// Import Fluent icons
 	import IconArrowLeft from '~icons/fluent/arrow-left-24-regular';
@@ -13,6 +16,8 @@
 	import IconDismiss from '~icons/fluent/dismiss-24-regular';
 	import IconLocation from '~icons/fluent/location-24-regular';
 	import IconWarning from '~icons/fluent/warning-24-regular';
+	import IconSearch from '~icons/fluent/search-24-regular';
+	import IconSparkle from '~icons/fluent/sparkle-24-filled';
 	import { resolve } from '$app/paths';
 	import { reverseGeocode } from '$lib/services/searchService';
 
@@ -47,7 +52,15 @@
 	let isSubmitting = $state(false);
 	let addressInput = $state('');
 	let titleInput = $state('');
+	let descriptionInput = $state('');
+	let durationMinutes = $state(60);
+	let bestTimeToVisit = $state<BestTime | ''>('');
+	let imageUrl = $state('');
+	let googleMapsUrl = $state('');
 	let isLoadingPlaceName = $state(false);
+	let showOSMSearch = $state(true);
+	let osmSearchQuery = $state('');
+	let selectedOSMPlace: SearchResult | null = $state(null);
 
 	// Center map on provided coordinates
 	$effect(() => {
@@ -82,6 +95,43 @@
 			console.error('Failed to fetch place name:', error);
 		} finally {
 			isLoadingPlaceName = false;
+		}
+	}
+
+	function handleOSMPlaceSelect(result: SearchResult) {
+		selectedOSMPlace = result;
+		
+		// Map OSM data to our format
+		const placeData = mapSearchResultToPlaceData(result);
+		
+		// Auto-fill the form
+		titleInput = placeData.title;
+		descriptionInput = placeData.description;
+		category = placeData.category;
+		durationMinutes = placeData.durationMinutes;
+		latitude = placeData.latitude;
+		longitude = placeData.longitude;
+		addressInput = placeData.address;
+		
+		// Update map view
+		if (mapInstance) {
+			mapInstance.setView([latitude, longitude], 16);
+		}
+		
+		// Hide search after selection
+		showOSMSearch = false;
+	}
+
+	function clearOSMSelection() {
+		selectedOSMPlace = null;
+		showOSMSearch = true;
+		osmSearchQuery = '';
+	}
+
+	function toggleOSMSearch() {
+		showOSMSearch = !showOSMSearch;
+		if (!showOSMSearch) {
+			osmSearchQuery = '';
 		}
 	}
 
@@ -171,6 +221,57 @@
 			</div>
 		{/if}
 
+		<!-- OSM Search Section -->
+		<div class="card bg-gradient-to-br from-primary/10 to-secondary/10 shadow-xl mb-6">
+			<div class="card-body">
+				<div class="flex items-start justify-between gap-4">
+					<div class="flex-1">
+						<div class="flex items-center gap-2 mb-2">
+							<IconSparkle class="h-6 w-6 text-primary" />
+							<h2 class="card-title">Search OpenStreetMap Places</h2>
+						</div>
+						<p class="text-base-content/70 text-sm mb-4">
+							Search for restaurants, museums, parks, and more from OpenStreetMap. We'll auto-fill the details for you!
+						</p>
+
+						{#if showOSMSearch}
+							<SearchAutocomplete
+								placeholder="Search for places (e.g., 'Brandenburg Gate', 'Hofbräuhaus München')..."
+								searchType="place"
+								category={category}
+								limit={15}
+								onselect={handleOSMPlaceSelect}
+								autofocus={!selectedOSMPlace}
+							/>
+							
+							<div class="mt-3 text-xs text-base-content/60">
+								<strong>Tip:</strong> Select a category below first for better results, or search broadly and we'll detect the category.
+							</div>
+						{:else}
+							<div class="alert alert-success">
+								<IconSearch class="h-5 w-5" />
+								<div class="flex-1">
+									<div class="font-semibold">Place selected: {selectedOSMPlace?.name}</div>
+									<div class="text-xs opacity-80">Form auto-filled from OpenStreetMap data. You can edit any field below.</div>
+								</div>
+								<button type="button" class="btn btn-ghost btn-sm" onclick={clearOSMSelection}>
+									Search Again
+								</button>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				{#if !showOSMSearch}
+					<div class="divider text-xs">OR</div>
+					<button type="button" class="btn btn-outline btn-sm" onclick={toggleOSMSearch}>
+						<IconSearch class="h-4 w-4" />
+						Search for a different place
+					</button>
+				{/if}
+			</div>
+		</div>
+
 		<form
 			method="POST"
 			class="grid grid-cols-1 gap-6 lg:grid-cols-2"
@@ -218,8 +319,16 @@
 								name="description"
 								class="textarea textarea-bordered h-24"
 								placeholder="Tell us about this place..."
+								bind:value={descriptionInput}
 								required
 							></textarea>
+							{#if selectedOSMPlace}
+								<label class="label">
+									<span class="label-text-alt text-info">
+										Auto-generated description. Feel free to customize it!
+									</span>
+								</label>
+							{/if}
 						</div>
 
 						<div class="form-control">
@@ -250,6 +359,11 @@
 										<option value={cat.value}>{cat.emoji} {cat.label}</option>
 									{/each}
 								</select>
+								{#if selectedOSMPlace}
+									<label class="label">
+										<span class="label-text-alt text-info">Auto-detected from OSM</span>
+									</label>
+								{/if}
 							</div>
 
 							<div class="form-control">
@@ -258,17 +372,22 @@
 									type="number"
 									name="duration_minutes"
 									class="input input-bordered"
-									value={60}
+									bind:value={durationMinutes}
 									min="15"
 									step="15"
 									required
 								/>
+								{#if selectedOSMPlace}
+									<label class="label">
+										<span class="label-text-alt text-info">Estimated duration</span>
+									</label>
+								{/if}
 							</div>
 						</div>
 
 						<div class="form-control">
 							<label class="label"><span class="label-text">Best Time to Visit</span></label>
-							<select name="best_time_to_visit" class="select select-bordered">
+							<select name="best_time_to_visit" class="select select-bordered" bind:value={bestTimeToVisit}>
 								<option value="">Not specified</option>
 								{#each Object.values(bestTimeInfo) as time}
 									<option value={time.value}>{time.label}</option>
@@ -283,6 +402,7 @@
 								name="image_url"
 								class="input input-bordered"
 								placeholder="https://example.com/image.jpg"
+								bind:value={imageUrl}
 							/>
 						</div>
 
@@ -293,6 +413,7 @@
 								name="google_maps_url"
 								class="input input-bordered"
 								placeholder="https://maps.google.com/..."
+								bind:value={googleMapsUrl}
 							/>
 						</div>
 
@@ -375,6 +496,11 @@
 						<p class="text-base-content/50 mt-2 text-xs">
 							Coordinates: {latitude.toFixed(6)}, {longitude.toFixed(6)}
 						</p>
+						{#if selectedOSMPlace}
+							<div class="mt-2 badge badge-success badge-sm">
+								📍 Location from OSM: {selectedOSMPlace.name}
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>

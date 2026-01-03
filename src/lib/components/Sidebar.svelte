@@ -292,6 +292,12 @@
 				{/if}
 			</div>
 
+			<!-- Browse OSM Places Button -->
+			<a href="/browse-locations" class="btn btn-secondary btn-sm w-full gap-2">
+				<IconSearch class="size-4" />
+				<span class="text-xs sm:text-sm">Browse OpenStreetMap Places</span>
+			</a>
+
 			<div class="flex items-center gap-2">
 				<IconFilter class="text-primary size-3 flex-shrink-0 sm:size-4" />
 				<span class="text-xs font-semibold sm:text-sm">Filter:</span>
