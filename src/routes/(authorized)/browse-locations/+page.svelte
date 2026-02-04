@@ -287,7 +287,11 @@
 										
 										<div class="divider my-2"></div>
 										
-										<button
+										
+									</div>
+								</button>
+
+                                <button
 											type="button"
 											class="btn btn-primary btn-sm w-full gap-2"
 											onclick={(e) => {
@@ -298,8 +302,6 @@
 											<IconAdd class="h-4 w-4" />
 											Add to My Locations
 										</button>
-									</div>
-								</button>
 							{/each}
 						</div>
 					{/if}
