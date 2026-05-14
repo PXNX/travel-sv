@@ -51,9 +51,17 @@
 	let walkFromName = $state('');
 	let walkToName = $state('');
 
+	// transit recompute confirm modal
+	let showRecomputeConfirm = $state(false);
+	let isRecomputing = $state(false);
+	let recomputeTimer: ReturnType<typeof setTimeout>;
+
 	// DND
 	let dndItems = $state<(Stop & { id: number })[]>([]);
 	$effect(() => { dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex); });
+
+	// Are there any transit segments?
+	const hasTransitSegments = $derived(journeySegments.some((s) => s.mode === 'transit'));
 
 	onMount(() => {
 		isOffline = !navigator.onLine;
@@ -98,14 +106,49 @@
 		if (s === 'saved') setTimeout(() => (saveStatus = 'idle'), 2000);
 	}
 
+	// ── Schedule transit recompute after timing change ───────────────
+	function scheduleTransitRecompute() {
+		if (!hasTransitSegments) return;
+		clearTimeout(recomputeTimer);
+		recomputeTimer = setTimeout(() => {
+			showRecomputeConfirm = true;
+		}, 2000);
+	}
+
+	async function confirmRecomputeTransit() {
+		showRecomputeConfirm = false;
+		isRecomputing = true;
+		showStatus('saving');
+		await postAction('recomputeTransit', {});
+		isRecomputing = false;
+		showStatus('saved');
+	}
+
+	function dismissRecompute() {
+		showRecomputeConfirm = false;
+	}
+
 	// ── auto-save journey fields ────────────────────────────────────
 	function scheduleSave(fields: Record<string, string>) {
 		clearTimeout(saveTimer);
 		showStatus('saving');
-		saveTimer = setTimeout(async () => { await postAction('updateJourney', fields); showStatus('saved'); }, 1500);
+		saveTimer = setTimeout(async () => {
+			await postAction('updateJourney', fields);
+			showStatus('saved');
+		}, 1500);
 	}
-	function saveTitle() { editingTitle = false; if (titleInput !== journey.title) scheduleSave({ title: titleInput }); }
-	function updateStartDatetime(e: Event) { const v = (e.target as HTMLInputElement).value; startDatetime = v; scheduleSave({ startDatetime: v }); }
+
+	function saveTitle() {
+		editingTitle = false;
+		if (titleInput !== journey.title) scheduleSave({ title: titleInput });
+	}
+
+	function updateStartDatetime(e: Event) {
+		const v = (e.target as HTMLInputElement).value;
+		startDatetime = v;
+		scheduleSave({ startDatetime: v });
+		scheduleTransitRecompute();
+	}
 
 	// ── drag-to-reorder ─────────────────────────────────────────────
 	function handleDndConsider(e: CustomEvent<{ items: (Stop & { id: number })[] }>) { dndItems = e.detail.items; }
@@ -137,6 +180,11 @@
 		if (update.notes !== undefined) fields.notes = update.notes ?? '';
 		await postAction('updateStop', fields);
 		showStatus('saved');
+
+		// If stay time changed and there are transit segments, offer to recompute
+		if (update.stayDurationMinutes !== undefined) {
+			scheduleTransitRecompute();
+		}
 	}
 
 	async function deleteStop(stopId: number) { showStatus('saving'); await postAction('deleteStop', { stopId: String(stopId) }); showStatus('saved'); }
@@ -251,3 +299,28 @@
 <TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
 
 <WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+
+<!-- Transit recompute confirmation modal -->
+{#if showRecomputeConfirm}
+	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4" onclick={dismissRecompute}>
+		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-sm w-full p-5" onclick={(e) => e.stopPropagation()}>
+			<div class="flex items-center gap-3 mb-3">
+				<span class="text-2xl">🚆</span>
+				<h3 class="font-bold text-base">Update Öffi connections?</h3>
+			</div>
+			<p class="text-sm text-base-content/60 mb-4">
+				You changed the timing of your journey. Want to search for new Öffi connections that match the updated schedule?
+			</p>
+			<div class="flex gap-2 justify-end">
+				<button class="btn btn-ghost btn-sm" onclick={dismissRecompute}>Keep current</button>
+				<button class="btn btn-primary btn-sm" onclick={confirmRecomputeTransit} disabled={isRecomputing}>
+					{#if isRecomputing}
+						<span class="loading loading-spinner loading-xs"></span>
+					{:else}
+						Update connections
+					{/if}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

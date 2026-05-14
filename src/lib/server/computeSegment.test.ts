@@ -115,7 +115,7 @@ describe('computeSegment', () => {
         const { computeSegment } = await import('./computeSegment');
         const r = await computeSegment(stopA, stopB, 1, 'transit');
 
-        expect(r.transitSummary).toBe('S 8');
+        expect(r.transitSummary).toBe('S8');
         expect(r.transfers).toBe(0);
         expect(r.walkToStationMin).toBe(8);
         expect(r.walkFromStationMin).toBe(5);

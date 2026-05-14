@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Segment, TransitLeg } from '$lib/types';
-	import { formatDuration } from '$lib/helpers';
+	import { formatDuration, formatDistance } from '$lib/helpers';
 
 	interface Props {
 		open: boolean;
@@ -15,18 +15,50 @@
 	const walkTo = $derived(segment?.walkToStationMin ?? 0);
 	const walkFrom = $derived(segment?.walkFromStationMin ?? 0);
 
+	// Filter out 0-minute walks between the same station (transfer placeholders)
+	const visibleLegs = $derived(
+		legs.filter((leg) => {
+			if (leg.type === 'walking' && leg.durationMinutes <= 0) return false;
+			return true;
+		})
+	);
+
+	// Clean line label: avoid "Bus Bus RE5" → just "Bus RE5"
+	function lineLabel(leg: TransitLeg): string {
+		const p = leg.product ?? '';
+		const n = leg.lineName ?? '';
+		if (n && p && n.toLowerCase().startsWith(p.toLowerCase())) return n;
+		if (p && n) return `${p}${n}`;
+		return n || p || 'Öffi';
+	}
+
+	// Walking legs: show meters if available, otherwise minutes
+	function walkLabel(leg: TransitLeg): string {
+		if (leg.distanceM && leg.distanceM > 0) return formatDistance(leg.distanceM);
+		if (leg.durationMinutes > 0) return `~${formatDuration(leg.durationMinutes)}`;
+		return '';
+	}
+
 	function fmtTime(iso?: string) {
 		if (!iso) return '';
 		return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+	}
+
+	// Compute waiting time between legs
+	function waitBefore(index: number): number {
+		if (index <= 0) return 0;
+		const prev = visibleLegs[index - 1];
+		const curr = visibleLegs[index];
+		if (!prev?.arrival || !curr?.departure) return 0;
+		const diff = (new Date(curr.departure).getTime() - new Date(prev.arrival).getTime()) / 60000;
+		return Math.max(0, Math.round(diff));
 	}
 
 	function close() { open = false; onclose?.(); }
 </script>
 
 {#if open && segment}
-	<!-- backdrop -->
 	<div class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50" onclick={close}>
-		<!-- modal -->
 		<div
 			class="bg-base-100 w-full max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-slide-up"
 			onclick={(e) => e.stopPropagation()}
@@ -34,12 +66,19 @@
 			<!-- header -->
 			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
 				<div>
-					<h3 class="font-bold text-base">Transit Details</h3>
-					<p class="text-xs text-base-content/50">
-						{segment.transitSummary ?? 'Connection'} ·
+					<h3 class="font-bold text-base">🚆 Öffi Details</h3>
+					<p class="text-xs text-base-content/50 mt-0.5">
 						{formatDuration(segment.travelDurationMinutes ?? 0)} total ·
-						{transfers} {transfers === 1 ? 'transfer' : 'transfers'}
+						{transfers} {transfers === 1 ? 'Umstieg' : 'Umstiege'}
 					</p>
+					<!-- clean summary chips -->
+					{#if segment.transitSummary}
+						<div class="flex flex-wrap gap-1 mt-1.5">
+							{#each (segment.transitSummary ?? '').split(' → ') as line}
+								<span class="badge badge-sm badge-primary">{line}</span>
+							{/each}
+						</div>
+					{/if}
 				</div>
 				<button class="btn btn-ghost btn-sm btn-circle" onclick={close}>✕</button>
 			</div>
@@ -54,14 +93,28 @@
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
 						<div class="pt-1">
-							<p class="text-sm font-medium">Walk to station</p>
-							<p class="text-xs text-base-content/50">~{formatDuration(walkTo)}</p>
+							<p class="text-sm font-medium text-base-content/70">Walk to station</p>
+							<p class="text-xs text-base-content/40">~{formatDuration(walkTo)}</p>
 						</div>
 					</div>
 				{/if}
 
 				<!-- legs -->
-				{#each legs as leg, i}
+				{#each visibleLegs as leg, i}
+					{@const wait = waitBefore(i)}
+
+					<!-- waiting time between legs -->
+					{#if wait > 1 && leg.type === 'transport'}
+						<div class="flex gap-3 items-start pb-2">
+							<div class="flex flex-col items-center">
+								<div class="w-0.5 h-full bg-base-300"></div>
+							</div>
+							<div class="flex items-center gap-1.5 py-0.5">
+								<span class="text-[10px] text-base-content/30">⏱ {formatDuration(wait)} wait</span>
+							</div>
+						</div>
+					{/if}
+
 					<div class="flex gap-3 items-start pb-3">
 						<div class="flex flex-col items-center">
 							{#if leg.type === 'walking'}
@@ -71,20 +124,23 @@
 									{leg.product ?? '🚆'}
 								</div>
 							{/if}
-							{#if i < legs.length - 1}
+							{#if i < visibleLegs.length - 1}
 								<div class="w-0.5 flex-1 mt-1" class:bg-primary={leg.type === 'transport'} class:bg-base-300={leg.type === 'walking'}></div>
 							{/if}
 						</div>
 
 						<div class="flex-1 min-w-0 pt-0.5">
 							{#if leg.type === 'walking'}
-								<p class="text-sm text-base-content/60">Walk · {formatDuration(leg.durationMinutes)}</p>
-								{#if leg.departureStation && leg.arrivalStation}
+								<p class="text-sm text-base-content/60">
+									Walk · {walkLabel(leg)}
+								</p>
+								{#if leg.departureStation && leg.arrivalStation && leg.departureStation !== leg.arrivalStation}
 									<p class="text-xs text-base-content/40 truncate">{leg.departureStation} → {leg.arrivalStation}</p>
 								{/if}
 							{:else}
-								<div class="flex items-center gap-2">
-									<span class="badge badge-sm badge-primary font-mono">{leg.lineName}</span>
+								<!-- line badge + direction -->
+								<div class="flex items-center gap-2 flex-wrap">
+									<span class="badge badge-sm badge-primary font-mono">{lineLabel(leg)}</span>
 									{#if leg.direction}
 										<span class="text-xs text-base-content/40 truncate">→ {leg.direction}</span>
 									{/if}
@@ -92,10 +148,10 @@
 
 								<!-- departure -->
 								<div class="mt-1.5 flex items-center gap-2 text-sm">
-									<span class="font-mono font-semibold text-sm">{fmtTime(leg.departure)}</span>
+									<span class="font-mono font-semibold">{fmtTime(leg.departure)}</span>
 									<span class="truncate">{leg.departureStation}</span>
 									{#if leg.platform}
-										<span class="badge badge-xs badge-outline">Gl. {leg.platform}</span>
+										<span class="badge badge-xs badge-outline shrink-0">Gl. {leg.platform}</span>
 									{/if}
 								</div>
 
@@ -106,7 +162,7 @@
 
 								<!-- arrival -->
 								<div class="flex items-center gap-2 text-sm">
-									<span class="font-mono font-semibold text-sm">{fmtTime(leg.arrival)}</span>
+									<span class="font-mono font-semibold">{fmtTime(leg.arrival)}</span>
 									<span class="truncate">{leg.arrivalStation}</span>
 								</div>
 							{/if}
@@ -121,14 +177,14 @@
 							<div class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center text-sm">🚶</div>
 						</div>
 						<div class="pt-1">
-							<p class="text-sm font-medium">Walk from station</p>
-							<p class="text-xs text-base-content/50">~{formatDuration(walkFrom)}</p>
+							<p class="text-sm font-medium text-base-content/70">Walk from station</p>
+							<p class="text-xs text-base-content/40">~{formatDuration(walkFrom)}</p>
 						</div>
 					</div>
 				{/if}
 
-				{#if legs.length === 0}
-					<p class="text-sm text-base-content/50 text-center py-6">No detailed leg data available for this connection.</p>
+				{#if visibleLegs.length === 0}
+					<p class="text-sm text-base-content/50 text-center py-6">No detailed connection data available.</p>
 				{/if}
 			</div>
 		</div>

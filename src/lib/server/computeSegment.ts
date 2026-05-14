@@ -245,12 +245,17 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
                 arrival: arr,
                 departureStation: l.origin?.name,
                 arrivalStation: l.destination?.name,
-                durationMinutes: Math.round(durMin)
+                durationMinutes: Math.round(durMin),
+                distanceM: l.distance ?? undefined
             };
         }
 
         const productName = l.line?.productName ?? l.line?.product ?? '';
-        const lineName = l.line?.name ?? l.line?.fahrtNr ?? '';
+        const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? '';
+        // Avoid duplicates like "Bus Bus RE5" — if line name already contains the product, just use the line name
+        const lineName = rawLineName.toLowerCase().startsWith(productName.toLowerCase())
+            ? rawLineName
+            : rawLineName;
 
         return {
             type: 'transport' as const,
@@ -266,12 +271,16 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         };
     });
 
-    // Summary: line names of transport legs  "S8 → RE3 → Bus 200"
+    // Summary: clean line names, deduplicated
     const transportLegs = legs.filter((l) => l.type === 'transport');
     const lineNames = transportLegs.map((l) => {
         const p = l.product ?? '';
         const n = l.lineName ?? '';
-        return p && n ? `${p} ${n}`.trim() : n || p || 'Öffi';
+        // If line name already contains the product (e.g. "Bus RE5" with product "Bus"), just use line name
+        if (n && p && n.toLowerCase().startsWith(p.toLowerCase())) return n;
+        // If they're different (e.g. product "S", name "8"), combine
+        if (p && n) return `${p}${n}`;
+        return n || p || 'Öffi';
     });
     const summary = lineNames.length ? lineNames.join(' → ') : 'Öffi';
     const transfers = Math.max(0, transportLegs.length - 1);

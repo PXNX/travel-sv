@@ -92,6 +92,7 @@ export interface TransitLeg {
     departureStation?: string;
     arrivalStation?: string;
     durationMinutes: number;
+    distanceM?: number;
     platform?: string;
 }
 

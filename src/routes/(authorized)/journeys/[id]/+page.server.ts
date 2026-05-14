@@ -249,5 +249,32 @@ export const actions = {
             .where(eq(journeys.id, id));
 
         return await fullPayload(id);
+    },
+
+    /* ── recompute only transit segments (after stay-time / start-time change) ─ */
+    recomputeTransit: async ({ params, locals }) => {
+        const id = journeyId(params);
+        await ownedJourney(id, locals.user!.id);
+
+        // Fetch current transit segments
+        const transitSegs = await db
+            .select()
+            .from(segments)
+            .where(and(eq(segments.journeyId, id), eq(segments.mode, 'transit')));
+
+        // Recompute each transit segment
+        for (const seg of transitSegs) {
+            const [fromS] = await db.select().from(stops).where(eq(stops.id, seg.fromStopId));
+            const [toS] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
+            if (fromS && toS) {
+                try {
+                    await computeSegment(fromS as Stop, toS as Stop, id, 'transit');
+                } catch (err) {
+                    console.error(`recomputeTransit seg ${seg.id} failed:`, err);
+                }
+            }
+        }
+
+        return await fullPayload(id);
     }
 } satisfies Actions;
