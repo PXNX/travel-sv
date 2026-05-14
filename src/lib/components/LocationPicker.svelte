@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getCachedNominatimResults, cacheNominatimResults } from '$lib/db/local';
+	import { addTileLayers } from '$lib/map';
 
 	interface Props {
 		open: boolean;
@@ -88,9 +89,7 @@
 		await import('leaflet/dist/leaflet.css');
 
 		leafletMap = L.map(mapContainer).setView([initialLat, initialLon], 13);
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '&copy; OpenStreetMap contributors'
-		}).addTo(leafletMap as L.Map);
+		await addTileLayers(leafletMap as L.Map);
 
 		marker = L.marker([initialLat, initialLon]).addTo(leafletMap as L.Map);
 

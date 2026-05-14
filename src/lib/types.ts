@@ -91,9 +91,14 @@ export interface TransitLeg {
     arrival?: string;
     departureStation?: string;
     arrivalStation?: string;
+    departureLat?: number;
+    departureLon?: number;
+    arrivalLat?: number;
+    arrivalLon?: number;
     durationMinutes: number;
     distanceM?: number;
     platform?: string;
+    polyline?: [number, number][];
 }
 
 export interface Segment {
@@ -113,6 +118,7 @@ export interface Segment {
     transfers?: number | null;
     walkGeometry?: [number, number][] | null;
     driveGeometry?: [number, number][] | null;
+    transitGeometry?: { coords: [number, number][]; mode: string; lineName?: string; product?: string }[] | null;
 }
 
 export interface JourneyWithDerived extends Journey {

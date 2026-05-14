@@ -12,6 +12,13 @@ function isInGermany(lat: number, lon: number): boolean {
     return lat >= DE_LAT_MIN && lat <= DE_LAT_MAX && lon >= DE_LON_MIN && lon <= DE_LON_MAX;
 }
 
+interface TransitGeoLeg {
+    coords: [number, number][];
+    mode: string;
+    lineName?: string;
+    product?: string;
+}
+
 interface ComputeResult {
     distanceM: number;
     elevationUpM: number;
@@ -24,6 +31,7 @@ interface ComputeResult {
     transfers: number | null;
     walkGeometry: [number, number][] | null;
     driveGeometry: [number, number][] | null;
+    transitGeometry: TransitGeoLeg[] | null;
 }
 
 export async function computeSegment(
@@ -43,7 +51,8 @@ export async function computeSegment(
         walkFromStationMin: null,
         transfers: null,
         walkGeometry: null,
-        driveGeometry: null
+        driveGeometry: null,
+        transitGeometry: null
     };
 
     if (mode === 'walk') {
@@ -69,7 +78,7 @@ export async function computeSegment(
         result.walkToStationMin = transit.walkToStationMin;
         result.walkFromStationMin = transit.walkFromStationMin;
         result.transfers = transit.transfers;
-        // no distance for transit – duration is what matters
+        result.transitGeometry = transit.geometry;
     }
 
     // Upsert in DB
@@ -91,7 +100,8 @@ export async function computeSegment(
         walkFromStationMin: result.walkFromStationMin,
         transfers: result.transfers,
         walkGeometry: result.walkGeometry ? JSON.stringify(result.walkGeometry) : null,
-        driveGeometry: result.driveGeometry ? JSON.stringify(result.driveGeometry) : null
+        driveGeometry: result.driveGeometry ? JSON.stringify(result.driveGeometry) : null,
+        transitGeometry: result.transitGeometry ? JSON.stringify(result.transitGeometry) : null
     };
 
     if (existing.length > 0) {
@@ -151,6 +161,7 @@ interface TransitResult {
     walkToStationMin: number;
     walkFromStationMin: number;
     transfers: number;
+    geometry: TransitGeoLeg[];
 }
 
 async function computeTransit(from: Stop, to: Stop): Promise<TransitResult> {
@@ -171,7 +182,8 @@ async function computeTransit(from: Stop, to: Stop): Promise<TransitResult> {
         legs: [],
         walkToStationMin: 0,
         walkFromStationMin: 0,
-        transfers: 0
+        transfers: 0,
+        geometry: [{ coords: [[from.lat, from.lon], [to.lat, to.lon]], mode: 'transit' }]
     };
 }
 
@@ -206,7 +218,8 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         tram: 'true',
         regional: 'true',
         regionalExpress: 'true',
-        stopovers: 'false',
+        stopovers: 'true',
+        polylines: 'true',
         language: 'en'
     });
 
@@ -232,44 +245,72 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
     const j = data.journeys[0];
     const rawLegs: any[] = j.legs ?? [];
 
-    // Parse every leg into our TransitLeg type
-    const legs: TransitLeg[] = rawLegs.map((l: any) => {
+    // Parse legs + build geometry
+    const legs: TransitLeg[] = [];
+    const geometry: TransitGeoLeg[] = [];
+
+    for (const l of rawLegs) {
         const dep = l.departure ?? l.plannedDeparture;
         const arr = l.arrival ?? l.plannedArrival;
         const durMin = dep && arr ? (new Date(arr).getTime() - new Date(dep).getTime()) / 60000 : 0;
 
-        if (l.walking) {
-            return {
-                type: 'walking' as const,
-                departure: dep,
-                arrival: arr,
-                departureStation: l.origin?.name,
-                arrivalStation: l.destination?.name,
-                durationMinutes: Math.round(durMin),
-                distanceM: l.distance ?? undefined
-            };
+        const originLat = l.origin?.location?.latitude;
+        const originLon = l.origin?.location?.longitude;
+        const destLat = l.destination?.location?.latitude;
+        const destLon = l.destination?.location?.longitude;
+
+        // Build polyline from stopovers or origin/destination
+        let legCoords: [number, number][] = [];
+        if (l.stopovers?.length) {
+            for (const s of l.stopovers) {
+                const lat = s.stop?.location?.latitude;
+                const lon = s.stop?.location?.longitude;
+                if (lat && lon) legCoords.push([lat, lon]);
+            }
+        }
+        if (legCoords.length < 2 && originLat && originLon && destLat && destLon) {
+            legCoords = [[originLat, originLon], [destLat, destLon]];
         }
 
-        const productName = l.line?.productName ?? l.line?.product ?? '';
-        const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? '';
-        // Avoid duplicates like "Bus Bus RE5" — if line name already contains the product, just use the line name
-        const lineName = rawLineName.toLowerCase().startsWith(productName.toLowerCase())
-            ? rawLineName
-            : rawLineName;
+        if (l.walking) {
+            legs.push({
+                type: 'walking',
+                departure: dep, arrival: arr,
+                departureStation: l.origin?.name,
+                arrivalStation: l.destination?.name,
+                departureLat: originLat, departureLon: originLon,
+                arrivalLat: destLat, arrivalLon: destLon,
+                durationMinutes: Math.round(durMin),
+                distanceM: l.distance ?? undefined,
+                polyline: legCoords.length >= 2 ? legCoords : undefined
+            });
+            if (legCoords.length >= 2) {
+                geometry.push({ coords: legCoords, mode: 'walking' });
+            }
+        } else {
+            const productName = l.line?.productName ?? l.line?.product ?? '';
+            const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? '';
+            const lineName = rawLineName.toLowerCase().startsWith(productName.toLowerCase())
+                ? rawLineName : rawLineName;
 
-        return {
-            type: 'transport' as const,
-            lineName,
-            product: productName,
-            direction: l.direction ?? '',
-            departure: dep,
-            arrival: arr,
-            departureStation: l.origin?.name ?? '',
-            arrivalStation: l.destination?.name ?? '',
-            durationMinutes: Math.round(durMin),
-            platform: l.departurePlatform ?? l.plannedDeparturePlatform ?? undefined
-        };
-    });
+            legs.push({
+                type: 'transport',
+                lineName, product: productName,
+                direction: l.direction ?? '',
+                departure: dep, arrival: arr,
+                departureStation: l.origin?.name ?? '',
+                arrivalStation: l.destination?.name ?? '',
+                departureLat: originLat, departureLon: originLon,
+                arrivalLat: destLat, arrivalLon: destLon,
+                durationMinutes: Math.round(durMin),
+                platform: l.departurePlatform ?? l.plannedDeparturePlatform ?? undefined,
+                polyline: legCoords.length >= 2 ? legCoords : undefined
+            });
+            if (legCoords.length >= 2) {
+                geometry.push({ coords: legCoords, mode: 'transport', lineName: lineName || productName, product: productName });
+            }
+        }
+    }
 
     // Summary: clean line names, deduplicated
     const transportLegs = legs.filter((l) => l.type === 'transport');
@@ -330,7 +371,8 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         legs,
         walkToStationMin,
         walkFromStationMin,
-        transfers
+        transfers,
+        geometry
     };
 }
 

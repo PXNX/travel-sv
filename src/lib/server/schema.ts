@@ -80,5 +80,6 @@ export const segments = pgTable('segments', {
 	walkFromStationMin: doublePrecision('walk_from_station_min'),
 	transfers: integer('transfers'),
 	walkGeometry: text('walk_geometry'),
-	driveGeometry: text('drive_geometry')
+	driveGeometry: text('drive_geometry'),
+	transitGeometry: text('transit_geometry')
 });

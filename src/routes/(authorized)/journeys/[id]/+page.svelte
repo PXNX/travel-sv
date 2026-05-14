@@ -224,7 +224,7 @@
 <OfflineBanner />
 
 {#if showMap}
-	<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} />
+	<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
 {:else}
 	<div class="min-h-[100dvh] bg-base-100">
 		<header class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3">

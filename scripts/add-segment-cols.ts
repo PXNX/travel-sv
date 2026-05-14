@@ -8,5 +8,6 @@ await sql`ALTER TABLE segments ADD COLUMN IF NOT EXISTS walk_from_station_min do
 await sql`ALTER TABLE segments ADD COLUMN IF NOT EXISTS transfers integer`;
 await sql`ALTER TABLE segments ADD COLUMN IF NOT EXISTS walk_geometry text`;
 await sql`ALTER TABLE segments ADD COLUMN IF NOT EXISTS drive_geometry text`;
+await sql`ALTER TABLE segments ADD COLUMN IF NOT EXISTS transit_geometry text`;
 console.log('Added segment columns');
 await sql.end();

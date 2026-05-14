@@ -44,7 +44,8 @@ async function fullPayload(id: number) {
         ...s,
         transitLegs: s.transitLegs ? JSON.parse(s.transitLegs) : null,
         walkGeometry: s.walkGeometry ? JSON.parse(s.walkGeometry) : null,
-        driveGeometry: s.driveGeometry ? JSON.parse(s.driveGeometry) : null
+        driveGeometry: s.driveGeometry ? JSON.parse(s.driveGeometry) : null,
+        transitGeometry: s.transitGeometry ? JSON.parse(s.transitGeometry) : null
     }));
 
     return {

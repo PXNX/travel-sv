@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Segment } from '$lib/types';
 	import { formatDistance, formatDuration } from '$lib/helpers';
+	import { addTileLayers } from '$lib/map';
 
 	interface Props {
 		open: boolean;
@@ -47,10 +48,7 @@
 		await import('leaflet/dist/leaflet.css');
 
 		leafletMap = L.map(mapEl, { zoomControl: true, attributionControl: false });
-
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '© OSM'
-		}).addTo(leafletMap);
+		await addTileLayers(leafletMap);
 
 		const line = L.polyline(coords as L.LatLngExpression[], {
 			color: lineColor,
