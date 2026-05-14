@@ -29,4 +29,22 @@
 	.animate-slide-up {
 		animation: slide-up 0.3s ease-out;
 	}
-}
+
+	/* T64 — Minimum 44x44px touch targets */
+	.btn-xs {
+		min-height: 44px;
+		min-width: 44px;
+	}
+
+	@media (pointer: coarse) {
+		.btn {
+			min-height: 44px;
+			min-width: 44px;
+		}
+	}
+
+	/* T65 — Use dvh for mobile browser chrome */
+	.min-h-screen {
+		min-height: 100dvh;
+	}
+	}

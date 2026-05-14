@@ -1,84 +1,105 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
 
-// Create a unique cache name for this deployment
 const CACHE = `cache-${version}`;
+const TILE_CACHE = 'map-tiles-v1';
+const TILE_LRU_CAP = 500;
 
-const ASSETS = [
-	...build, // the app itself
-	...files // everything in `static`
-];
+const ASSETS = [...build, ...files];
 
+// T05 — Install: cache app shell (cache-first)
 self.addEventListener('install', (event) => {
-	// Create a new cache and add all files to it
-	async function addFilesToCache() {
-		const cache = await caches.open(CACHE);
-		await cache.addAll(ASSETS);
-	}
-
-	event.waitUntil(addFilesToCache());
+	event.waitUntil(
+		caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
+	);
 });
 
+// Activate: clean old caches
 self.addEventListener('activate', (event) => {
-	// Remove previous cached data from disk
-	async function deleteOldCaches() {
-		for (const key of await caches.keys()) {
-			if (key !== CACHE) {
-				await caches.delete(key);
-			}
-		}
-	}
-
-	event.waitUntil(deleteOldCaches());
+	event.waitUntil(
+		caches.keys().then((keys) =>
+			Promise.all(
+				keys
+					.filter((key) => key !== CACHE && key !== TILE_CACHE)
+					.map((key) => caches.delete(key))
+			)
+		)
+	);
 });
 
+// T05 — Fetch handler with strategy per request type
 self.addEventListener('fetch', (event) => {
-	// ignore POST requests etc
-	if (event.request.method !== 'GET') {
+	if (event.request.method !== 'GET') return;
+
+	const url = new URL(event.request.url);
+
+	// Map tiles: cache-first with LRU cap
+	if (isTileRequest(url)) {
+		event.respondWith(handleTileRequest(event.request));
 		return;
 	}
 
-	async function respond() {
-		const url = new URL(event.request.url);
-		const cache = await caches.open(CACHE);
-
-		// `build`/`files` can always be served from the cache
-		if (ASSETS.includes(url.pathname)) {
-			const response = await cache.match(url.pathname);
-
-			if (response) {
-				return response;
-			}
-		}
-
-		// for everything else, try the network first, but
-		// fall back to the cache if we're offline
-		try {
-			const response = await fetch(event.request);
-
-			// if we're offline, fetch can return a value that is not a Response
-			// instead of throwing - and we can't pass this non-Response to respondWith
-			if (!(response instanceof Response)) {
-				throw new Error('invalid response from fetch');
-			}
-
-			if (response.status === 200) {
-				cache.put(event.request, response.clone());
-			}
-
-			return response;
-		} catch (err) {
-			const response = await cache.match(event.request);
-
-			if (response) {
-				return response;
-			}
-
-			// if there's no cache, then just error out
-			// as there is nothing we can do to respond to this request
-			throw err;
-		}
+	// App shell assets: cache-first
+	if (ASSETS.includes(url.pathname)) {
+		event.respondWith(
+			caches.open(CACHE).then((cache) =>
+				cache.match(url.pathname).then((cached) => cached || fetch(event.request))
+			)
+		);
+		return;
 	}
 
-	event.respondWith(respond());
+	// Journey data (/api/journeys*): network-first with IndexedDB fallback handled client-side
+	// Other navigations/API: network-first with cache fallback
+	event.respondWith(networkFirst(event.request));
 });
+
+function isTileRequest(url) {
+	return (
+		url.hostname.includes('tile.openstreetmap.org') ||
+		url.hostname.includes('tiles.') ||
+		url.pathname.match(/\/\d+\/\d+\/\d+\.png$/)
+	);
+}
+
+async function handleTileRequest(request) {
+	const cache = await caches.open(TILE_CACHE);
+	const cached = await cache.match(request);
+	if (cached) return cached;
+
+	try {
+		const response = await fetch(request);
+		if (response.ok) {
+			await enforceTileLRU(cache);
+			await cache.put(request, response.clone());
+		}
+		return response;
+	} catch {
+		return new Response('', { status: 408, statusText: 'Offline' });
+	}
+}
+
+async function enforceTileLRU(cache) {
+	const keys = await cache.keys();
+	if (keys.length >= TILE_LRU_CAP) {
+		const toDelete = keys.length - TILE_LRU_CAP + 1;
+		for (let i = 0; i < toDelete; i++) {
+			await cache.delete(keys[i]);
+		}
+	}
+}
+
+async function networkFirst(request) {
+	const cache = await caches.open(CACHE);
+	try {
+		const response = await fetch(request);
+		if (response.ok && response.status === 200) {
+			cache.put(request, response.clone());
+		}
+		return response;
+	} catch {
+		const cached = await cache.match(request);
+		if (cached) return cached;
+		throw new Error('Offline and no cache available');
+	}
+}
