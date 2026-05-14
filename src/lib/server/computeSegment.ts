@@ -259,15 +259,32 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         const destLat = l.destination?.location?.latitude;
         const destLon = l.destination?.location?.longitude;
 
-        // Build polyline from stopovers or origin/destination
         let legCoords: [number, number][] = [];
-        if (l.stopovers?.length) {
+
+        // 1. GeoJSON FeatureCollection polyline (v6.db.transport.rest format)
+        if (l.polyline?.features?.length) {
+            for (const f of l.polyline.features) {
+                const g = f.geometry;
+                if (g?.type === 'Point' && g.coordinates) {
+                    legCoords.push([g.coordinates[1], g.coordinates[0]]);
+                } else if (g?.type === 'LineString' && g.coordinates) {
+                    for (const c of g.coordinates) legCoords.push([c[1], c[0]]);
+                }
+            }
+        }
+        // 2. Encoded polyline string (Google format)
+        if (legCoords.length < 2 && typeof l.polyline === 'string') {
+            legCoords = decodePolyline(l.polyline);
+        }
+        // 3. Stopovers
+        if (legCoords.length < 2 && l.stopovers?.length) {
             for (const s of l.stopovers) {
                 const lat = s.stop?.location?.latitude;
                 const lon = s.stop?.location?.longitude;
                 if (lat && lon) legCoords.push([lat, lon]);
             }
         }
+        // 4. Origin/destination fallback
         if (legCoords.length < 2 && originLat && originLon && destLat && destLon) {
             legCoords = [[originLat, originLon], [destLat, destLon]];
         }
@@ -428,6 +445,22 @@ async function computeElevation(from: Stop, to: Stop): Promise<{ up: number; dow
         }
     } catch { /* ignore */ }
     return { up: 0, down: 0 };
+}
+
+// Decode Google encoded polyline → [lat, lon][]
+function decodePolyline(encoded: string): [number, number][] {
+    const points: [number, number][] = [];
+    let i = 0, lat = 0, lon = 0;
+    while (i < encoded.length) {
+        let shift = 0, result = 0, byte: number;
+        do { byte = encoded.charCodeAt(i++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { byte = encoded.charCodeAt(i++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+        lon += (result & 1) ? ~(result >> 1) : (result >> 1);
+        points.push([lat / 1e5, lon / 1e5]);
+    }
+    return points;
 }
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
