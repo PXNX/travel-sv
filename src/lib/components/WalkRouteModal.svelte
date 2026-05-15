@@ -158,13 +158,18 @@
 </script>
 
 {#if browser && open && segment && geometry?.length}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50"
+		role="dialog" aria-modal="true" aria-label="Route details" tabindex="-1"
 		onclick={close}
+		onkeydown={(e) => e.key === 'Escape' && close()}
 	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="bg-base-100 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[90dvh] animate-slide-up"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={() => {}}
 		>
 			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
 				<div>

@@ -189,13 +189,18 @@
 </script>
 
 {#if open && segment}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50"
+		role="dialog" aria-modal="true" aria-label="Transit details" tabindex="-1"
 		onclick={close}
+		onkeydown={(e) => e.key === 'Escape' && close()}
 	>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="bg-base-100 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-slide-up"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={() => {}}
 		>
 			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
 				<div>
@@ -223,9 +228,12 @@
 
 			<div class="overflow-y-auto flex-1 px-5 py-4">
 				{#if walkTo > 0}
-					<div
+					<svelte:element
+						this={walkToClickable ? 'button' : 'div'}
+						type={walkToClickable ? 'button' : undefined}
 						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkToClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
 						onclick={walkToClickable ? handleWalkToClick : undefined}
+						onkeydown={walkToClickable ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkToClick() : undefined}
 					>
 						<div class="flex flex-col items-center">
 							<div
@@ -242,8 +250,8 @@
 						{#if walkToClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
 						{/if}
-					</div>
-				{/if}
+						</svelte:element>
+						{/if}
 
 				{#each visibleLegs as leg, i}
 					{@const wait = waitBefore(i)}
@@ -265,10 +273,13 @@
 
 					{@const color = leg.type === 'transport' ? productColor(leg.product) : ''}
 					{@const clickableWalk = leg.type === 'walking' && isWalkingLegClickable(leg)}
-					<div
+					<svelte:element
+						this={clickableWalk ? 'button' : 'div'}
+						type={clickableWalk ? 'button' : undefined}
 						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {clickableWalk ? 'cursor-pointer hover:bg-base-200/60' : ''}"
 						style={active ? `background: ${color || 'oklch(var(--p))'}15; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;` : ''}
 						onclick={clickableWalk ? () => handleWalkingLegClick(leg) : undefined}
+						onkeydown={clickableWalk ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkingLegClick(leg) : undefined}
 					>
 						<div class="flex flex-col items-center">
 							{#if leg.type === 'walking'}
@@ -351,13 +362,16 @@
 						{#if clickableWalk}
 							<span class="text-[10px] text-primary self-center opacity-60 shrink-0">map ›</span>
 						{/if}
-					</div>
+						</svelte:element>
 				{/each}
 
 				{#if walkFrom > 0}
-					<div
+					<svelte:element
+						this={walkFromClickable ? 'button' : 'div'}
+						type={walkFromClickable ? 'button' : undefined}
 						class="flex gap-3 items-start rounded-lg transition-colors {walkFromActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkFromClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
 						onclick={walkFromClickable ? handleWalkFromClick : undefined}
+						onkeydown={walkFromClickable ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkFromClick() : undefined}
 					>
 						<div class="flex flex-col items-center">
 							<div
@@ -377,8 +391,8 @@
 						{#if walkFromClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
 						{/if}
-					</div>
-				{/if}
+						</svelte:element>
+						{/if}
 
 				{#if visibleLegs.length === 0}
 					<p class="text-sm text-base-content/50 text-center py-6">

@@ -136,18 +136,18 @@
 			<p class="mb-4 text-sm text-base-content/70">{journey.description}</p>
 		{/if}
 
+		{#if sortedStops.length > 0 || (startTime && endTime && totalDurationMin != null)}
+	<div class="mb-4 overflow-hidden rounded-xl border border-base-300">
 		{#if sortedStops.length > 0}
-			<div class="mb-4 overflow-hidden rounded-xl border border-base-300 pointer-events-none select-none" aria-hidden="true">
-				<div class="h-40">
-					{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
-						<MiniMap coords={sortedStops.map(s => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
-					{/await}
-				</div>
+			<div class="h-40 pointer-events-none select-none" aria-hidden="true">
+				{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
+					<MiniMap coords={sortedStops.map(s => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
+				{/await}
 			</div>
 		{/if}
 
 		{#if startTime && endTime && totalDurationMin != null}
-			<div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-base-300 bg-base-200/50 px-4 py-2.5 text-sm">
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-base-200/50 px-4 py-2.5 text-sm">
 				<span class="flex items-center gap-1.5 text-base-content/70">
 					<IconClock class="h-4 w-4 shrink-0" />
 					{fmtTime(startTime)} – {fmtTime(endTime)}
@@ -166,6 +166,8 @@
 				{/if}
 			</div>
 		{/if}
+	</div>
+{/if}
 
 		{#each sortedStops as stop, i (stop.id)}
 			{#if i > 0}

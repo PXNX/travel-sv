@@ -24,8 +24,11 @@
 	let searchResults = $state<{ display_name: string; lat: string; lon: string }[]>([]);
 	let isSearching = $state(false);
 
-	let selectedLat = $state(initialLat);
-	let selectedLon = $state(initialLon);
+	let selectedLat = $state(50);
+	let selectedLon = $state(8);
+
+	$effect.pre(() => { selectedLat = initialLat; });
+	$effect.pre(() => { selectedLon = initialLon; });
 
 	let debounceTimer: ReturnType<typeof setTimeout>;
 

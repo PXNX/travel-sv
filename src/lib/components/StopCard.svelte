@@ -20,10 +20,15 @@
 		$props();
 
 	let editingName = $state(false);
-	let nameInput = $state(stop.name);
-	let stayHours = $state(Math.floor((stop.stayDurationMinutes ?? 0) / 60));
-	let stayMinutes = $state((stop.stayDurationMinutes ?? 0) % 60);
-	let notes = $state(stop.notes ?? '');
+	let nameInput = $state('');
+	let stayHours = $state(0);
+	let stayMinutes = $state(0);
+	let notes = $state('');
+
+	$effect.pre(() => { nameInput = stop.name; });
+	$effect.pre(() => { stayHours = Math.floor((stop.stayDurationMinutes ?? 0) / 60); });
+	$effect.pre(() => { stayMinutes = (stop.stayDurationMinutes ?? 0) % 60; });
+	$effect.pre(() => { notes = stop.notes ?? ''; });
 	let confirmingDelete = $state(false);
 
 	function saveName() {
@@ -59,6 +64,10 @@
 		confirmingDelete = false;
 	}
 
+	function focusOnMount(node: HTMLElement) {
+		node.focus();
+	}
+
 	const arrivalFormatted = $derived(
 		arrivalTime
 			? arrivalTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -82,7 +91,7 @@
 						bind:value={nameInput}
 						onblur={saveName}
 						onkeydown={(e) => e.key === 'Enter' && saveName()}
-						autofocus
+						use:focusOnMount
 					/>
 				{:else}
 					<button class="font-semibold hover:underline text-left" onclick={() => (editingName = true)}>
@@ -150,7 +159,7 @@
 
 {#if confirmingDelete}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label="Confirm deletion" onclick={cancelDelete} onkeydown={(e) => e.key === 'Escape' && cancelDelete()}>
+	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label="Confirm deletion" tabindex="-1" onclick={cancelDelete} onkeydown={(e) => e.key === 'Escape' && cancelDelete()}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-xs w-full p-5 animate-fade-in-scale" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
 			<div class="flex items-center gap-3 mb-3">

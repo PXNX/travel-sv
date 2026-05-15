@@ -24,17 +24,20 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let journey = $state(data.journey);
-	let journeyStops = $state<Stop[]>(data.stops as Stop[]);
-	let journeySegments = $state<Segment[]>(data.segments as Segment[]);
+	let journey: typeof data.journey = $state(undefined!);
+	let journeyStops = $state<Stop[]>([]);
+	let journeySegments = $state<Segment[]>([]);
 
-	$effect(() => { journey = data.journey; });
-	$effect(() => { journeyStops = data.stops as Stop[]; });
-	$effect(() => { journeySegments = data.segments as Segment[]; });
+	$effect.pre(() => { journey = data.journey; });
+	$effect.pre(() => { journeyStops = data.stops as Stop[]; });
+	$effect.pre(() => { journeySegments = data.segments as Segment[]; });
 
 	let editingTitle = $state(false);
-	let titleInput = $state(data.journey.title);
-	let startDatetime = $state(data.journey.startDatetime ?? '');
+	let titleInput = $state('');
+	let startDatetime = $state('');
+
+	$effect.pre(() => { titleInput = data.journey.title; });
+	$effect.pre(() => { startDatetime = data.journey.startDatetime ?? ''; });
 
 	let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
 	let saveTimer: ReturnType<typeof setTimeout>;
@@ -356,8 +359,10 @@
 {/await}
 
 {#if showRecomputeConfirm}
-	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4" onclick={dismissRecompute}>
-		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-sm w-full p-5" onclick={(e) => e.stopPropagation()}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Update connections" tabindex="-1" onclick={dismissRecompute} onkeydown={(e) => e.key === 'Escape' && dismissRecompute()}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-sm w-full p-5" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
 			<div class="flex items-center gap-3 mb-3">
 				<IconTrain class="h-6 w-6 text-primary" />
 				<h3 class="font-bold text-base">Update Öffi connections?</h3>
