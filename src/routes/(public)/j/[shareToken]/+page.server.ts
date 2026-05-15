@@ -21,10 +21,18 @@ export const load: PageServerLoad = async ({ params }) => {
         .where(eq(stops.journeyId, journey.id))
         .orderBy(asc(stops.orderIndex));
 
-    const journeySegments = await db
+    const rawSegments = await db
         .select()
         .from(segments)
         .where(eq(segments.journeyId, journey.id));
+
+    const journeySegments = rawSegments.map((s) => ({
+        ...s,
+        transitLegs: s.transitLegs ? JSON.parse(s.transitLegs) : null,
+        walkGeometry: s.walkGeometry ? JSON.parse(s.walkGeometry) : null,
+        driveGeometry: s.driveGeometry ? JSON.parse(s.driveGeometry) : null,
+        transitGeometry: s.transitGeometry ? JSON.parse(s.transitGeometry) : null
+    }));
 
     return {
         journey: {
