@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Map, TileLayer, Polyline, CircleMarker } from 'sveaflet';
-	import type { Map as LeafletMap } from 'leaflet';
 	import { browser } from '$app/environment';
 
 	interface Props {
@@ -10,7 +9,7 @@
 
 	let { coords, class: className = '' }: Props = $props();
 
-	let mapInstance: LeafletMap | undefined = $state();
+	let mapInstance: L.Map | undefined = $state();
 
 	const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -38,13 +37,20 @@
 		return opts;
 	});
 
+	function toBounds(pts: [number, number][]): [[number, number], [number, number]] {
+		let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+		for (const [lat, lng] of pts) {
+			if (lat < minLat) minLat = lat;
+			if (lat > maxLat) maxLat = lat;
+			if (lng < minLng) minLng = lng;
+			if (lng > maxLng) maxLng = lng;
+		}
+		return [[minLat, minLng], [maxLat, maxLng]];
+	}
+
 	$effect(() => {
 		if (!browser || !mapInstance || points.length < 2) return;
-		const map = mapInstance;
-		const pts = points;
-		import('leaflet').then(({ latLngBounds }) => {
-			map.fitBounds(latLngBounds(pts), { padding: [10, 10] });
-		});
+		mapInstance.fitBounds(toBounds(points), { padding: [10, 10] });
 	});
 </script>
 

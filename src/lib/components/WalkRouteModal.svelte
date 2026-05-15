@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Map, TileLayer, Polyline, CircleMarker, Tooltip } from 'sveaflet';
-	import type { Map as LeafletMap } from 'leaflet';
 	import { browser } from '$app/environment';
 	import type { Segment } from '$lib/types';
 	import { formatDistance, formatDuration } from '$lib/helpers';
@@ -24,7 +23,7 @@
 		onclose
 	}: Props = $props();
 
-	let mapInstance: LeafletMap | undefined = $state();
+	let mapInstance: L.Map | undefined = $state();
 
 	const isWalk = $derived(segment?.mode === 'walk');
 	const isDrive = $derived(segment?.mode === 'drive');
@@ -47,13 +46,20 @@
 		attributionControl: false
 	});
 
+	function toBounds(pts: [number, number][]): [[number, number], [number, number]] {
+		let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+		for (const [lat, lng] of pts) {
+			if (lat < minLat) minLat = lat;
+			if (lat > maxLat) maxLat = lat;
+			if (lng < minLng) minLng = lng;
+			if (lng > maxLng) maxLng = lng;
+		}
+		return [[minLat, minLng], [maxLat, maxLng]];
+	}
+
 	$effect(() => {
 		if (!browser || !mapInstance || coords.length < 2) return;
-		const map = mapInstance;
-		const c = coords;
-		import('leaflet').then(({ latLngBounds }) => {
-			map.fitBounds(latLngBounds(c), { padding: [40, 40] });
-		});
+		mapInstance.fitBounds(toBounds(coords), { padding: [40, 40] });
 	});
 
 	function close() {

@@ -8,6 +8,7 @@
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
 	import ShareModal from '$lib/components/ShareModal.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
+	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
 
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
@@ -320,9 +321,7 @@
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-{#await import('$lib/components/TransitDetailModal.svelte') then { default: TransitDetailModal }}
-	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
-{/await}
+<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
 
 {#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />

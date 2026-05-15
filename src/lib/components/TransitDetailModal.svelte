@@ -1,7 +1,4 @@
 <script lang="ts">
-	import { Map, TileLayer, Polyline, CircleMarker } from 'sveaflet';
-	import type { Map as LeafletMap } from 'leaflet';
-	import { browser } from '$app/environment';
 	import type { Segment, TransitLeg } from '$lib/types';
 	import { formatDuration, formatDistance } from '$lib/helpers';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
@@ -17,8 +14,6 @@
 
 	let { open = $bindable(false), segment, onclose }: Props = $props();
 
-	let transitMapInstance: LeafletMap | undefined = $state();
-
 	const legs = $derived((segment?.transitLegs ?? []) as TransitLeg[]);
 	const transfers = $derived(segment?.transfers ?? 0);
 	const walkTo = $derived(segment?.walkToStationMin ?? 0);
@@ -30,72 +25,6 @@
 			return true;
 		})
 	);
-
-	const transitProductColors: Record<string, string> = {
-		S: '#008d4f',
-		RE: '#ec1c24',
-		RB: '#ec1c24',
-		Bus: '#a0158a',
-		STR: '#d6a100',
-		U: '#2e5ea8'
-	};
-
-	function productColor(product?: string): string {
-		if (!product) return '#3b82f6';
-		return transitProductColors[product] ?? '#3b82f6';
-	}
-
-	interface TransitPolylineData {
-		coords: [number, number][];
-		color: string;
-		dashed: boolean;
-	}
-
-	const mapRenderData = $derived.by(() => {
-		const polylines: TransitPolylineData[] = [];
-		const allBounds: [number, number][] = [];
-		const transferPts: [number, number][] = [];
-		const geo = segment?.transitGeometry;
-		if (!geo?.length) return { polylines, allBounds, transferPts, hasData: false };
-
-		for (const geoLeg of geo) {
-			if (geoLeg.coords.length < 2) continue;
-			const dashed = geoLeg.mode === 'walking';
-			const color = dashed ? '#94a3b8' : productColor(geoLeg.product);
-			polylines.push({ coords: geoLeg.coords, color, dashed });
-			for (const c of geoLeg.coords) allBounds.push(c);
-		}
-
-		const transportGeo = geo.filter((g) => g.mode === 'transport');
-		for (let t = 0; t < transportGeo.length - 1; t++) {
-			const endCoords = transportGeo[t].coords;
-			const pt = endCoords[endCoords.length - 1];
-			if (pt) transferPts.push(pt);
-		}
-
-		return { polylines, allBounds, transferPts, hasData: allBounds.length >= 2 };
-	});
-
-	const firstPt = $derived(mapRenderData.allBounds[0]);
-	const lastPt = $derived(mapRenderData.allBounds[mapRenderData.allBounds.length - 1]);
-
-	const transitMapOptions = $derived({
-		center: (firstPt ?? [50, 8]) as [number, number],
-		zoom: 13,
-		zoomControl: false,
-		attributionControl: false,
-		dragging: true,
-		scrollWheelZoom: false
-	});
-
-	$effect(() => {
-		if (!browser || !transitMapInstance || !mapRenderData.hasData) return;
-		const map = transitMapInstance;
-		const bounds = mapRenderData.allBounds;
-		import('leaflet').then(({ latLngBounds }) => {
-			map.fitBounds(latLngBounds(bounds), { padding: [20, 20] });
-		});
-	});
 
 	function lineLabel(leg: TransitLeg): string {
 		const p = leg.product ?? '';
@@ -132,7 +61,7 @@
 	}
 </script>
 
-{#if browser && open && segment}
+{#if open && segment}
 	<div
 		class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50"
 		onclick={close}
@@ -164,70 +93,6 @@
 					<IconClose class="h-5 w-5" />
 				</button>
 			</div>
-
-			{#if mapRenderData.hasData}
-				<div class="h-48 w-full border-b border-base-300">
-					<Map options={transitMapOptions} bind:instance={transitMapInstance}>
-						<TileLayer
-							url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
-							options={{ maxZoom: 19 }}
-						/>
-
-						{#each mapRenderData.polylines as poly, idx (idx)}
-							<Polyline
-								latLngs={poly.coords}
-								options={{
-									color: poly.color,
-									weight: poly.dashed ? 3 : 5,
-									opacity: poly.dashed ? 0.5 : 0.85,
-									dashArray: poly.dashed ? '6, 8' : undefined,
-									lineCap: 'round',
-									lineJoin: 'round'
-								}}
-							/>
-						{/each}
-
-						{#each mapRenderData.transferPts as pt, idx (idx)}
-							<CircleMarker
-								latLng={pt}
-								options={{
-									radius: 5,
-									color: '#fff',
-									fillColor: '#f97316',
-									fillOpacity: 1,
-									weight: 2
-								}}
-							/>
-						{/each}
-
-						{#if firstPt}
-							<CircleMarker
-								latLng={firstPt}
-								options={{
-									radius: 6,
-									color: '#fff',
-									fillColor: '#22c55e',
-									fillOpacity: 1,
-									weight: 2
-								}}
-							/>
-						{/if}
-
-						{#if lastPt}
-							<CircleMarker
-								latLng={lastPt}
-								options={{
-									radius: 6,
-									color: '#fff',
-									fillColor: '#ef4444',
-									fillOpacity: 1,
-									weight: 2
-								}}
-							/>
-						{/if}
-					</Map>
-				</div>
-			{/if}
 
 			<div class="overflow-y-auto flex-1 px-5 py-4">
 				{#if walkTo > 0}

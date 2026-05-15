@@ -63,22 +63,8 @@ describe('computeSegment', () => {
         expect(r.driveGeometry![0]).toEqual([50.0, 8.0]);
     });
 
-    it('transit: findNearestStop → HAFAS journeys → legs + transfers + walk times', async () => {
-        // 1. findNearestStop for stopA
-        mockFetch.mockResolvedValueOnce({
-            ok: true,
-            json: () => Promise.resolve([
-                { id: '8000105', name: 'Frankfurt Hbf', location: { latitude: 50.107, longitude: 8.663 } }
-            ])
-        });
-        // 2. findNearestStop for stopB
-        mockFetch.mockResolvedValueOnce({
-            ok: true,
-            json: () => Promise.resolve([
-                { id: '8000244', name: 'Mainz Hbf', location: { latitude: 50.001, longitude: 8.259 } }
-            ])
-        });
-        // 3. HAFAS /journeys with station IDs
+    it('transit: HAFAS journeys with coordinates → legs + transfers + walk times', async () => {
+        // HAFAS /journeys with coordinates (API resolves nearest stops internally)
         mockFetch.mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve({
@@ -122,7 +108,7 @@ describe('computeSegment', () => {
         expect(r.transitLegs).toHaveLength(3);
         expect(r.transitLegs![0].type).toBe('walking');
         expect(r.transitLegs![1].type).toBe('transport');
-        expect(r.transitLegs![1].lineName).toBe('8');
+        expect(r.transitLegs![1].lineName).toBe('S8');
         expect(r.transitLegs![1].platform).toBe('3');
         expect(r.transitLegs![1].direction).toBe('Wiesbaden Hbf');
         expect(r.travelDurationMinutes).toBe(40); // 08:50 → 09:30

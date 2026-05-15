@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Map, TileLayer, ControlLayers, Polyline, CircleMarker, Marker, DivIcon } from 'sveaflet';
-	import type { Map as LeafletMap } from 'leaflet';
 	import { browser } from '$app/environment';
 	import type { Stop, Segment } from '$lib/types';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
@@ -16,7 +15,7 @@
 
 	let { stops, segments, onback, onupdatestop }: Props = $props();
 
-	let mapInstance: LeafletMap | undefined = $state();
+	let mapInstance: L.Map | undefined = $state();
 	let selectedStop = $state<Stop | null>(null);
 	let editStayH = $state(0);
 	let editStayM = $state(0);
@@ -134,12 +133,19 @@
 
 	$effect(() => {
 		if (!browser || !mapInstance || renderData.allBounds.length < 2) return;
-		const map = mapInstance;
-		const bounds = renderData.allBounds;
-		import('leaflet').then(({ latLngBounds }) => {
-			map.fitBounds(latLngBounds(bounds), { padding: [50, 50] });
-		});
+		mapInstance.fitBounds(toBounds(renderData.allBounds), { padding: [50, 50] });
 	});
+
+	function toBounds(pts: [number, number][]): [[number, number], [number, number]] {
+		let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+		for (const [lat, lng] of pts) {
+			if (lat < minLat) minLat = lat;
+			if (lat > maxLat) maxLat = lat;
+			if (lng < minLng) minLng = lng;
+			if (lng > maxLng) maxLng = lng;
+		}
+		return [[minLat, minLng], [maxLat, maxLng]];
+	}
 
 	function openStopSheet(stop: Stop) {
 		selectedStop = stop;
