@@ -55,6 +55,18 @@
 	let walkFromName = $state('');
 	let walkToName = $state('');
 
+	const transitFromCoords = $derived.by((): [number, number] | undefined => {
+		if (!detailSegment) return undefined;
+		const stop = dndItems.find(s => s.id === detailSegment!.fromStopId);
+		return stop ? [stop.lat, stop.lon] : undefined;
+	});
+
+	const transitToCoords = $derived.by((): [number, number] | undefined => {
+		if (!detailSegment) return undefined;
+		const stop = dndItems.find(s => s.id === detailSegment!.toStopId);
+		return stop ? [stop.lat, stop.lon] : undefined;
+	});
+
 	let showRecomputeConfirm = $state(false);
 	let isRecomputing = $state(false);
 	let recomputeTimer: ReturnType<typeof setTimeout>;
@@ -224,6 +236,14 @@
 		}
 	}
 
+	function handleTransitWalkClick(walkSegment: Segment, fromName: string, toName: string) {
+		showTransitDetail = false;
+		detailSegment = walkSegment;
+		walkFromName = fromName;
+		walkToName = toName;
+		showWalkRoute = true;
+	}
+
 	async function publishJourney() { await postAction('publish', {}); }
 	async function unpublishJourney() { shareUrl = null; await postAction('unpublish', {}); }
 	function toggleMapMode() { showMap = !showMap; }
@@ -321,7 +341,7 @@
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
+<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
 
 {#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />

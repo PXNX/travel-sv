@@ -31,9 +31,12 @@
 		open: boolean;
 		segment: Segment | null;
 		onclose?: () => void;
+		onwalkclick?: (segment: Segment, fromName: string, toName: string) => void;
+		fromCoords?: [number, number];
+		toCoords?: [number, number];
 	}
 
-	let { open = $bindable(false), segment, onclose }: Props = $props();
+	let { open = $bindable(false), segment, onclose, onwalkclick, fromCoords, toCoords }: Props = $props();
 
 	const legs = $derived((segment?.transitLegs ?? []) as TransitLeg[]);
 	const transfers = $derived(segment?.transfers ?? 0);
@@ -121,6 +124,68 @@
 		open = false;
 		onclose?.();
 	}
+
+	const walkToClickable = $derived.by(() => {
+		if (!onwalkclick || walkTo <= 0 || !fromCoords || visibleLegs.length === 0) return false;
+		const first = visibleLegs[0];
+		return first?.departureLat != null && first?.departureLon != null;
+	});
+
+	const walkFromClickable = $derived.by(() => {
+		if (!onwalkclick || walkFrom <= 0 || !toCoords || visibleLegs.length === 0) return false;
+		const last = visibleLegs[visibleLegs.length - 1];
+		return last?.arrivalLat != null && last?.arrivalLon != null;
+	});
+
+	function isWalkingLegClickable(leg: TransitLeg): boolean {
+		if (!onwalkclick || leg.type !== 'walking') return false;
+		return !!(leg.polyline?.length || (leg.departureLat != null && leg.arrivalLat != null));
+	}
+
+	function handleWalkToClick() {
+		if (!onwalkclick || !segment || !fromCoords) return;
+		const firstLeg = visibleLegs[0];
+		if (!firstLeg?.departureLat || !firstLeg?.departureLon) return;
+		const geo: [number, number][] = [fromCoords, [firstLeg.departureLat, firstLeg.departureLon]];
+		const synth: Segment = {
+			id: -1, journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
+			mode: 'walk', walkGeometry: geo,
+			travelDurationMinutes: walkTo,
+		};
+		onwalkclick(synth, 'Start', firstLeg.departureStation ?? 'Station');
+	}
+
+	function handleWalkFromClick() {
+		if (!onwalkclick || !segment || !toCoords) return;
+		const lastLeg = visibleLegs[visibleLegs.length - 1];
+		if (!lastLeg?.arrivalLat || !lastLeg?.arrivalLon) return;
+		const geo: [number, number][] = [[lastLeg.arrivalLat, lastLeg.arrivalLon], toCoords];
+		const synth: Segment = {
+			id: -1, journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
+			mode: 'walk', walkGeometry: geo,
+			travelDurationMinutes: walkFrom,
+		};
+		onwalkclick(synth, lastLeg.arrivalStation ?? 'Station', 'Destination');
+	}
+
+	function handleWalkingLegClick(leg: TransitLeg) {
+		if (!onwalkclick || !segment) return;
+		let geo: [number, number][] | null = leg.polyline ?? null;
+		if (!geo && leg.departureLat != null && leg.departureLon != null && leg.arrivalLat != null && leg.arrivalLon != null) {
+			geo = [[leg.departureLat, leg.departureLon], [leg.arrivalLat, leg.arrivalLon]];
+		}
+		if (!geo) return;
+		const synth: Segment = {
+			id: -1, journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
+			mode: 'walk', walkGeometry: geo,
+			distanceM: leg.distanceM,
+			travelDurationMinutes: leg.durationMinutes,
+		};
+		onwalkclick(synth, leg.departureStation ?? '', leg.arrivalStation ?? '');
+	}
 </script>
 
 {#if open && segment}
@@ -158,7 +223,10 @@
 
 			<div class="overflow-y-auto flex-1 px-5 py-4">
 				{#if walkTo > 0}
-					<div class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''}">
+					<div
+						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkToClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
+						onclick={walkToClickable ? handleWalkToClick : undefined}
+					>
 						<div class="flex flex-col items-center">
 							<div
 								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkToActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
@@ -167,10 +235,13 @@
 							</div>
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
-						<div class="pt-1">
+						<div class="pt-1 flex-1">
 							<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station</p>
 							<p class="text-xs text-base-content/40">~{formatDuration(walkTo)}</p>
 						</div>
+						{#if walkToClickable}
+							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
+						{/if}
 					</div>
 				{/if}
 
@@ -193,7 +264,12 @@
 					{/if}
 
 					{@const color = leg.type === 'transport' ? productColor(leg.product) : ''}
-					<div class="flex gap-3 items-start pb-3 rounded-lg transition-colors" style={active ? `background: ${color || 'oklch(var(--p))'}15; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;` : ''}>
+					{@const clickableWalk = leg.type === 'walking' && isWalkingLegClickable(leg)}
+					<div
+						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {clickableWalk ? 'cursor-pointer hover:bg-base-200/60' : ''}"
+						style={active ? `background: ${color || 'oklch(var(--p))'}15; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;` : ''}
+						onclick={clickableWalk ? () => handleWalkingLegClick(leg) : undefined}
+					>
 						<div class="flex flex-col items-center">
 							{#if leg.type === 'walking'}
 								<div
@@ -271,11 +347,18 @@
 								</div>
 							{/if}
 						</div>
+
+						{#if clickableWalk}
+							<span class="text-[10px] text-primary self-center opacity-60 shrink-0">map ›</span>
+						{/if}
 					</div>
 				{/each}
 
 				{#if walkFrom > 0}
-					<div class="flex gap-3 items-start rounded-lg transition-colors {walkFromActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''}">
+					<div
+						class="flex gap-3 items-start rounded-lg transition-colors {walkFromActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkFromClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
+						onclick={walkFromClickable ? handleWalkFromClick : undefined}
+					>
 						<div class="flex flex-col items-center">
 							<div
 								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkFromActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
@@ -283,7 +366,7 @@
 								<IconWalk class="h-4 w-4" />
 							</div>
 						</div>
-						<div class="pt-1">
+						<div class="pt-1 flex-1">
 							<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">
 								Walk from station
 							</p>
@@ -291,6 +374,9 @@
 								~{formatDuration(walkFrom)}
 							</p>
 						</div>
+						{#if walkFromClickable}
+							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
+						{/if}
 					</div>
 				{/if}
 

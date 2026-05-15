@@ -69,6 +69,18 @@
 		return sortedStops.find((s) => s.id === id)?.name ?? '';
 	}
 
+	const transitFromCoords = $derived.by((): [number, number] | undefined => {
+		if (!detailSegment) return undefined;
+		const stop = sortedStops.find(s => s.id === detailSegment!.fromStopId);
+		return stop ? [stop.lat, stop.lon] : undefined;
+	});
+
+	const transitToCoords = $derived.by((): [number, number] | undefined => {
+		if (!detailSegment) return undefined;
+		const stop = sortedStops.find(s => s.id === detailSegment!.toStopId);
+		return stop ? [stop.lat, stop.lon] : undefined;
+	});
+
 	function openSegmentDetail(seg: Segment) {
 		detailSegment = seg;
 		if (seg.mode === 'transit') {
@@ -78,6 +90,14 @@
 			walkToName = stopName(seg.toStopId);
 			showWalkRoute = true;
 		}
+	}
+
+	function handleTransitWalkClick(walkSegment: Segment, fromName: string, toName: string) {
+		showTransitDetail = false;
+		detailSegment = walkSegment;
+		walkFromName = fromName;
+		walkToName = toName;
+		showWalkRoute = true;
 	}
 </script>
 
@@ -168,7 +188,7 @@
 	</main>
 	</div>
 
-	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
+	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
 
 	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
