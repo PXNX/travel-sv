@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Stop } from '$lib/types';
+	import { dragHandle as dragHandleAction } from 'svelte-dnd-action';
 
 	interface Props {
 		stop: Stop;
@@ -50,7 +51,7 @@
 	<div class="card-body gap-2 p-3">
 		<div class="flex items-center gap-2">
 			{#if dragHandle}
-				<span class="cursor-grab text-base-content/40 touch-none select-none" aria-label="Drag to reorder">⠿</span>
+				<span use:dragHandleAction class="drag-handle cursor-grab text-base-content/40 touch-none select-none" aria-label="Drag to reorder">⠿</span>
 			{/if}
 
 			<div class="flex-1">

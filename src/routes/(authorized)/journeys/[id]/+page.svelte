@@ -11,7 +11,7 @@
 	import JourneyMap from '$lib/components/JourneyMap.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
 	import WalkRouteModal from '$lib/components/WalkRouteModal.svelte';
-	import { dndzone } from 'svelte-dnd-action';
+	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { cacheJourney } from '$lib/db/local';
@@ -151,6 +151,24 @@
 	}
 
 	// ── drag-to-reorder ─────────────────────────────────────────────
+	const transformDraggedElement: TransformDraggedElementFunction = (el) => {
+		if (!el) return;
+		const segPart = el.querySelector('.segment-part') as HTMLElement | null;
+		if (segPart && !el.dataset.segOffset) {
+			el.dataset.segOffset = String(segPart.getBoundingClientRect().height);
+			segPart.style.display = 'none';
+		}
+		const offset = parseFloat(el.dataset.segOffset || '0');
+		if (offset > 0) {
+			el.style.top = `${parseFloat(el.style.top || '0') + offset}px`;
+		}
+		const card = el.querySelector('.card') as HTMLElement | null;
+		if (card) {
+			card.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,.15), 0 8px 10px -6px rgba(0,0,0,.1)';
+			card.style.transform = 'scale(1.02)';
+		}
+	};
+
 	function handleDndConsider(e: CustomEvent<{ items: (Stop & { id: number })[] }>) { dndItems = e.detail.items; }
 	async function handleDndFinalize(e: CustomEvent<{ items: (Stop & { id: number })[] }>) {
 		dndItems = e.detail.items;
@@ -252,7 +270,7 @@
 			{/if}
 
 			<div
-				use:dndzone={{ items: dndItems, flipDurationMs: 200, dropTargetStyle: { outline: '2px dashed oklch(var(--p))', borderRadius: '12px' } }}
+				use:dragHandleZone={{ items: dndItems, flipDurationMs: 200, dropTargetStyle: { outline: '2px dashed oklch(var(--p))', borderRadius: '12px' }, transformDraggedElement }}
 				onconsider={handleDndConsider}
 				onfinalize={handleDndFinalize}
 				class="flex flex-col gap-0"
@@ -261,19 +279,21 @@
 					<div animate:flip={{ duration: 200 }}>
 						{#if i > 0}
 							{@const seg = findSegment(dndItems[i - 1].id, stop.id)}
-							{#if seg}
-								<SegmentChip
-									segment={seg}
-									onmodechange={changeSegmentMode}
-									onclickdetail={openSegmentDetail}
-									loading={computingSegmentId === seg.id}
-									oninsert={() => addStop(stop.orderIndex)}
-								/>
-							{:else}
-								<div class="flex justify-center py-1">
-									<button class="btn btn-ghost btn-xs" onclick={() => addStop(stop.orderIndex)}>＋ Insert stop</button>
-								</div>
-							{/if}
+							<div class="segment-part">
+								{#if seg}
+									<SegmentChip
+										segment={seg}
+										onmodechange={changeSegmentMode}
+										onclickdetail={openSegmentDetail}
+										loading={computingSegmentId === seg.id}
+										oninsert={() => addStop(stop.orderIndex)}
+									/>
+								{:else}
+									<div class="flex justify-center py-1">
+										<button class="btn btn-ghost btn-xs" onclick={() => addStop(stop.orderIndex)}>＋ Insert stop</button>
+									</div>
+								{/if}
+							</div>
 						{/if}
 
 						<StopCard {stop} arrivalTime={arrivalTimes[i] ?? null} onupdate={updateStop} ondelete={deleteStop} onpicklocation={editStopLocation} />
