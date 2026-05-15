@@ -27,7 +27,10 @@
 	let isImporting = $state(false);
 
 	let showTransitDetail = $state(false);
+	let showWalkRoute = $state(false);
 	let detailSegment = $state<Segment | null>(null);
+	let walkFromName = $state('');
+	let walkToName = $state('');
 
 	const startTime = $derived(arrivalTimes[0] ?? null);
 	const endTime = $derived(
@@ -62,10 +65,18 @@
 		return journeySegments.find((s) => s.fromStopId === fromId && s.toStopId === toId);
 	}
 
+	function stopName(id: number): string {
+		return sortedStops.find((s) => s.id === id)?.name ?? '';
+	}
+
 	function openSegmentDetail(seg: Segment) {
+		detailSegment = seg;
 		if (seg.mode === 'transit') {
-			detailSegment = seg;
 			showTransitDetail = true;
+		} else if (seg.mode === 'walk' || seg.mode === 'drive') {
+			walkFromName = stopName(seg.fromStopId);
+			walkToName = stopName(seg.toStopId);
+			showWalkRoute = true;
 		}
 	}
 </script>
@@ -158,3 +169,7 @@
 	</div>
 
 	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
+
+	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+	{/await}

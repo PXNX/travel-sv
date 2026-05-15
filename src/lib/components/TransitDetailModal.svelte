@@ -1,10 +1,31 @@
 <script lang="ts">
 	import type { Segment, TransitLeg } from '$lib/types';
 	import { formatDuration, formatDistance } from '$lib/helpers';
+	import { onDestroy } from 'svelte';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
+	import IconBus from '~icons/material-symbols/directions-bus-outline-rounded';
+	import IconTram from '~icons/material-symbols/tram-outline-rounded';
+	import IconSubway from '~icons/material-symbols/subway-outline-rounded';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconClose from '~icons/material-symbols/close-rounded';
 	import IconTimer from '~icons/material-symbols/timer-outline-rounded';
+
+	const productColors: Record<string, string> = {
+		S: '#008d4f',
+		RE: '#ec1c24',
+		RB: '#ec1c24',
+		ARV: '#ec1c24',
+		MEX: '#ec1c24',
+		IRE: '#ec1c24',
+		Bus: '#a0158a',
+		STR: '#d6a100',
+		U: '#2e5ea8'
+	};
+
+	function productColor(product?: string): string {
+		if (!product) return '#3b82f6';
+		return productColors[product] ?? '#3b82f6';
+	}
 
 	interface Props {
 		open: boolean;
@@ -25,6 +46,47 @@
 			return true;
 		})
 	);
+
+	let now = $state(Date.now());
+	let timer: ReturnType<typeof setInterval> | undefined;
+
+	$effect(() => {
+		if (open) {
+			now = Date.now();
+			timer = setInterval(() => { now = Date.now(); }, 30_000);
+		} else {
+			if (timer) { clearInterval(timer); timer = undefined; }
+		}
+	});
+	onDestroy(() => { if (timer) clearInterval(timer); });
+
+	const walkToActive = $derived.by(() => {
+		if (walkTo <= 0 || visibleLegs.length === 0) return false;
+		const first = visibleLegs[0];
+		if (!first?.departure) return false;
+		const dep = new Date(first.departure).getTime();
+		return now >= dep - walkTo * 60_000 && now < dep;
+	});
+
+	const walkFromActive = $derived.by(() => {
+		if (walkFrom <= 0 || visibleLegs.length === 0) return false;
+		const last = visibleLegs[visibleLegs.length - 1];
+		if (!last?.arrival) return false;
+		const arr = new Date(last.arrival).getTime();
+		return now >= arr && now <= arr + walkFrom * 60_000;
+	});
+
+	const activeLegIndex = $derived.by(() => {
+		for (let i = 0; i < visibleLegs.length; i++) {
+			const leg = visibleLegs[i];
+			if (leg.departure && leg.arrival) {
+				const dep = new Date(leg.departure).getTime();
+				const arr = new Date(leg.arrival).getTime();
+				if (now >= dep && now <= arr) return i;
+			}
+		}
+		return -1;
+	});
 
 	function lineLabel(leg: TransitLeg): string {
 		const p = leg.product ?? '';
@@ -96,17 +158,17 @@
 
 			<div class="overflow-y-auto flex-1 px-5 py-4">
 				{#if walkTo > 0}
-					<div class="flex gap-3 items-start pb-3">
+					<div class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''}">
 						<div class="flex flex-col items-center">
 							<div
-								class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center"
+								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkToActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
 							>
 								<IconWalk class="h-4 w-4" />
 							</div>
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
 						<div class="pt-1">
-							<p class="text-sm font-medium text-base-content/70">Walk to station</p>
+							<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station</p>
 							<p class="text-xs text-base-content/40">~{formatDuration(walkTo)}</p>
 						</div>
 					</div>
@@ -114,6 +176,7 @@
 
 				{#each visibleLegs as leg, i}
 					{@const wait = waitBefore(i)}
+					{@const active = activeLegIndex === i}
 
 					{#if wait > 1 && leg.type === 'transport'}
 						<div class="flex gap-3 items-start pb-2">
@@ -129,33 +192,44 @@
 						</div>
 					{/if}
 
-					<div class="flex gap-3 items-start pb-3">
+					{@const color = leg.type === 'transport' ? productColor(leg.product) : ''}
+					<div class="flex gap-3 items-start pb-3 rounded-lg transition-colors" style={active ? `background: ${color || 'oklch(var(--p))'}15; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;` : ''}>
 						<div class="flex flex-col items-center">
 							{#if leg.type === 'walking'}
 								<div
-									class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center"
+									class="w-8 h-8 rounded-full flex items-center justify-center transition-all {active ? 'text-white ring-2 ring-offset-1' : 'bg-base-300'}"
+									style={active ? 'background: oklch(var(--p)); --tw-ring-color: oklch(var(--p) / 0.3)' : ''}
 								>
 									<IconWalk class="h-4 w-4" />
 								</div>
 							{:else}
 								<div
-									class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center text-[10px] font-bold leading-none"
+									class="w-8 h-8 rounded-full text-white flex items-center justify-center text-[10px] font-bold leading-none transition-all {active ? 'ring-2 ring-offset-1' : ''}"
+									style="background: {color}; {active ? `--tw-ring-color: ${color}50` : ''}"
 								>
-									{leg.product ?? ''}
+									{#if leg.product === 'Bus'}
+										<IconBus class="h-4 w-4" />
+									{:else if leg.product === 'STR'}
+										<IconTram class="h-4 w-4" />
+									{:else if leg.product === 'U'}
+										<IconSubway class="h-4 w-4" />
+									{:else}
+										<IconTrain class="h-4 w-4" />
+									{/if}
 								</div>
 							{/if}
 							{#if i < visibleLegs.length - 1}
 								<div
 									class="w-0.5 flex-1 mt-1"
-									class:bg-primary={leg.type === 'transport'}
 									class:bg-base-300={leg.type === 'walking'}
+									style={leg.type === 'transport' ? `background: ${color}` : ''}
 								></div>
 							{/if}
 						</div>
 
 						<div class="flex-1 min-w-0 pt-0.5">
 							{#if leg.type === 'walking'}
-								<p class="text-sm text-base-content/60">Walk · {walkLabel(leg)}</p>
+								<p class="text-sm {active ? 'text-primary font-medium' : 'text-base-content/60'}">Walk · {walkLabel(leg)}</p>
 								{#if leg.departureStation && leg.arrivalStation && leg.departureStation !== leg.arrivalStation}
 									<p class="text-xs text-base-content/40 truncate">
 										{leg.departureStation} → {leg.arrivalStation}
@@ -163,9 +237,7 @@
 								{/if}
 							{:else}
 								<div class="flex items-center gap-2 flex-wrap">
-									<span class="badge badge-sm badge-primary font-mono"
-										>{lineLabel(leg)}</span
-									>
+									<span class="badge badge-sm font-mono text-white border-0" style="background: {color}">{lineLabel(leg)}</span>
 									{#if leg.direction}
 										<span class="text-xs text-base-content/40 truncate"
 											>→ {leg.direction}</span
@@ -185,7 +257,7 @@
 									{/if}
 								</div>
 
-								<div class="ml-[18px] border-l-2 border-primary/30 pl-3 py-1.5">
+								<div class="ml-[18px] border-l-2 pl-3 py-1.5" style="border-color: {color}50">
 									<span class="text-xs text-base-content/40"
 										>{formatDuration(leg.durationMinutes)}</span
 									>
@@ -203,16 +275,16 @@
 				{/each}
 
 				{#if walkFrom > 0}
-					<div class="flex gap-3 items-start">
+					<div class="flex gap-3 items-start rounded-lg transition-colors {walkFromActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''}">
 						<div class="flex flex-col items-center">
 							<div
-								class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center"
+								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkFromActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
 							>
 								<IconWalk class="h-4 w-4" />
 							</div>
 						</div>
 						<div class="pt-1">
-							<p class="text-sm font-medium text-base-content/70">
+							<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">
 								Walk from station
 							</p>
 							<p class="text-xs text-base-content/40">
