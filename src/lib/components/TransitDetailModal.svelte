@@ -194,7 +194,7 @@
 		onclick={close}
 	>
 		<div
-			class="bg-base-100 w-full max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-slide-up"
+			class="bg-base-100 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-slide-up"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">

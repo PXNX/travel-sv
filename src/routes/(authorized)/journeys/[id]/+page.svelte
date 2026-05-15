@@ -86,6 +86,14 @@
 		return () => { window.removeEventListener('offline', off); window.removeEventListener('online', on); };
 	});
 
+	$effect(() => {
+		if (journey.isPublic && journey.shareToken && !shareUrl) {
+			shareUrl = `${window.location.origin}/j/${journey.shareToken}`;
+		} else if (!journey.isPublic) {
+			shareUrl = null;
+		}
+	});
+
 	const arrivalTimes = $derived(
 		computeDerivedArrivalTimes(dndItems, journeySegments, startDatetime ? new Date(startDatetime) : null)
 	);
@@ -258,7 +266,7 @@
 		<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
 	{/await}
 {:else}
-	<div class="min-h-[100dvh] bg-base-100">
+	<div class="min-h-[100dvh] bg-base-100" style="view-transition-name: journey-{journey.id}">
 		<header class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3">
 			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>
 				<IconArrowBack class="h-5 w-5" />

@@ -39,8 +39,8 @@
 
 <button
 	class="card bg-base-200 w-full cursor-pointer shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden text-left"
+	style="view-transition-name: journey-{journey.id}; {style}"
 	onclick={() => onclick?.(journey)}
-	{style}
 >
 	<div class="flex">
 		{#if hasCoords}

@@ -3,7 +3,6 @@ import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db';
 import { journeys, stops, segments, users } from '$lib/server/schema';
 import { eq, asc } from 'drizzle-orm';
-import { recomputeSegments } from '$lib/server/recomputeSegments';
 
 export const load: PageServerLoad = async ({ params }) => {
     const [journey] = await db
@@ -70,15 +69,16 @@ export const actions = {
             })
             .returning();
 
-        // Deep-copy stops
+        // Deep-copy stops and build old→new stop ID mapping
         const sourceStops = await db
             .select()
             .from(stops)
             .where(eq(stops.journeyId, source.id))
             .orderBy(asc(stops.orderIndex));
 
+        const stopIdMap = new Map<number, number>();
         for (const s of sourceStops) {
-            await db.insert(stops).values({
+            const [newStop] = await db.insert(stops).values({
                 journeyId: newJourney.id,
                 name: s.name,
                 lat: s.lat,
@@ -86,11 +86,40 @@ export const actions = {
                 orderIndex: s.orderIndex,
                 stayDurationMinutes: s.stayDurationMinutes,
                 notes: s.notes
-            });
+            }).returning();
+            stopIdMap.set(s.id, newStop.id);
         }
 
-        // Compute segments for the copy
-        await recomputeSegments(newJourney.id);
+        // Deep-copy segments (preserves transit selections, geometry, etc.)
+        const sourceSegments = await db
+            .select()
+            .from(segments)
+            .where(eq(segments.journeyId, source.id));
+
+        for (const seg of sourceSegments) {
+            const newFromId = stopIdMap.get(seg.fromStopId);
+            const newToId = stopIdMap.get(seg.toStopId);
+            if (newFromId === undefined || newToId === undefined) continue;
+
+            await db.insert(segments).values({
+                journeyId: newJourney.id,
+                fromStopId: newFromId,
+                toStopId: newToId,
+                mode: seg.mode,
+                distanceM: seg.distanceM,
+                elevationUpM: seg.elevationUpM,
+                elevationDownM: seg.elevationDownM,
+                travelDurationMinutes: seg.travelDurationMinutes,
+                transitSummary: seg.transitSummary,
+                transitLegs: seg.transitLegs,
+                walkToStationMin: seg.walkToStationMin,
+                walkFromStationMin: seg.walkFromStationMin,
+                transfers: seg.transfers,
+                walkGeometry: seg.walkGeometry,
+                driveGeometry: seg.driveGeometry,
+                transitGeometry: seg.transitGeometry
+            });
+        }
 
         redirect(303, `/journeys/${newJourney.id}`);
     }

@@ -65,7 +65,7 @@
 	<div class="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center bg-black/50 animate-fade-in" role="dialog" aria-modal="true" aria-label="Share journey" tabindex="-1" onclick={close} onkeydown={(e) => e.key === 'Escape' && close()}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="bg-base-100 w-full max-w-sm sm:rounded-2xl rounded-t-2xl p-5 shadow-2xl animate-slide-up"
+			class="bg-base-100 w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl p-5 shadow-2xl animate-slide-up"
 			onclick={(e) => e.stopPropagation()} onkeydown={() => {}}
 		>
 			<div class="flex items-center justify-between mb-4">
