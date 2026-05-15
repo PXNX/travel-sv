@@ -4,6 +4,8 @@
 	import { computeDerivedArrivalTimes, formatDuration } from '$lib/helpers';
 	import SegmentChip from '$lib/components/SegmentChip.svelte';
 	import { enhance } from '$app/forms';
+	import IconClock from '~icons/material-symbols/schedule-outline-rounded';
+	import IconDownload from '~icons/material-symbols/download-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -39,11 +41,12 @@
 			isImporting = true;
 			return async ({ update }) => { await update(); isImporting = false; };
 		}}>
-			<button class="btn btn-primary btn-sm" disabled={isImporting}>
+			<button class="btn btn-primary btn-sm gap-1.5" disabled={isImporting}>
 				{#if isImporting}
 					<span class="loading loading-spinner loading-xs"></span>
 				{:else}
-					📥 Import
+					<IconDownload class="h-4 w-4" />
+					Import
 				{/if}
 			</button>
 		</form>
@@ -70,8 +73,9 @@
 					</div>
 
 					{#if arrivalTimes[i]}
-						<span class="text-xs text-base-content/50">
-							🕐 {arrivalTimes[i]?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+						<span class="flex items-center gap-1 text-xs text-base-content/50">
+							<IconClock class="h-3.5 w-3.5" />
+							{arrivalTimes[i]?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
 						</span>
 					{/if}
 

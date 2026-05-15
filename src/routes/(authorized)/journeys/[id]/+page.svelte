@@ -8,14 +8,18 @@
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
 	import ShareModal from '$lib/components/ShareModal.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
-	import JourneyMap from '$lib/components/JourneyMap.svelte';
-	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
-	import WalkRouteModal from '$lib/components/WalkRouteModal.svelte';
+
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { cacheJourney } from '$lib/db/local';
 	import { flip } from 'svelte/animate';
+	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
+	import IconShare from '~icons/material-symbols/share-outline';
+	import IconMap from '~icons/material-symbols/map-outline-rounded';
+	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
+	import IconAdd from '~icons/material-symbols/add-rounded';
+	import IconTrain from '~icons/material-symbols/train-outline-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -44,23 +48,19 @@
 	let isOffline = $state(false);
 	let computingSegmentId = $state<number | null>(null);
 
-	// detail modals
 	let showTransitDetail = $state(false);
 	let showWalkRoute = $state(false);
 	let detailSegment = $state<Segment | null>(null);
 	let walkFromName = $state('');
 	let walkToName = $state('');
 
-	// transit recompute confirm modal
 	let showRecomputeConfirm = $state(false);
 	let isRecomputing = $state(false);
 	let recomputeTimer: ReturnType<typeof setTimeout>;
 
-	// DND
 	let dndItems = $state<(Stop & { id: number })[]>([]);
 	$effect(() => { dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex); });
 
-	// Are there any transit segments?
 	const hasTransitSegments = $derived(journeySegments.some((s) => s.mode === 'transit'));
 
 	onMount(() => {
@@ -85,7 +85,6 @@
 		return dndItems.find((s) => s.id === id)?.name ?? '';
 	}
 
-	// ── post action helper ──────────────────────────────────────────
 	async function postAction(action: string, fields: Record<string, string>) {
 		const fd = new FormData();
 		for (const [k, v] of Object.entries(fields)) fd.set(k, v);
@@ -106,7 +105,6 @@
 		if (s === 'saved') setTimeout(() => (saveStatus = 'idle'), 2000);
 	}
 
-	// ── Schedule transit recompute after timing change ───────────────
 	function scheduleTransitRecompute() {
 		if (!hasTransitSegments) return;
 		clearTimeout(recomputeTimer);
@@ -128,7 +126,6 @@
 		showRecomputeConfirm = false;
 	}
 
-	// ── auto-save journey fields ────────────────────────────────────
 	function scheduleSave(fields: Record<string, string>) {
 		clearTimeout(saveTimer);
 		showStatus('saving');
@@ -150,7 +147,6 @@
 		scheduleTransitRecompute();
 	}
 
-	// ── drag-to-reorder ─────────────────────────────────────────────
 	const transformDraggedElement: TransformDraggedElementFunction = (el) => {
 		if (!el) return;
 		const segPart = el.querySelector('.segment-part') as HTMLElement | null;
@@ -178,7 +174,6 @@
 		showStatus('saved');
 	}
 
-	// ── stop CRUD ───────────────────────────────────────────────────
 	function addStop(insertIndex?: number) { insertAtIndex = insertIndex ?? null; locationPickerStop = null; showLocationPicker = true; }
 
 	async function handleLocationConfirm(result: { name: string; lat: number; lon: number }) {
@@ -199,7 +194,6 @@
 		await postAction('updateStop', fields);
 		showStatus('saved');
 
-		// If stay time changed and there are transit segments, offer to recompute
 		if (update.stayDurationMinutes !== undefined) {
 			scheduleTransitRecompute();
 		}
@@ -212,14 +206,12 @@
 		if (locationPickerStop) { await updateStop({ id: locationPickerStop.id, name: result.name, lat: result.lat, lon: result.lon }); locationPickerStop = null; }
 	}
 
-	// ── segment mode change ─────────────────────────────────────────
 	async function changeSegmentMode(segmentId: number, mode: SegmentMode) {
 		computingSegmentId = segmentId;
 		await postAction('changeSegmentMode', { segmentId: String(segmentId), mode });
 		computingSegmentId = null;
 	}
 
-	// ── segment detail click ────────────────────────────────────────
 	function openSegmentDetail(seg: Segment) {
 		detailSegment = seg;
 		if (seg.mode === 'transit') {
@@ -231,7 +223,6 @@
 		}
 	}
 
-	// ── sharing ─────────────────────────────────────────────────────
 	async function publishJourney() { await postAction('publish', {}); }
 	async function unpublishJourney() { shareUrl = null; await postAction('unpublish', {}); }
 	function toggleMapMode() { showMap = !showMap; }
@@ -242,11 +233,15 @@
 <OfflineBanner />
 
 {#if showMap}
-	<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
+	{#await import('$lib/components/JourneyMap.svelte') then { default: JourneyMap }}
+		<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
+	{/await}
 {:else}
 	<div class="min-h-[100dvh] bg-base-100">
 		<header class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3">
-			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>←</button>
+			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>
+				<IconArrowBack class="h-5 w-5" />
+			</button>
 			<div class="flex-1">
 				{#if editingTitle}
 					<input class="input input-bordered input-sm w-full max-w-xs" bind:value={titleInput} onblur={saveTitle} onkeydown={(e) => e.key === 'Enter' && saveTitle()} />
@@ -255,8 +250,12 @@
 				{/if}
 			</div>
 			<input type="datetime-local" class="input input-bordered input-sm" value={startDatetime ? startDatetime.slice(0, 16) : ''} onchange={updateStartDatetime} />
-			<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>🔗</button>
-			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>🗺️</button>
+			<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
+				<IconShare class="h-5 w-5" />
+			</button>
+			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
+				<IconMap class="h-5 w-5" />
+			</button>
 			{#if saveStatus === 'saving'}<span class="text-xs text-base-content/50">Saving…</span>
 			{:else if saveStatus === 'saved'}<span class="text-xs text-success">Saved ✓</span>{/if}
 		</header>
@@ -264,7 +263,7 @@
 		<main class="mx-auto max-w-2xl p-4">
 			{#if dndItems.length === 0}
 				<div class="flex flex-col items-center gap-4 py-12 text-center">
-					<div class="text-4xl">📍</div>
+					<IconPin class="h-10 w-10 text-base-content/30" />
 					<p class="text-base-content/60">Add your first stop to get started.</p>
 				</div>
 			{/if}
@@ -290,7 +289,9 @@
 									/>
 								{:else}
 									<div class="flex justify-center py-1">
-										<button class="btn btn-ghost btn-xs" onclick={() => addStop(stop.orderIndex)}>＋ Insert stop</button>
+										<button class="btn btn-ghost btn-xs gap-0.5" onclick={() => addStop(stop.orderIndex)}>
+											<IconAdd class="h-3.5 w-3.5" /> Insert stop
+										</button>
 									</div>
 								{/if}
 							</div>
@@ -302,30 +303,36 @@
 			</div>
 
 			<div class="mt-4 flex justify-center">
-				<button class="btn btn-primary btn-sm sm:btn-md" onclick={() => addStop()}>＋ Add Stop</button>
+				<button class="btn btn-primary btn-sm sm:btn-md gap-1.5" onclick={() => addStop()}>
+					<IconAdd class="h-5 w-5" /> Add Stop
+				</button>
 			</div>
-			<button class="btn btn-primary btn-circle fixed right-4 bottom-6 z-50 shadow-lg sm:hidden" onclick={() => addStop()} aria-label="Add stop">＋</button>
+			<button class="btn btn-primary btn-circle fixed right-4 bottom-6 z-50 shadow-lg sm:hidden" onclick={() => addStop()} aria-label="Add stop">
+				<IconAdd class="h-6 w-6" />
+			</button>
 		</main>
 	</div>
 {/if}
 
-<!-- modals -->
 <LocationPicker bind:open={showLocationPicker} initialLat={locationPickerStop?.lat ?? 50} initialLon={locationPickerStop?.lon ?? 8}
 	onconfirm={locationPickerStop ? handleLocationUpdateConfirm : handleLocationConfirm} />
 
-<ShareModal bind:open={showShareModal} journeyId={journey.id} isPublic={journey.isPublic} {shareUrl}
+<ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
+{#await import('$lib/components/TransitDetailModal.svelte') then { default: TransitDetailModal }}
+	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} />
+{/await}
 
-<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+{/await}
 
-<!-- Transit recompute confirmation modal -->
 {#if showRecomputeConfirm}
 	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4" onclick={dismissRecompute}>
 		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-sm w-full p-5" onclick={(e) => e.stopPropagation()}>
 			<div class="flex items-center gap-3 mb-3">
-				<span class="text-2xl">🚆</span>
+				<IconTrain class="h-6 w-6 text-primary" />
 				<h3 class="font-bold text-base">Update Öffi connections?</h3>
 			</div>
 			<p class="text-sm text-base-content/60 mb-4">

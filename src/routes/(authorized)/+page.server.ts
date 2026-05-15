@@ -31,6 +31,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			for (const s of journeyStops) totalDuration += s.stayDurationMinutes ?? 0;
 			for (const s of journeySegments) totalDuration += s.travelDurationMinutes ?? 0;
 
+			const stopCoords = journeyStops.map((s) => ({ lat: s.lat, lon: s.lon }));
+
 			return {
 				...journey,
 				startDatetime: journey.startDatetime?.toISOString() ?? null,
@@ -39,7 +41,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 				firstStopName: firstStop?.name ?? null,
 				lastStopName: lastStop?.name ?? null,
 				stopCount: journeyStops.length,
-				totalDurationMinutes: totalDuration
+				totalDurationMinutes: totalDuration,
+				stopCoords
 			};
 		})
 	);

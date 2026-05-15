@@ -126,4 +126,5 @@ export interface JourneyWithDerived extends Journey {
     lastStopName?: string | null;
     stopCount: number;
     totalDurationMinutes: number;
+    stopCoords?: { lat: number; lon: number }[];
 }

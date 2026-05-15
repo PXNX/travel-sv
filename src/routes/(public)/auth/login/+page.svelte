@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import IconMap from '~icons/material-symbols/map-outline-rounded';
 </script>
 
 <svelte:head>
@@ -8,19 +9,17 @@
 </svelte:head>
 
 <div class="flex min-h-[100dvh] items-center justify-center bg-base-100 p-4">
-	<div class="w-full max-w-md text-center">
-		<!-- Header -->
+	<div class="w-full max-w-md text-center animate-fade-in-up">
 		<div class="mb-10">
-			<div class="mb-4 text-6xl">🗺️</div>
+			<IconMap class="mx-auto h-16 w-16 text-primary mb-4" />
 			<h1 class="text-3xl font-bold">Journey Planner</h1>
-			<p class="mt-2 text-base-content/60">Sign in to continue</p>
+			<p class="mt-2 text-base-content/50">Sign in to continue</p>
 		</div>
 
-		<!-- Login Card -->
-		<div class="card bg-base-200 shadow-md">
+		<div class="card bg-base-200 shadow-lg animate-fade-in-scale" style="animation-delay: 150ms">
 			<div class="card-body items-center gap-6 p-8">
 				<a
-					class="btn btn-wide bg-white text-black border-base-300 hover:bg-base-100"
+					class="btn btn-wide bg-white text-black border-base-300 hover:bg-base-100 shadow-sm hover:shadow-md transition-all"
 					href={`/auth/login/google?next=${encodeURIComponent(page.url.searchParams.get('next') || '/')}`}
 				>
 					<svg class="size-5" viewBox="0 0 48 48">
@@ -34,7 +33,7 @@
 
 				<div class="text-xs text-base-content/40">
 					By signing in, you agree to our
-					<a href="/privacy-policy" class="link">privacy policy</a>
+					<a href="/privacy-policy" class="link link-primary hover:link-primary/80 transition-colors">privacy policy</a>
 				</div>
 			</div>
 		</div>

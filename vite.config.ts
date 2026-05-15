@@ -10,12 +10,7 @@ export default defineConfig({
 		tailwindcss(),
 		Icons({
 			compiler: 'svelte',
-			autoInstall: true,
-			// Configure for separate files
-
-			iconCustomizer(collection, icon, props) {
-				props.mode = 'url';
-			}
+			autoInstall: true
 		}),
 		SvelteKitPWA()
 		/*{

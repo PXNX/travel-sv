@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { Segment, SegmentMode } from '$lib/types';
 	import { formatDistance, formatDuration } from '$lib/helpers';
+	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
+	import IconTrain from '~icons/material-symbols/train-outline-rounded';
+	import IconCar from '~icons/material-symbols/directions-car-outline-rounded';
+	import IconAdd from '~icons/material-symbols/add-rounded';
 
 	interface Props {
 		segment: Segment;
@@ -13,10 +17,10 @@
 
 	let { segment, onmodechange, onclickdetail, oninsert, readonly = false, loading = false }: Props = $props();
 
-	const modes: { value: SegmentMode; icon: string; label: string }[] = [
-		{ value: 'walk', icon: '🚶', label: 'Walk' },
-		{ value: 'transit', icon: '🚆', label: 'Öffi' },
-		{ value: 'drive', icon: '🚗', label: 'Drive' }
+	const modes: { value: SegmentMode; label: string }[] = [
+		{ value: 'walk', label: 'Walk' },
+		{ value: 'transit', label: 'Öffi' },
+		{ value: 'drive', label: 'Drive' }
 	];
 
 	const modeColors: Record<SegmentMode, { border: string; bg: string; dot: string }> = {
@@ -26,12 +30,20 @@
 	};
 
 	const colors = $derived(modeColors[segment.mode] ?? modeColors.walk);
-	const currentMode = $derived(modes.find((m) => m.value === segment.mode)!);
 </script>
+
+{#snippet modeIcon(mode: SegmentMode, cls: string)}
+	{#if mode === 'walk'}
+		<IconWalk class={cls} />
+	{:else if mode === 'transit'}
+		<IconTrain class={cls} />
+	{:else}
+		<IconCar class={cls} />
+	{/if}
+{/snippet}
 
 <div class="my-1.5 mx-1">
 	<div class="flex items-stretch gap-0">
-		<!-- connector line + colored dot -->
 		<div class="flex flex-col items-center w-8 shrink-0">
 			<div class="w-0.5 h-2 bg-base-300"></div>
 			<div class="w-2.5 h-2.5 rounded-full {colors.dot}"></div>
@@ -39,15 +51,13 @@
 		</div>
 
 		<div class="flex-1 min-w-0">
-			<!-- colored card -->
 			<div class="rounded-xl border {colors.border} {colors.bg} px-3 py-2 flex flex-col gap-1.5">
 
-				<!-- mode picker -->
 				{#if !readonly && onmodechange}
 					<div class="flex gap-0.5 rounded-lg bg-base-100/60 p-0.5 self-start">
 						{#each modes as m}
 							<button
-								class="rounded-md px-2.5 py-1 text-xs font-medium transition-all"
+								class="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
 								class:bg-primary={segment.mode === m.value}
 								class:text-primary-content={segment.mode === m.value}
 								class:shadow-sm={segment.mode === m.value}
@@ -56,13 +66,13 @@
 								title={m.label}
 								onclick={() => onmodechange(segment.id, m.value)}
 							>
-								{m.icon} {m.label}
+								{@render modeIcon(m.value, 'h-3.5 w-3.5')}
+								{m.label}
 							</button>
 						{/each}
 					</div>
 				{/if}
 
-				<!-- info row -->
 				{#if loading}
 					<div class="flex items-center gap-2 py-1">
 						<span class="loading loading-spinner loading-xs"></span>
@@ -77,7 +87,7 @@
 						onclick={() => onclickdetail?.(segment)}
 					>
 						{#if readonly}
-							<span class="text-sm">{currentMode.icon}</span>
+							{@render modeIcon(segment.mode, 'h-4 w-4')}
 						{/if}
 
 						{#if segment.mode === 'walk'}
@@ -122,7 +132,9 @@
 
 			{#if oninsert && !readonly}
 				<div class="flex justify-center -mt-0.5">
-					<button class="btn btn-ghost btn-xs text-[10px] opacity-30 hover:opacity-100 transition-opacity" onclick={oninsert}>＋ insert stop</button>
+					<button class="btn btn-ghost btn-xs text-[10px] opacity-30 hover:opacity-100 transition-opacity gap-0.5" onclick={oninsert}>
+						<IconAdd class="h-3 w-3" /> insert stop
+					</button>
 				</div>
 			{/if}
 		</div>

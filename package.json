@@ -24,6 +24,7 @@
 		"@iconify-json/fluent": "1.2.47",
 		"@iconify-json/fluent-emoji": "1.2.7",
 		"@iconify-json/logos": "1.2.11",
+		"@iconify-json/material-symbols": "^1.2.72",
 		"@iconify/svelte": "5.2.1",
 		"@oslojs/crypto": "1.0.1",
 		"@oslojs/encoding": "1.1.0",
