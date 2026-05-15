@@ -9,6 +9,7 @@
 	import IconDownload from '~icons/material-symbols/download-rounded';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconTimer from '~icons/material-symbols/timer-outline-rounded';
+	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -105,9 +106,14 @@
 
 <div class="min-h-[100dvh] bg-base-100">
 	<header class="flex items-center justify-between border-b border-base-300 px-4 py-3">
-		<div>
-			<h1 class="text-lg font-bold">{journey.title}</h1>
-			<p class="text-xs text-base-content/50">by {journey.ownerName}</p>
+		<div class="flex items-center gap-2">
+			<a href="/" class="btn btn-ghost btn-sm">
+				<IconArrowBack class="h-5 w-5" />
+			</a>
+			<div>
+				<h1 class="text-lg font-bold">{journey.title}</h1>
+				<p class="text-xs text-base-content/50">by {journey.ownerName}</p>
+			</div>
 		</div>
 
 		<form method="POST" action="?/import" use:enhance={() => {
@@ -128,6 +134,16 @@
 	<main class="mx-auto max-w-2xl p-4">
 		{#if journey.description}
 			<p class="mb-4 text-sm text-base-content/70">{journey.description}</p>
+		{/if}
+
+		{#if sortedStops.length > 0}
+			<div class="mb-4 overflow-hidden rounded-xl border border-base-300 pointer-events-none select-none" aria-hidden="true">
+				<div class="h-40">
+					{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
+						<MiniMap coords={sortedStops.map(s => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
+					{/await}
+				</div>
+			</div>
 		{/if}
 
 		{#if startTime && endTime && totalDurationMin != null}
