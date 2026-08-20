@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Map, TileLayer, Marker } from 'sveaflet';
 	import { getCachedNominatimResults, cacheNominatimResults } from '$lib/db/local';
-	import IconClose from '~icons/material-symbols/close-rounded';
+	import { Button, Modal } from '$lib/components/ui';
 
 	interface Props {
 		open: boolean;
@@ -27,8 +27,12 @@
 	let selectedLat = $state(50);
 	let selectedLon = $state(8);
 
-	$effect.pre(() => { selectedLat = initialLat; });
-	$effect.pre(() => { selectedLon = initialLon; });
+	$effect.pre(() => {
+		selectedLat = initialLat;
+	});
+	$effect.pre(() => {
+		selectedLon = initialLon;
+	});
 
 	let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -100,85 +104,67 @@
 	}
 </script>
 
-{#if open}
-	<div class="fixed inset-0 z-[3000] flex items-end sm:items-center justify-center bg-black/50">
-		<div
-			class="bg-base-100 h-[100dvh] w-full sm:h-auto sm:max-h-[80vh] sm:max-w-lg sm:rounded-xl shadow-xl flex flex-col"
-		>
-			<div class="flex items-center justify-between border-b border-base-300 p-3">
-				<h3 class="font-bold">Pick Location</h3>
-				<button
-					class="btn btn-ghost btn-sm"
-					onclick={() => {
-						open = false;
-						onclose?.();
-					}}
-				>
-					<IconClose class="h-5 w-5" />
-				</button>
-			</div>
+<Modal bind:open title="Pick Location" size="full" padded={false} {onclose}>
+	<div class="flex h-full flex-col">
+		<div role="tablist" class="tabs tabs-border shrink-0 px-3 pt-2">
+			<button
+				role="tab"
+				class="tab"
+				class:tab-active={activeTab === 'search'}
+				onclick={() => (activeTab = 'search')}
+			>
+				Search
+			</button>
+			<button
+				role="tab"
+				class="tab"
+				class:tab-active={activeTab === 'map'}
+				onclick={() => (activeTab = 'map')}
+			>
+				Map
+			</button>
+		</div>
 
-			<div role="tablist" class="tabs tabs-bordered px-3 pt-2">
-				<button
-					role="tab"
-					class="tab"
-					class:tab-active={activeTab === 'search'}
-					onclick={() => (activeTab = 'search')}
-				>
-					Search
-				</button>
-				<button
-					role="tab"
-					class="tab"
-					class:tab-active={activeTab === 'map'}
-					onclick={() => (activeTab = 'map')}
-				>
-					Map
-				</button>
-			</div>
-
-			<div class="flex-1 overflow-y-auto p-3">
-				{#if activeTab === 'search'}
-					<input
-						class="input input-bordered w-full mb-2"
-						placeholder="Search for a place..."
-						bind:value={searchQuery}
-						oninput={handleSearchInput}
-					/>
-					{#if isSearching}
-						<div class="flex justify-center py-4">
-							<span class="loading loading-spinner"></span>
-						</div>
-					{/if}
-					<ul class="menu w-full gap-1">
-						{#each searchResults as result}
-							<li>
-								<button class="text-left text-sm" onclick={() => selectResult(result)}>
-									{result.display_name}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<div class="h-[60dvh] sm:h-80 w-full rounded-lg overflow-hidden">
-						<Map options={mapOptions} onclick={handleMapClick}>
-							<TileLayer
-								url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
-								options={{ maxZoom: 19 }}
-							/>
-							<Marker latLng={[selectedLat, selectedLon]} />
-						</Map>
-					</div>
-					<div class="mt-2 flex items-center justify-between">
-						<span class="text-sm text-base-content/60">
-							{selectedLat.toFixed(4)}, {selectedLon.toFixed(4)}
-						</span>
-						<button class="btn btn-primary btn-sm" onclick={confirmMapSelection}>
-							Confirm
-						</button>
+		<div class="min-h-0 flex-1 overflow-y-auto p-3">
+			{#if activeTab === 'search'}
+				<input
+					class="input mb-2 w-full"
+					placeholder="Search for a place..."
+					aria-label="Search for a place"
+					bind:value={searchQuery}
+					oninput={handleSearchInput}
+				/>
+				{#if isSearching}
+					<div class="flex justify-center py-4">
+						<span class="loading loading-spinner"></span>
 					</div>
 				{/if}
-			</div>
+				<ul class="menu w-full gap-1">
+					{#each searchResults as result (result.display_name)}
+						<li>
+							<button class="text-left text-sm" onclick={() => selectResult(result)}>
+								{result.display_name}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<div class="h-[55dvh] w-full overflow-hidden rounded-lg sm:h-80">
+					<Map options={mapOptions} onclick={handleMapClick}>
+						<TileLayer
+							url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+							options={{ maxZoom: 19 }}
+						/>
+						<Marker latLng={[selectedLat, selectedLon]} />
+					</Map>
+				</div>
+				<div class="mt-3 flex items-center justify-between gap-2">
+					<span class="text-base-content/60 font-mono text-sm">
+						{selectedLat.toFixed(4)}, {selectedLon.toFixed(4)}
+					</span>
+					<Button size="sm" onclick={confirmMapSelection}>Confirm</Button>
+				</div>
+			{/if}
 		</div>
 	</div>
-{/if}
+</Modal>

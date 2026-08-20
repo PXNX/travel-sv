@@ -7,25 +7,8 @@
 	import IconTram from '~icons/material-symbols/tram-outline-rounded';
 	import IconSubway from '~icons/material-symbols/subway-outline-rounded';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
-	import IconClose from '~icons/material-symbols/close-rounded';
 	import IconTimer from '~icons/material-symbols/timer-outline-rounded';
-
-	const productColors: Record<string, string> = {
-		S: '#008d4f',
-		RE: '#ec1c24',
-		RB: '#ec1c24',
-		ARV: '#ec1c24',
-		MEX: '#ec1c24',
-		IRE: '#ec1c24',
-		Bus: '#a0158a',
-		STR: '#d6a100',
-		U: '#2e5ea8'
-	};
-
-	function productColor(product?: string): string {
-		if (!product) return '#3b82f6';
-		return productColors[product] ?? '#3b82f6';
-	}
+	import { Modal, transitColor } from '$lib/components/ui';
 
 	interface Props {
 		open: boolean;
@@ -120,11 +103,6 @@
 		return Math.max(0, Math.round(diff));
 	}
 
-	function close() {
-		open = false;
-		onclose?.();
-	}
-
 	const walkToClickable = $derived.by(() => {
 		if (!onwalkclick || walkTo <= 0 || !fromCoords || visibleLegs.length === 0) return false;
 		const first = visibleLegs[0];
@@ -188,45 +166,22 @@
 	}
 </script>
 
-{#if open && segment}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50"
-		role="dialog" aria-modal="true" aria-label="Transit details" tabindex="-1"
-		onclick={close}
-		onkeydown={(e) => e.key === 'Escape' && close()}
-	>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="bg-base-100 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85dvh] animate-slide-up"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={() => {}}
-		>
-			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
-				<div>
-					<h3 class="font-bold text-base flex items-center gap-1.5">
-						<IconTrain class="h-5 w-5" />
-						Öffi Details
-					</h3>
-					<p class="text-xs text-base-content/50 mt-0.5">
-						{formatDuration(segment.travelDurationMinutes ?? 0)} total ·
-						{transfers}
-						{transfers === 1 ? 'Umstieg' : 'Umstiege'}
-					</p>
-					{#if segment.transitSummary}
-						<div class="flex flex-wrap gap-1 mt-1.5">
-							{#each (segment.transitSummary ?? '').split(' → ') as line}
-								<span class="badge badge-sm badge-primary">{line}</span>
-							{/each}
-						</div>
-					{/if}
+<Modal bind:open title="Öffi Details" icon={IconTrain} layer="raised" {onclose}>
+	{#snippet subtitle()}
+		{#if segment}
+			{formatDuration(segment.travelDurationMinutes ?? 0)} total · {transfers}
+			{transfers === 1 ? 'Umstieg' : 'Umstiege'}
+			{#if segment.transitSummary}
+				<div class="mt-1.5 flex flex-wrap gap-1">
+					{#each segment.transitSummary.split(' → ') as line (line)}
+						<span class="badge badge-sm badge-primary">{line}</span>
+					{/each}
 				</div>
-				<button class="btn btn-ghost btn-sm btn-circle" onclick={close}>
-					<IconClose class="h-5 w-5" />
-				</button>
-			</div>
+			{/if}
+		{/if}
+	{/snippet}
 
-			<div class="overflow-y-auto flex-1 px-5 py-4">
+	{#if segment}
 				{#if walkTo > 0}
 					<svelte:element
 						this={walkToClickable ? 'button' : 'div'}
@@ -271,13 +226,15 @@
 						</div>
 					{/if}
 
-					{@const color = leg.type === 'transport' ? productColor(leg.product) : ''}
+					{@const color = leg.type === 'transport' ? transitColor(leg.product) : ''}
 					{@const clickableWalk = leg.type === 'walking' && isWalkingLegClickable(leg)}
 					<svelte:element
 						this={clickableWalk ? 'button' : 'div'}
 						type={clickableWalk ? 'button' : undefined}
 						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {clickableWalk ? 'cursor-pointer hover:bg-base-200/60' : ''}"
-						style={active ? `background: ${color || 'oklch(var(--p))'}15; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;` : ''}
+						style={active
+							? `background: ${color ? color + '15' : 'color-mix(in oklch, var(--color-primary) 8%, transparent)'}; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;`
+							: ''}
 						onclick={clickableWalk ? () => handleWalkingLegClick(leg) : undefined}
 						onkeydown={clickableWalk ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkingLegClick(leg) : undefined}
 					>
@@ -285,7 +242,9 @@
 							{#if leg.type === 'walking'}
 								<div
 									class="w-8 h-8 rounded-full flex items-center justify-center transition-all {active ? 'text-white ring-2 ring-offset-1' : 'bg-base-300'}"
-									style={active ? 'background: oklch(var(--p)); --tw-ring-color: oklch(var(--p) / 0.3)' : ''}
+									style={active
+										? 'background: var(--color-primary); --tw-ring-color: color-mix(in oklch, var(--color-primary) 30%, transparent)'
+										: ''}
 								>
 									<IconWalk class="h-4 w-4" />
 								</div>
@@ -394,12 +353,10 @@
 						</svelte:element>
 						{/if}
 
-				{#if visibleLegs.length === 0}
-					<p class="text-sm text-base-content/50 text-center py-6">
-						No detailed connection data available.
-					</p>
-				{/if}
-			</div>
-		</div>
-	</div>
-{/if}
+		{#if visibleLegs.length === 0}
+			<p class="text-base-content/50 py-6 text-center text-sm">
+				No detailed connection data available.
+			</p>
+		{/if}
+	{/if}
+</Modal>

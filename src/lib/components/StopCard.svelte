@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Stop } from '$lib/types';
 	import { dragHandle as dragHandleAction } from 'svelte-dnd-action';
+	import { Card, ConfirmDialog, IconButton, MetaItem } from '$lib/components/ui';
 	import IconClock from '~icons/material-symbols/schedule-outline-rounded';
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
 	import IconDelete from '~icons/material-symbols/delete-outline-rounded';
@@ -25,10 +26,18 @@
 	let stayMinutes = $state(0);
 	let notes = $state('');
 
-	$effect.pre(() => { nameInput = stop.name; });
-	$effect.pre(() => { stayHours = Math.floor((stop.stayDurationMinutes ?? 0) / 60); });
-	$effect.pre(() => { stayMinutes = (stop.stayDurationMinutes ?? 0) % 60; });
-	$effect.pre(() => { notes = stop.notes ?? ''; });
+	$effect.pre(() => {
+		nameInput = stop.name;
+	});
+	$effect.pre(() => {
+		stayHours = Math.floor((stop.stayDurationMinutes ?? 0) / 60);
+	});
+	$effect.pre(() => {
+		stayMinutes = (stop.stayDurationMinutes ?? 0) % 60;
+	});
+	$effect.pre(() => {
+		notes = stop.notes ?? '';
+	});
 	let confirmingDelete = $state(false);
 
 	function saveName() {
@@ -51,17 +60,9 @@
 		}
 	}
 
-	function requestDelete() {
-		confirmingDelete = true;
-	}
-
 	function confirmDelete() {
 		confirmingDelete = false;
 		ondelete?.(stop.id);
-	}
-
-	function cancelDelete() {
-		confirmingDelete = false;
 	}
 
 	function focusOnMount(node: HTMLElement) {
@@ -75,60 +76,66 @@
 	);
 </script>
 
-<div class="card bg-base-200 shadow-sm">
-	<div class="card-body gap-2 p-3">
+<Card padding="none">
+	<div class="flex flex-col gap-2 p-3">
 		<div class="flex items-center gap-2">
 			{#if dragHandle}
-				<span use:dragHandleAction class="drag-handle cursor-grab text-base-content/40 touch-none select-none" aria-label="Drag to reorder">
-					<IconDrag class="h-5 w-5" />
+				<span
+					use:dragHandleAction
+					class="drag-handle text-base-content/40 cursor-grab touch-none select-none"
+					aria-label="Drag to reorder"
+				>
+					<IconDrag class="size-5" />
 				</span>
 			{/if}
 
-			<div class="flex-1">
+			<div class="min-w-0 flex-1">
 				{#if editingName}
+					<!-- svelte-ignore a11y_autofocus -->
 					<input
-						class="input input-bordered input-sm w-full"
+						class="input input-sm w-full"
 						bind:value={nameInput}
 						onblur={saveName}
 						onkeydown={(e) => e.key === 'Enter' && saveName()}
 						use:focusOnMount
 					/>
 				{:else}
-					<button class="font-semibold hover:underline text-left" onclick={() => (editingName = true)}>
+					<button
+						class="truncate text-left font-semibold hover:underline"
+						onclick={() => (editingName = true)}
+					>
 						{stop.name}
 					</button>
 				{/if}
 			</div>
 
-			<button
-				class="btn btn-ghost btn-xs text-error"
-				onclick={requestDelete}
-				aria-label="Delete stop"
-			>
-				<IconClose class="h-4 w-4" />
-			</button>
+			<IconButton
+				icon={IconClose}
+				label="Delete stop"
+				size="xs"
+				class="text-error shrink-0"
+				onclick={() => (confirmingDelete = true)}
+			/>
 		</div>
 
 		{#if arrivalFormatted}
-			<div class="flex items-center gap-1 text-xs text-base-content/50">
-				<IconClock class="h-3.5 w-3.5" />
-				Arrival: {arrivalFormatted}
-			</div>
+			<MetaItem icon={IconClock} class="text-base-content/50">Arrival: {arrivalFormatted}</MetaItem>
 		{/if}
 
 		<button
-			class="flex items-center gap-1 text-xs text-base-content/60 hover:text-primary text-left"
+			class="text-base-content/60 hover:text-primary flex items-center gap-1 text-left text-xs transition-colors"
 			onclick={() => onpicklocation?.(stop)}
 		>
-			<IconPin class="h-3.5 w-3.5" />
+			<IconPin class="size-3.5 shrink-0" />
 			{stop.lat.toFixed(4)}, {stop.lon.toFixed(4)}
 		</button>
 
 		<div class="flex items-center gap-2">
-			<span class="text-xs text-base-content/60">Stay:</span>
+			<span class="text-base-content/60 text-xs">Stay:</span>
 			<input
 				type="number"
-				class="input input-bordered input-xs w-14"
+				class="input input-xs w-14"
+				aria-label="Stay hours"
 				bind:value={stayHours}
 				onchange={updateDuration}
 				min="0"
@@ -137,7 +144,8 @@
 			<span class="text-xs">h</span>
 			<input
 				type="number"
-				class="input input-bordered input-xs w-14"
+				class="input input-xs w-14"
+				aria-label="Stay minutes"
 				bind:value={stayMinutes}
 				onchange={updateDuration}
 				min="0"
@@ -148,33 +156,23 @@
 		</div>
 
 		<textarea
-			class="textarea textarea-bordered textarea-xs w-full"
+			class="textarea textarea-xs w-full"
 			placeholder="Notes..."
+			aria-label="Notes"
 			bind:value={notes}
 			onblur={updateNotes}
 			rows="1"
 		></textarea>
 	</div>
-</div>
+</Card>
 
-{#if confirmingDelete}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4 animate-fade-in" role="dialog" aria-modal="true" aria-label="Confirm deletion" tabindex="-1" onclick={cancelDelete} onkeydown={(e) => e.key === 'Escape' && cancelDelete()}>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-xs w-full p-5 animate-fade-in-scale" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-			<div class="flex items-center gap-3 mb-3">
-				<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error/15">
-					<IconDelete class="h-5 w-5 text-error" />
-				</div>
-				<div>
-					<h3 class="font-bold text-sm">Delete stop?</h3>
-					<p class="text-xs text-base-content/50 mt-0.5">"{stop.name}" will be removed.</p>
-				</div>
-			</div>
-			<div class="flex gap-2 justify-end mt-4">
-				<button class="btn btn-ghost btn-sm" onclick={cancelDelete}>Cancel</button>
-				<button class="btn btn-error btn-sm" onclick={confirmDelete}>Delete</button>
-			</div>
-		</div>
-	</div>
-{/if}
+<ConfirmDialog
+	bind:open={confirmingDelete}
+	title="Delete stop?"
+	icon={IconDelete}
+	tone="error"
+	confirmLabel="Delete"
+	onconfirm={confirmDelete}
+>
+	“{stop.name}” will be removed from this journey.
+</ConfirmDialog>

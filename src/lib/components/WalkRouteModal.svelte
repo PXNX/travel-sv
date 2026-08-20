@@ -6,9 +6,9 @@
 	import { formatDistance, formatDuration } from '$lib/helpers';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconCar from '~icons/material-symbols/directions-car-outline-rounded';
-	import IconClose from '~icons/material-symbols/close-rounded';
 	import IconNavigation from '~icons/material-symbols/navigation-rounded';
 	import IconRadar from '~icons/material-symbols/track-changes-rounded';
+	import { Button, IconButton, Modal } from '$lib/components/ui';
 
 	interface Props {
 		open: boolean;
@@ -150,54 +150,27 @@
 		}
 	});
 
-	function close() {
-		stopTracking();
-		open = false;
-		onclose?.();
-	}
 </script>
 
-{#if browser && open && segment && geometry?.length}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-[4000] flex items-end sm:items-center justify-center bg-black/50"
-		role="dialog" aria-modal="true" aria-label="Route details" tabindex="-1"
-		onclick={close}
-		onkeydown={(e) => e.key === 'Escape' && close()}
+{#if browser && segment && geometry?.length}
+	<Modal
+		bind:open
+		title={modeLabel}
+		icon={isWalk ? IconWalk : IconCar}
+		layer="raised"
+		padded={false}
+		{onclose}
 	>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="bg-base-100 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[90dvh] animate-slide-up"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={() => {}}
-		>
-			<div class="flex items-center justify-between border-b border-base-300 px-5 py-3">
-				<div>
-					<h3 class="font-bold text-base flex items-center gap-1.5">
-						{#if isWalk}
-							<IconWalk class="h-5 w-5" />
-						{:else}
-							<IconCar class="h-5 w-5" />
-						{/if}
-						{modeLabel}
-					</h3>
-					<p class="text-xs text-base-content/50">
-						{formatDistance(segment.distanceM ?? 0)} ·
-						~{formatDuration(segment.travelDurationMinutes ?? 0)}
-						{#if isWalk && (segment.elevationUpM || segment.elevationDownM)}
-							· ↑{Math.round(segment.elevationUpM ?? 0)}m ↓{Math.round(
-								segment.elevationDownM ?? 0
-							)}m
-						{/if}
-					</p>
-				</div>
-				<button class="btn btn-ghost btn-sm btn-circle" onclick={close}>
-					<IconClose class="h-5 w-5" />
-				</button>
-			</div>
+		{#snippet subtitle()}
+			{formatDistance(segment.distanceM ?? 0)} · ~{formatDuration(
+				segment.travelDurationMinutes ?? 0
+			)}
+			{#if isWalk && (segment.elevationUpM || segment.elevationDownM)}
+				· ↑{Math.round(segment.elevationUpM ?? 0)}m ↓{Math.round(segment.elevationDownM ?? 0)}m
+			{/if}
+		{/snippet}
 
-			<div class="flex-1 min-h-0">
-				<div class="w-full h-[55dvh] sm:h-96">
+		<div class="h-[55dvh] w-full sm:h-96">
 					<Map options={mapOptions} bind:instance={mapInstance}>
 						<TileLayer
 							url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
@@ -262,38 +235,32 @@
 							</CircleMarker>
 						{/if}
 					</Map>
-				</div>
-			</div>
+		</div>
 
-			<div class="border-t border-base-300 px-5 py-3 flex items-center justify-between gap-2">
+		{#snippet footer()}
+			<div class="flex items-center justify-between gap-2">
 				{#if isTracking && remainingDistance != null && eta}
 					<div class="min-w-0">
 						<p class="text-sm font-semibold">{formatDistance(remainingDistance)} remaining</p>
-						<p class="text-xs text-base-content/50">ETA {fmtTime(eta)}</p>
+						<p class="text-base-content/50 text-xs">ETA {fmtTime(eta)}</p>
 					</div>
 				{:else}
-					<span class="text-xs text-base-content/50 truncate">{fromName} → {toName}</span>
+					<span class="text-base-content/50 truncate text-xs">{fromName} → {toName}</span>
 				{/if}
-				<div class="flex items-center gap-1.5 shrink-0">
-					<button
-						class="btn btn-ghost btn-xs btn-circle"
+				<div class="flex shrink-0 items-center gap-1.5">
+					<IconButton
+						icon={IconRadar}
+						label="Focus destination"
+						size="xs"
 						onclick={focusDestination}
-						title="Focus destination"
-					>
-						<IconRadar class="h-4 w-4" />
-					</button>
+					/>
 					{#if isTracking}
-						<button class="btn btn-error btn-xs gap-1" onclick={stopTracking}>
-							Stop
-						</button>
+						<Button variant="error" size="xs" onclick={stopTracking}>Stop</Button>
 					{:else}
-						<button class="btn btn-primary btn-xs gap-1" onclick={startTracking}>
-							<IconNavigation class="h-3.5 w-3.5" />
-							Navigate
-						</button>
+						<Button size="xs" icon={IconNavigation} onclick={startTracking}>Navigate</Button>
 					{/if}
 				</div>
 			</div>
-		</div>
-	</div>
+		{/snippet}
+	</Modal>
 {/if}
