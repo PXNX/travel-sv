@@ -5,6 +5,7 @@
 	import SegmentChip from '$lib/components/SegmentChip.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
 	import { enhance } from '$app/forms';
+	import { browser } from '$app/environment';
 	import IconClock from '~icons/material-symbols/schedule-outline-rounded';
 	import IconDownload from '~icons/material-symbols/download-rounded';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
@@ -138,7 +139,7 @@
 
 		{#if sortedStops.length > 0 || (startTime && endTime && totalDurationMin != null)}
 	<div class="mb-4 overflow-hidden rounded-xl border border-base-300">
-		{#if sortedStops.length > 0}
+			{#if browser && sortedStops.length > 0}
 			<div class="h-40 pointer-events-none select-none" aria-hidden="true">
 				{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
 					<MiniMap coords={sortedStops.map(s => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
@@ -208,6 +209,8 @@
 
 	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
 
-	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
-	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
-	{/await}
+	{#if browser && showWalkRoute}
+		{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+			<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+		{/await}
+	{/if}

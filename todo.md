@@ -34,6 +34,8 @@
 - [x] „Walk to station“ neutral statt violett hervorheben.
 - [x] „OTHER“-Verkehrsmodi prüfen und ohne echte Fahrzeugkennung nicht als ÖPNV ausgeben.
 - [x] Providerausfall oder fehlende bestätigte Fallbackfahrt ohne Datenverlust und mit klarem Status behandeln.
+- [x] Verbleibenden Leaflet-Import vollständig aus dem Server-Rendering entfernen.
+- [x] Kombinierten Ausfall von DB Transport REST und bestätigtem Transitous-Fallback im Editor nachvollziehbar anzeigen.
 
 - [x] Neue Stopps auf Ort und Bundesland normalisieren.
 - [x] Schwebende Plus-Schaltfläche auf Mobilgeräten entfernen.

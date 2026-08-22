@@ -7,7 +7,6 @@
 	import { browser } from '$app/environment';
 	import StopCard from '$lib/components/StopCard.svelte';
 	import SegmentChip from '$lib/components/SegmentChip.svelte';
-	import LocationPicker from '$lib/components/LocationPicker.svelte';
 	import ShareModal from '$lib/components/ShareModal.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
@@ -401,8 +400,12 @@
 	</div>
 {/if}
 
-<LocationPicker bind:open={showLocationPicker} initialLat={locationPickerStop?.lat ?? 50} initialLon={locationPickerStop?.lon ?? 8}
-	onconfirm={locationPickerStop ? handleLocationUpdateConfirm : handleLocationConfirm} />
+{#if browser && showLocationPicker}
+	{#await import('$lib/components/LocationPicker.svelte') then { default: LocationPicker }}
+		<LocationPicker bind:open={showLocationPicker} initialLat={locationPickerStop?.lat ?? 50} initialLon={locationPickerStop?.lon ?? 8}
+			onconfirm={locationPickerStop ? handleLocationUpdateConfirm : handleLocationConfirm} />
+	{/await}
+{/if}
 
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
@@ -424,9 +427,11 @@
 		</div>
 	</Modal>
 
-{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
-	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
-{/await}
+{#if browser && showWalkRoute}
+	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+		<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+	{/await}
+{/if}
 
 {#if showRecomputeConfirm}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->

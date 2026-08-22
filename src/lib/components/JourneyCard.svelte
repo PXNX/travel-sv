@@ -2,6 +2,7 @@
 	// Papier & Tinte: a journey card as a printed route slip with a quiet map inset.
 	import type { JourneyWithDerived } from '$lib/types';
 	import { formatDuration } from '$lib/helpers';
+	import { browser } from '$app/environment';
 	import { Card, MetaItem } from '$lib/components/ui';
 
 	import IconCalendar from '~icons/material-symbols/calendar-today-outline-rounded';
@@ -44,7 +45,7 @@
 	onclick={() => onclick?.(journey)}
 >
 	<div class="flex">
-		{#if hasCoords}
+		{#if browser && hasCoords}
 			<div
 					class="relative flex w-28 shrink-0 items-center justify-center overflow-hidden border-r border-[#172a45]/20 bg-[#e7ddca] sm:w-36"
 			>
