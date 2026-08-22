@@ -169,6 +169,36 @@ describe('computeSegment', () => {
 		expect(r.travelDurationMinutes).toBe(0);
 	});
 
+	it('transit: uses Transitous when DB Transport REST fails', async () => {
+		mockFetch.mockResolvedValueOnce({ ok: false, status: 503, text: () => Promise.resolve('unavailable') });
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({
+				itineraries: [{
+					duration: 1200,
+					transfers: 0,
+					endTime: '2026-08-22T10:20:00Z',
+					legs: [
+						{ mode: 'WALK', duration: 180, startTime: '2026-08-22T10:00:00Z', endTime: '2026-08-22T10:03:00Z', from: { name: 'Start', lat: 50, lon: 8 }, to: { name: 'Station', lat: 50.001, lon: 8.001 } },
+						{ mode: 'BUS', duration: 900, startTime: '2026-08-22T10:03:00Z', endTime: '2026-08-22T10:18:00Z', routeShortName: '55', headsign: 'Zentrum', from: { name: 'Station', lat: 50.001, lon: 8.001 }, to: { name: 'Ziel', lat: 50.01, lon: 8.01 } },
+						{ mode: 'WALK', duration: 120, startTime: '2026-08-22T10:18:00Z', endTime: '2026-08-22T10:20:00Z', from: { name: 'Ziel', lat: 50.01, lon: 8.01 }, to: { name: 'Ende', lat: 50.01, lon: 8.01 } }
+					]
+				}]
+			})
+		});
+
+		const { computeSegment } = await import('./computeSegment');
+		const r = await computeSegment(stopA, stopB, 1, 'transit', 7);
+
+		expect(mockFetch.mock.calls[1][0]).toContain('api.transitous.org/api/v6/plan');
+		expect(mockFetch.mock.calls[1][0]).toContain('minTransferTime=7');
+		expect(r.transitSummary).toBe('55');
+		expect(r.travelDurationMinutes).toBe(20);
+		expect(r.walkToStationMin).toBe(3);
+		expect(r.walkFromStationMin).toBe(2);
+		expect(r.transitLegs).toHaveLength(3);
+	});
+
     it('fallback when all APIs fail', async () => {
         mockFetch.mockRejectedValue(new Error('Offline'));
 

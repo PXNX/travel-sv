@@ -174,6 +174,52 @@
 	letter-spacing: 0.01em;
 }
 
+.travel-error-sheet {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--travel-ink) 42%, transparent);
+	border-top: 3px double var(--travel-ink);
+	background: var(--travel-paper);
+	padding: clamp(1.5rem, 7vw, 3.25rem);
+	box-shadow: 8px 9px 0 color-mix(in srgb, var(--travel-ink) 9%, transparent);
+}
+
+.travel-error-sheet::before,
+.travel-error-sheet::after {
+	position: absolute;
+	width: 1rem;
+	height: 1rem;
+	border: 2px solid var(--travel-amber);
+	content: '';
+}
+
+.travel-error-sheet::before { top: 0.65rem; left: 0.65rem; border-right: 0; border-bottom: 0; }
+.travel-error-sheet::after { right: 0.65rem; bottom: 0.65rem; border-top: 0; border-left: 0; }
+
+.travel-error-folio {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	border-bottom: 1px solid color-mix(in srgb, var(--travel-ink) 22%, transparent);
+	padding-bottom: 0.6rem;
+	color: var(--travel-rust);
+	font-size: 0.64rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.travel-error-mark { position: relative; width: 2.3rem; height: 1.45rem; margin-top: clamp(2rem, 8vw, 4rem); }
+.travel-error-mark i,
+.travel-error-mark b { position: absolute; top: 0; width: 1.35rem; height: 1.35rem; border: 2px solid var(--travel-ink); border-radius: 50%; }
+.travel-error-mark i { left: 0; }
+.travel-error-mark b { right: 0; border-color: var(--travel-amber); }
+.travel-error-kicker { margin: 1rem 0 0; color: var(--travel-rust); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+.travel-error-sheet h1 { margin: 0.3rem 0 0; color: var(--travel-ink); font-size: clamp(2.3rem, 11vw, 4.4rem); line-height: 0.94; }
+.travel-error-copy { max-width: 35rem; margin: 1.25rem 0 0; color: color-mix(in srgb, var(--travel-ink) 72%, transparent); font-size: 1rem; line-height: 1.6; }
+.travel-error-request { margin: 1.5rem 0 0; color: var(--travel-rust); font-size: 0.71rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.travel-error-request code { color: var(--travel-ink); font-family: var(--font-sans); font-size: 0.76rem; letter-spacing: 0; text-transform: none; }
+
 .badge {
 	transition: all 0.15s ease;
 }

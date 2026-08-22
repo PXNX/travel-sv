@@ -4,6 +4,7 @@
 declare global {
 	namespace App {
 		interface Locals {
+			requestId: string;
 			user: {
 				id: string;
 				email: string;
@@ -14,6 +15,9 @@ declare global {
 				id: string;
 				expiresAt: Date;
 			} | null;
+		}
+		interface Error {
+			requestId?: string;
 		}
 	}
 }

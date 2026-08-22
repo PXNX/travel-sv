@@ -184,11 +184,18 @@ function isTimedVehicleLeg(leg: any): boolean {
 
 async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult | null> {
     const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
-    if (!bothInGermany) return null;
+    if (bothInGermany) {
+        try {
+            return await computeTransitHAFAS(from, to, minimumTransferMinutes);
+        } catch (err) {
+            console.error('DB Transport REST transit failed:', err);
+        }
+    }
+
     try {
-        return await computeTransitHAFAS(from, to, minimumTransferMinutes);
+        return await computeTransitTransitous(from, to, minimumTransferMinutes);
     } catch (err) {
-        console.error('HAFAS transit failed:', err);
+        console.error('Transitous transit fallback failed:', err);
         return null;
     }
 }
@@ -413,6 +420,84 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
     };
 }
 
+/**
+ * Community-run Transitous/MOTIS fallback for the free/open and non-commercial use case.
+ * It receives the same stored minimum transfer time as DB Transport REST.
+ */
+async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult> {
+    const params = new URLSearchParams({
+        fromPlace: `${from.lat},${from.lon}`,
+        toPlace: `${to.lat},${to.lon}`,
+        minTransferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
+        preTransitModes: 'WALK',
+        postTransitModes: 'WALK',
+        transitModes: 'TRANSIT',
+        directModes: '',
+        detailedLegs: 'true'
+    });
+    const res = await fetch(`https://api.transitous.org/api/v6/plan?${params}`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'travel-sv/1.0 (https://github.com/PXNX/travel-sv)' }
+    });
+    if (!res.ok) throw new Error(`Transitous ${res.status}`);
+
+    const data = await res.json();
+    const candidates = (data.itineraries ?? [])
+        .filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some((leg: any) => leg.mode && leg.mode !== 'WALK'))
+        .sort((a: any, b: any) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
+    if (candidates.length === 0) throw new Error('Transitous returned no confirmed transport journey');
+
+    const itinerary = candidates[0];
+    const rawLegs: any[] = itinerary.legs;
+    const legs: TransitLeg[] = [];
+    const geometry: TransitGeoLeg[] = [];
+
+    for (const leg of rawLegs) {
+        const departure = leg.startTime ?? leg.from?.departure ?? leg.from?.scheduledDeparture;
+        const arrival = leg.endTime ?? leg.to?.arrival ?? leg.to?.scheduledArrival;
+        const durationMinutes = Math.round((leg.duration ?? 0) / 60);
+        const coords = leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision ?? 6) : undefined;
+
+        if (leg.mode === 'WALK') {
+            legs.push({
+                type: 'walking', departure, arrival,
+                departureStation: leg.from?.name, arrivalStation: leg.to?.name,
+                departureLat: leg.from?.lat, departureLon: leg.from?.lon,
+                arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
+                durationMinutes, distanceM: leg.distance ?? undefined, polyline: coords
+            });
+            if (coords && coords.length >= 2) geometry.push({ coords, mode: 'walking' });
+            continue;
+        }
+
+        const product = leg.mode ?? 'TRANSIT';
+        const lineName = leg.routeShortName ?? leg.displayName ?? leg.routeLongName ?? product;
+        legs.push({
+            type: 'transport', lineName, product, direction: leg.headsign ?? '',
+            departure, arrival,
+            departureStation: leg.from?.name ?? '', arrivalStation: leg.to?.name ?? '',
+            departureLat: leg.from?.lat, departureLon: leg.from?.lon,
+            arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
+            durationMinutes, polyline: coords
+        });
+        if (coords && coords.length >= 2) geometry.push({ coords, mode: 'transport', lineName, product });
+    }
+
+    const transportLegs = legs.filter((leg) => leg.type === 'transport');
+    if (transportLegs.length === 0) throw new Error('Transitous itinerary contains no vehicle leg');
+    const first = rawLegs[0];
+    const last = rawLegs.at(-1);
+
+    return {
+        totalDurationMinutes: Math.round((itinerary.duration ?? 0) / 60),
+        summary: transportLegs.map((leg) => leg.lineName || leg.product || 'ÖPNV').join(' → '),
+        legs,
+        walkToStationMin: first?.mode === 'WALK' ? Math.round((first.duration ?? 0) / 60) : 0,
+        walkFromStationMin: last?.mode === 'WALK' ? Math.round((last.duration ?? 0) / 60) : 0,
+        transfers: itinerary.transfers ?? Math.max(0, transportLegs.length - 1),
+        geometry
+    };
+}
+
 async function walkDurationOSRM(fromLat: number, fromLon: number, toLat: number, toLon: number): Promise<number> {
     try {
         const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false`;
@@ -438,7 +523,7 @@ async function computeElevation(from: Stop, to: Stop): Promise<{ up: number; dow
 }
 
 // Decode Google encoded polyline → [lat, lon][]
-function decodePolyline(encoded: string): [number, number][] {
+function decodePolyline(encoded: string, precision = 5): [number, number][] {
     const points: [number, number][] = [];
     let i = 0, lat = 0, lon = 0;
     while (i < encoded.length) {
@@ -448,7 +533,8 @@ function decodePolyline(encoded: string): [number, number][] {
         shift = 0; result = 0;
         do { byte = encoded.charCodeAt(i++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
         lon += (result & 1) ? ~(result >> 1) : (result >> 1);
-        points.push([lat / 1e5, lon / 1e5]);
+        const factor = 10 ** precision;
+        points.push([lat / factor, lon / factor]);
     }
     return points;
 }

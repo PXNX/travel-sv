@@ -1,5 +1,16 @@
 # Erweiterung travel-sv
 
+- [x] DB Transport REST mit kostenfreiem Transitous-Fallback integrieren.
+- [x] Fehlerseiten mit Request-ID und klaren Handlungsoptionen gestalten.
+- [x] Reiseoberfläche aufräumen und visuell konsistent verfeinern.
+- [x] Fallback, Fehlerseiten, Build und GitHub-Übertragung prüfen.
+
+- [ ] Kostenfreie Transitoptionen und Nutzungslizenzen prüfen.
+- [ ] Kostenfreie Strategie für Deutschland und internationale Ziele festlegen.
+
+- [x] Alternative Transit-APIs für Haltestellenzugang, Echtzeitdaten und Umsteigepuffer vergleichen.
+- [x] Kompatibilität, Kosten und technische Empfehlung dokumentieren.
+
 - [x] Reale HAFAS-Antwort und aktuelles Bestätigungskriterium prüfen.
 - [x] Fahrzeugabschnitte unabhängig von optionalen Linienfeldern erkennen.
 - [x] Transitfälle, Build und GitHub-Übertragung prüfen.
