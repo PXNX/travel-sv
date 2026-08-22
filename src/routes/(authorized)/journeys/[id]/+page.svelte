@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Papier & Tinte: journey editor as a layered route sheet with ink rules and amber wayfinding.
 	import type { PageData } from './$types';
 	import type { Stop, Segment, SegmentMode } from '$lib/types';
 	import { computeDerivedArrivalTimes } from '$lib/helpers';
@@ -9,6 +10,7 @@
 	import ShareModal from '$lib/components/ShareModal.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
@@ -21,6 +23,7 @@
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
 	import IconAdd from '~icons/material-symbols/add-rounded';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
+	import IconTune from '~icons/material-symbols/tune-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -49,6 +52,9 @@
 	let showShareModal = $state(false);
 	let shareUrl = $state<string | null>(null);
 	let showMap = $state(false);
+	let showTransitSettings = $state(false);
+	let minimumTransferMinutes = $state(data.journey.minimumTransferMinutes ?? 5);
+	let savingTransitSettings = $state(false);
 	let isOffline = $state(false);
 	let computingSegmentId = $state<number | null>(null);
 
@@ -143,6 +149,15 @@
 		showStatus('saving');
 		await postAction('recomputeTransit', {});
 		isRecomputing = false;
+		showStatus('saved');
+	}
+
+	async function saveTransitSettings() {
+		savingTransitSettings = true;
+		showStatus('saving');
+		await postAction('updateJourney', { minimumTransferMinutes: String(minimumTransferMinutes) });
+		savingTransitSettings = false;
+		showTransitSettings = false;
 		showStatus('saved');
 	}
 
@@ -269,8 +284,8 @@
 		<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
 	{/await}
 {:else}
-	<div class="min-h-[100dvh] bg-base-100" style="view-transition-name: journey-{journey.id}">
-		<header class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3">
+		<div class="travel-page" style="view-transition-name: journey-{journey.id}">
+			<header class="flex flex-wrap items-center gap-2 border-b border-[#172a45]/45 bg-[#fffdf7]/94 px-4 py-3 backdrop-blur-lg">
 			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>
 				<IconArrowBack class="h-5 w-5" />
 			</button>
@@ -278,21 +293,24 @@
 				{#if editingTitle}
 					<input class="input input-bordered input-sm w-full max-w-xs" bind:value={titleInput} onblur={saveTitle} onkeydown={(e) => e.key === 'Enter' && saveTitle()} />
 				{:else}
-					<button class="text-lg font-bold hover:underline" onclick={() => (editingTitle = true)}>{journey.title}</button>
+					<button class="travel-display text-xl text-[#172a45] hover:underline" onclick={() => (editingTitle = true)}>{journey.title}</button>
 				{/if}
 			</div>
 			<input type="datetime-local" class="input input-bordered input-sm" value={startDatetime ? startDatetime.slice(0, 16) : ''} onchange={updateStartDatetime} />
-			<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
-				<IconShare class="h-5 w-5" />
-			</button>
-			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
+				<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
+					<IconShare class="h-5 w-5" />
+				</button>
+				<button class="btn btn-ghost btn-sm" onclick={() => (showTransitSettings = true)} aria-label="Transit settings">
+					<IconTune class="h-5 w-5" />
+				</button>
+				<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
 				<IconMap class="h-5 w-5" />
 			</button>
 			{#if saveStatus === 'saving'}<span class="text-xs text-base-content/50">Saving…</span>
 			{:else if saveStatus === 'saved'}<span class="text-xs text-success">Saved ✓</span>{/if}
 		</header>
 
-		<main class="mx-auto max-w-2xl p-4">
+			<main class="mx-auto max-w-2xl p-4 sm:p-5">
 			{#if dndItems.length === 0}
 				<div class="flex flex-col items-center gap-4 py-12 text-center">
 					<IconPin class="h-10 w-10 text-base-content/30" />
@@ -334,7 +352,7 @@
 				{/each}
 			</div>
 
-			<div class="mt-4 flex justify-center">
+				<div class="mt-5 flex justify-center border-t border-[#172a45]/25 pt-4">
 				<button class="btn btn-primary btn-sm sm:btn-md gap-1.5" onclick={() => addStop()}>
 					<IconAdd class="h-5 w-5" /> Add Stop
 				</button>
@@ -352,7 +370,18 @@
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
+	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
+
+	<Modal bind:open={showTransitSettings} title="Transit settings" icon={IconTune} size="sm">
+		<div class="space-y-5">
+			<p class="text-base-content/60 text-sm">Use a minimum buffer for every interchange. Updating this value recalculates confirmed public-transport segments.</p>
+			<label class="block space-y-3" for="minimum-transfer-time">
+				<span class="flex items-baseline justify-between gap-4 text-sm font-semibold"><span>Minimum transfer time</span><strong class="travel-display text-xl text-[#172a45]">{minimumTransferMinutes} min</strong></span>
+				<input id="minimum-transfer-time" class="range range-primary w-full" type="range" min="0" max="30" step="1" bind:value={minimumTransferMinutes} />
+			</label>
+			<button class="btn btn-primary w-full" onclick={saveTransitSettings} disabled={savingTransitSettings}>{savingTransitSettings ? 'Updating connections…' : 'Save and update connections'}</button>
+		</div>
+	</Modal>
 
 {#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 	<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />

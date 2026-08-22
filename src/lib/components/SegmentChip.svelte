@@ -36,6 +36,7 @@
 	const colors = $derived(SEGMENT_MODE_STYLES[segment.mode] ?? SEGMENT_MODE_STYLES.walk);
 	const ModeIcon = $derived(MODE_ICONS[segment.mode] ?? IconWalk);
 	const detailHint = $derived(segment.mode === 'transit' ? 'details ›' : 'map ›');
+	const hasConfirmedTransit = $derived((segment.transitLegs ?? []).some((leg) => leg.type === 'transport'));
 </script>
 
 <div class="mx-1 my-1.5">
@@ -76,10 +77,12 @@
 						{/if}
 
 						{#if segment.mode === 'transit'}
-							{#if segment.transfers != null}
+							{#if hasConfirmedTransit && segment.transfers != null}
 								<span class="text-xs font-semibold">
 									{segment.transfers === 0 ? 'Direkt' : `${segment.transfers}× Umstieg`}
 								</span>
+							{:else}
+								<span class="text-warning text-xs font-semibold">Keine bestätigte Verbindung</span>
 							{/if}
 						{:else if segment.distanceM}
 							<span class="text-xs font-semibold">{formatDistance(segment.distanceM)}</span>

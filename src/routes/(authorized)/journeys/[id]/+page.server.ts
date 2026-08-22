@@ -60,6 +60,20 @@ async function fullPayload(id: number) {
     };
 }
 
+async function recomputeTransitSegments(id: number, minimumTransferMinutes: number) {
+	const transitSegs = await db.select().from(segments).where(and(eq(segments.journeyId, id), eq(segments.mode, 'transit')));
+	for (const seg of transitSegs) {
+		const [fromStop] = await db.select().from(stops).where(eq(stops.id, seg.fromStopId));
+		const [toStop] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
+		if (!fromStop || !toStop) continue;
+		try {
+			await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', minimumTransferMinutes);
+		} catch (err) {
+			console.error(`recomputeTransit seg ${seg.id} failed:`, err);
+		}
+	}
+}
+
 // ── load ────────────────────────────────────────────────────────────
 export const load: PageServerLoad = async ({ params, locals }) => {
     const id = journeyId(params);
@@ -79,13 +93,19 @@ export const actions = {
         const updates: Record<string, unknown> = { updatedAt: new Date() };
         if (form.has('title')) updates.title = fd(form, 'title');
         if (form.has('description')) updates.description = fd(form, 'description') || null;
-        if (form.has('startDatetime')) {
-            const v = fd(form, 'startDatetime');
-            updates.startDatetime = v ? new Date(v) : null;
-        }
+		if (form.has('startDatetime')) {
+			const v = fd(form, 'startDatetime');
+			updates.startDatetime = v ? new Date(v) : null;
+		}
+		if (form.has('minimumTransferMinutes')) {
+			const minutes = Number.parseInt(fd(form, 'minimumTransferMinutes'), 10);
+			if (!Number.isFinite(minutes)) return fail(400, { error: 'minimumTransferMinutes required' });
+			updates.minimumTransferMinutes = Math.max(0, Math.min(30, minutes));
+		}
 
-        await db.update(journeys).set(updates).where(eq(journeys.id, id));
-        return await fullPayload(id);
+		await db.update(journeys).set(updates).where(eq(journeys.id, id));
+		if (typeof updates.minimumTransferMinutes === 'number') await recomputeTransitSegments(id, updates.minimumTransferMinutes);
+		return await fullPayload(id);
     },
 
     /* ── add stop ─────────────────────────────────────────────────── */
@@ -218,8 +238,9 @@ export const actions = {
         const [fromStop] = await db.select().from(stops).where(eq(stops.id, seg.fromStopId));
         const [toStop] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
 
-        if (fromStop && toStop) {
-            await computeSegment(fromStop as Stop, toStop as Stop, id, mode);
+		if (fromStop && toStop) {
+			const journey = await ownedJourney(id, locals.user!.id);
+			await computeSegment(fromStop as Stop, toStop as Stop, id, mode, journey.minimumTransferMinutes);
         }
 
         return await fullPayload(id);
@@ -257,24 +278,8 @@ export const actions = {
         const id = journeyId(params);
         await ownedJourney(id, locals.user!.id);
 
-        // Fetch current transit segments
-        const transitSegs = await db
-            .select()
-            .from(segments)
-            .where(and(eq(segments.journeyId, id), eq(segments.mode, 'transit')));
-
-        // Recompute each transit segment
-        for (const seg of transitSegs) {
-            const [fromS] = await db.select().from(stops).where(eq(stops.id, seg.fromStopId));
-            const [toS] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
-            if (fromS && toS) {
-                try {
-                    await computeSegment(fromS as Stop, toS as Stop, id, 'transit');
-                } catch (err) {
-                    console.error(`recomputeTransit seg ${seg.id} failed:`, err);
-                }
-            }
-        }
+		const journey = await ownedJourney(id, locals.user!.id);
+		await recomputeTransitSegments(id, journey.minimumTransferMinutes);
 
         return await fullPayload(id);
     }

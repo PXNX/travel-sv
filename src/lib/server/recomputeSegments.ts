@@ -1,5 +1,5 @@
 import { db } from './db';
-import { stops, segments } from './schema';
+import { journeys, stops, segments } from './schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { computeSegment } from './computeSegment';
 import type { Stop, SegmentMode } from '$lib/types';
@@ -9,6 +9,8 @@ import type { Stop, SegmentMode } from '$lib/types';
  * Preserves the user-chosen mode for each stop-pair that already had a segment.
  */
 export async function recomputeSegments(journeyId: number) {
+	const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId));
+	const minimumTransferMinutes = journey?.minimumTransferMinutes ?? 5;
     const orderedStops = await db
         .select()
         .from(stops)
@@ -41,7 +43,7 @@ export async function recomputeSegments(journeyId: number) {
         const mode = modeByPair.get(`${from.id}-${to.id}`) ?? 'walk';
 
         try {
-            await computeSegment(from, to, journeyId, mode);
+			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes);
         } catch (err) {
             console.error(`Segment ${from.id}→${to.id} failed:`, err);
         }

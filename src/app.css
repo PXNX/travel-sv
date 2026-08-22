@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @plugin 'daisyui' {
-	themes: dark --default;
+	themes: light --default;
 }
 
 /* ── Keyframes ─────────────────────────────────────────────── */
@@ -62,7 +62,8 @@
 }
 
 @theme {
-	--font-sans: 'HPSimplified', system-ui, sans-serif;
+	--font-sans: 'DM Sans', 'HPSimplified', system-ui, sans-serif;
+	--font-display: 'DM Serif Display', Georgia, serif;
 
 	/* Registering these as theme animations (rather than plain classes) is what
 	   makes variants such as `sm:animate-fade-in-scale` work. */
@@ -86,6 +87,21 @@
 		font-display: swap;
 	}
 
+	:root {
+		--travel-paper: #fffdf7;
+		--travel-wash: #efe6d5;
+		--travel-ink: #172a45;
+		--travel-amber: #e6a527;
+		--travel-rust: #a45e38;
+	}
+
+	html,
+	body {
+		min-height: 100%;
+		background: var(--travel-wash);
+		color: var(--travel-ink);
+	}
+
 	/* Consistent keyboard affordance across buttons, links, inputs and tabs. */
 	:focus-visible {
 		outline: 2px solid var(--color-primary);
@@ -104,11 +120,58 @@
 .card {
 	transition:
 		transform 0.2s var(--ease-smooth),
-		box-shadow 0.2s var(--ease-smooth);
+		box-shadow 0.2s var(--ease-smooth),
+		border-color 0.2s var(--ease-smooth);
 }
 
 .btn {
 	transition: all 0.15s var(--ease-smooth);
+	border-radius: 0;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.075em;
+	text-transform: uppercase;
+}
+
+.btn:active {
+	transform: scale(0.97);
+}
+
+.btn-primary {
+	border-color: var(--travel-ink);
+	background: var(--travel-ink);
+	color: var(--travel-paper);
+}
+
+.btn-primary:hover {
+	border-color: var(--travel-rust);
+	background: var(--travel-rust);
+}
+
+.btn-ghost:hover {
+	background: color-mix(in srgb, var(--travel-amber) 12%, transparent);
+}
+
+.travel-page {
+	min-height: 100dvh;
+	background-color: var(--travel-wash);
+	background-image:
+		linear-gradient(rgba(23, 42, 69, 0.025) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(23, 42, 69, 0.025) 1px, transparent 1px);
+	background-size: 28px 28px;
+}
+
+.travel-display {
+	font-family: var(--font-display);
+	font-weight: 400;
+	letter-spacing: -0.035em;
+}
+
+.travel-folio {
+	border-left: 2px solid var(--travel-amber);
+	padding-left: 0.55rem;
+	font-family: var(--font-display);
+	letter-spacing: 0.01em;
 }
 
 .badge {

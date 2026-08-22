@@ -63,9 +63,10 @@ export interface Journey {
     title: string;
     description?: string | null;
     isPublic: boolean;
-    shareToken?: string | null;
-    startDatetime?: Date | string | null;
-    createdAt: string;
+	shareToken?: string | null;
+	startDatetime?: Date | string | null;
+	minimumTransferMinutes?: number;
+	createdAt: string;
     updatedAt: string;
 }
 

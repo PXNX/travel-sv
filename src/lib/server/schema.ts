@@ -39,6 +39,7 @@ export const journeys = pgTable('journeys', {
 	isPublic: boolean('is_public').notNull().default(false),
 	shareToken: uuid('share_token'),
 	startDatetime: timestamp('start_datetime', { withTimezone: true, mode: 'date' }),
+	minimumTransferMinutes: integer('minimum_transfer_minutes').notNull().default(5),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
 });

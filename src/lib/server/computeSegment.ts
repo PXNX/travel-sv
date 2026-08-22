@@ -38,7 +38,8 @@ export async function computeSegment(
     fromStop: Stop,
     toStop: Stop,
     journeyId: number,
-    mode: SegmentMode = 'walk'
+    mode: SegmentMode = 'walk',
+    minimumTransferMinutes = 5
 ): Promise<ComputeResult> {
     let result: ComputeResult = {
         distanceM: 0,
@@ -71,14 +72,16 @@ export async function computeSegment(
         result.driveGeometry = drive.geometry;
     } else {
         // transit
-        const transit = await computeTransit(fromStop, toStop);
-        result.travelDurationMinutes = transit.totalDurationMinutes;
-        result.transitSummary = transit.summary;
-        result.transitLegs = transit.legs;
-        result.walkToStationMin = transit.walkToStationMin;
-        result.walkFromStationMin = transit.walkFromStationMin;
-        result.transfers = transit.transfers;
-        result.transitGeometry = transit.geometry;
+        const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes);
+        if (transit) {
+            result.travelDurationMinutes = transit.totalDurationMinutes;
+            result.transitSummary = transit.summary;
+            result.transitLegs = transit.legs;
+            result.walkToStationMin = transit.walkToStationMin;
+            result.walkFromStationMin = transit.walkFromStationMin;
+            result.transfers = transit.transfers;
+            result.transitGeometry = transit.geometry;
+        }
     }
 
     // Upsert in DB
@@ -164,52 +167,34 @@ interface TransitResult {
     geometry: TransitGeoLeg[];
 }
 
-async function computeTransit(from: Stop, to: Stop): Promise<TransitResult> {
+async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult | null> {
     const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
-    if (bothInGermany) {
-        try {
-            return await computeTransitHAFAS(from, to);
-        } catch (err) {
-            console.error('HAFAS transit failed:', err);
-        }
+    if (!bothInGermany) return null;
+    try {
+        return await computeTransitHAFAS(from, to, minimumTransferMinutes);
+    } catch (err) {
+        console.error('HAFAS transit failed:', err);
+        return null;
     }
-    // Rough fallback: ~80 km/h average regional train speed
-    const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
-    const estMin = Math.round((d / 1000) * (60 / 80)); // km / 80 km/h → minutes
-    return {
-        totalDurationMinutes: Math.max(estMin, 5),
-        summary: bothInGermany ? 'Öffi (est.)' : 'Transit (est.)',
-        legs: [],
-        walkToStationMin: 0,
-        walkFromStationMin: 0,
-        transfers: 0,
-        geometry: [{ coords: [[from.lat, from.lon], [to.lat, to.lon]], mode: 'transit' }]
-    };
 }
 
 /**
- * Query HAFAS directly with coordinates.
- * The API resolves nearest stops internally and returns walking legs to/from stations.
+ * Query HAFAS with end-point coordinates so it can compare reachable bus and rail stops.
+ * Only timed responses with at least one actual vehicle leg count as confirmed transit.
  * Deutschlandticket: nationalExpress=false (no ICE), national=false (no IC/EC).
  */
-async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult> {
-    // Step 1: find nearest stops for both endpoints
-    const [fromStop, toStop] = await Promise.all([
-        findNearestStop(from.lat, from.lon),
-        findNearestStop(to.lat, to.lon)
-    ]);
-
-    if (!fromStop || !toStop) {
-        throw new Error(`No nearby stops found (from: ${!!fromStop}, to: ${!!toStop})`);
-    }
-
-    console.log(`HAFAS: ${fromStop.name} (${fromStop.id}) → ${toStop.name} (${toStop.id})`);
-
-    // Step 2: query journeys between station IDs (Deutschlandticket filter)
+async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult> {
+    const requestedAt = Date.now();
     const params = new URLSearchParams({
-        from: fromStop.id,
-        to: toStop.id,
-        results: '3',
+        'from.latitude': String(from.lat),
+        'from.longitude': String(from.lon),
+        'from.address': from.name,
+        'to.latitude': String(to.lat),
+        'to.longitude': String(to.lon),
+        'to.address': to.name,
+        results: '6',
+        transferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
+        startWithWalking: 'true',
         nationalExpress: 'false',
         national: 'false',
         bus: 'true',
@@ -242,7 +227,22 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         throw new Error('HAFAS returned 0 journeys');
     }
 
-    const j = data.journeys[0];
+    const candidates = data.journeys
+        .map((journey: any) => {
+            const legs = Array.isArray(journey.legs) ? journey.legs : [];
+            const transportLegs = legs.filter((leg: any) => !leg.walking && leg.line && (leg.departure ?? leg.plannedDeparture) && (leg.arrival ?? leg.plannedArrival));
+            const lastArrival = legs.at(-1)?.arrival ?? legs.at(-1)?.plannedArrival;
+            const arrivalTime = lastArrival ? new Date(lastArrival).getTime() : Number.NaN;
+            return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt };
+        })
+        .filter((candidate: { confirmed: boolean }) => candidate.confirmed)
+        .sort((a: { score: number }, b: { score: number }) => a.score - b.score);
+
+    if (candidates.length === 0) {
+        throw new Error('HAFAS returned no confirmed transport journey');
+    }
+
+    const j = candidates[0].journey;
     const rawLegs: any[] = j.legs ?? [];
 
     // Parse legs + build geometry
@@ -307,8 +307,9 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         } else {
             const productName = l.line?.productName ?? l.line?.product ?? '';
             const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? '';
-            const lineName = rawLineName.toLowerCase().startsWith(productName.toLowerCase())
-                ? rawLineName : rawLineName;
+            const lineName = rawLineName && productName && !rawLineName.toLowerCase().startsWith(productName.toLowerCase())
+                ? `${productName}${rawLineName}`
+                : rawLineName || productName;
 
             legs.push({
                 type: 'transport',
@@ -355,8 +356,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         if (dep && arr) walkToStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
     }
     // Also compute walk from actual stop coords to the departure station
-    if (walkToStationMin === 0 && fromStop) {
-        walkToStationMin = await walkDurationOSRM(from.lat, from.lon, fromStop.lat, fromStop.lon);
+    if (walkToStationMin === 0) {
+        const firstTransport = rawLegs.find((leg: any) => !leg.walking && leg.line);
+        const station = firstTransport?.origin?.location;
+        if (station?.latitude && station?.longitude) walkToStationMin = await walkDurationOSRM(from.lat, from.lon, station.latitude, station.longitude);
     }
 
     // HAFAS walking leg at end?
@@ -365,8 +368,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         const arr = rawLegs[rawLegs.length - 1].arrival ?? rawLegs[rawLegs.length - 1].plannedArrival;
         if (dep && arr) walkFromStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
     }
-    if (walkFromStationMin === 0 && toStop) {
-        walkFromStationMin = await walkDurationOSRM(toStop.lat, toStop.lon, to.lat, to.lon);
+    if (walkFromStationMin === 0) {
+        const lastTransport = [...rawLegs].reverse().find((leg: any) => !leg.walking && leg.line);
+        const station = lastTransport?.destination?.location;
+        if (station?.latitude && station?.longitude) walkFromStationMin = await walkDurationOSRM(station.latitude, station.longitude, to.lat, to.lon);
     }
 
     // Total: train time + walking
@@ -391,36 +396,6 @@ async function computeTransitHAFAS(from: Stop, to: Stop): Promise<TransitResult>
         transfers,
         geometry
     };
-}
-
-// ── Nearest stop lookup ─────────────────────────────────────────────────
-async function findNearestStop(lat: number, lon: number): Promise<{ id: string; name: string; lat: number; lon: number } | null> {
-    try {
-        const p = new URLSearchParams({
-            latitude: String(lat),
-            longitude: String(lon),
-            results: '1'
-        });
-        const res = await fetch(`https://v6.db.transport.rest/locations/nearby?${p}`, {
-            headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
-        });
-        if (!res.ok) {
-            console.error('findNearestStop failed:', res.status, await res.text().catch(() => ''));
-            return null;
-        }
-        const data = await res.json();
-        if (data.length > 0 && data[0].id) {
-            return {
-                id: String(data[0].id),
-                name: data[0].name ?? '',
-                lat: data[0].location?.latitude ?? lat,
-                lon: data[0].location?.longitude ?? lon
-            };
-        }
-    } catch (err) {
-        console.error('findNearestStop error:', err);
-    }
-    return null;
 }
 
 async function walkDurationOSRM(fromLat: number, fromLon: number, toLat: number, toLon: number): Promise<number> {

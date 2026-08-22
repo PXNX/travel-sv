@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Papier & Tinte: travel index as a restrained route register rather than a dashboard.
 	import type { PageData } from './$types';
 	import type { JourneyWithDerived } from '$lib/types';
 	import JourneyCard from '$lib/components/JourneyCard.svelte';
@@ -51,7 +52,7 @@
 
 <OfflineBanner />
 
-<div class="bg-base-100 min-h-[100dvh]">
+<div class="travel-page">
 	<PageHeader
 		title="My Journeys"
 		subtitle={journeys.length > 0
@@ -65,7 +66,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<main class="mx-auto max-w-2xl p-4">
+		<main class="mx-auto max-w-2xl p-4 sm:p-5">
 		{#if journeys.length === 0}
 			<EmptyState
 				icon={IconMap}
@@ -79,7 +80,7 @@
 			</EmptyState>
 		{:else}
 			{#if totalStops > 0 || totalDuration > 0}
-				<div class="mb-5 grid grid-cols-3 gap-3" class:animate-fade-in-up={mounted}>
+					<div class="mb-5 grid grid-cols-3 gap-px border-y border-[#172a45]/20 bg-[#172a45]/20" class:animate-fade-in-up={mounted}>
 					<StatTile
 						value={journeys.length}
 						label={journeys.length === 1 ? 'Journey' : 'Journeys'}
@@ -94,7 +95,7 @@
 				</div>
 			{/if}
 
-			<div class="flex flex-col gap-3">
+				<div class="flex flex-col gap-3 border-t border-[#172a45]/25 pt-3">
 				{#each journeys as journey, i (journey.id)}
 					<div
 						class:animate-fade-in-up={mounted}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Papier & Tinte: flat paper panels with ink borders, not elevated generic cards.
 	import type { Snippet } from 'svelte';
 
 	type Padding = 'none' | 'sm' | 'md';
@@ -30,9 +31,9 @@
 
 	const cls = $derived(
 		[
-			'card bg-base-200 overflow-hidden shadow-sm',
+			'card overflow-hidden rounded-none border border-[#172a45]/35 bg-[#fffdf7] shadow-none',
 			interactive || href
-				? 'w-full cursor-pointer text-left hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]'
+				? 'w-full cursor-pointer text-left hover:-translate-y-0.5 hover:border-[#e6a527] hover:shadow-[4px_5px_0_rgba(23,42,69,0.12)] active:scale-[0.98]'
 				: '',
 			PADDING[padding],
 			klass

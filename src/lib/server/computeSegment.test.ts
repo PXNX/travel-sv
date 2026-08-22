@@ -99,7 +99,7 @@ describe('computeSegment', () => {
         });
 
         const { computeSegment } = await import('./computeSegment');
-        const r = await computeSegment(stopA, stopB, 1, 'transit');
+		const r = await computeSegment(stopA, stopB, 1, 'transit', 8);
 
         expect(r.transitSummary).toBe('S8');
         expect(r.transfers).toBe(0);
@@ -112,8 +112,45 @@ describe('computeSegment', () => {
         expect(r.transitLegs![1].platform).toBe('3');
         expect(r.transitLegs![1].direction).toBe('Wiesbaden Hbf');
         expect(r.travelDurationMinutes).toBe(40); // 08:50 → 09:30
-        expect(r.elevationUpM).toBe(0);
-    });
+		expect(r.elevationUpM).toBe(0);
+		expect(mockFetch.mock.calls[0][0]).toContain('from.latitude=50');
+		expect(mockFetch.mock.calls[0][0]).toContain('transferTime=8');
+	});
+
+	it('transit: ignores walking-only results and selects a confirmed vehicle journey', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({
+				journeys: [
+					{ legs: [{ walking: true, departure: '2024-01-01T08:00:00+01:00', arrival: '2024-01-01T08:10:00+01:00' }] },
+					{ legs: [{ line: { productName: 'Bus', name: '55' }, departure: '2024-01-01T08:02:00+01:00', arrival: '2024-01-01T08:20:00+01:00', origin: { name: 'Bus stop' }, destination: { name: 'Destination' } }] }
+				]
+			})
+		});
+
+		const { computeSegment } = await import('./computeSegment');
+		const r = await computeSegment(stopA, stopB, 1, 'transit');
+
+		expect(r.transitSummary).toBe('Bus55');
+		expect(r.transitLegs).toHaveLength(1);
+		expect(r.transitLegs![0].type).toBe('transport');
+		expect(r.transfers).toBe(0);
+	});
+
+	it('transit: stores no estimated direct connection when HAFAS returns no vehicle leg', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({ journeys: [{ legs: [{ walking: true, departure: '2024-01-01T08:00:00+01:00', arrival: '2024-01-01T08:10:00+01:00' }] }] })
+		});
+
+		const { computeSegment } = await import('./computeSegment');
+		const r = await computeSegment(stopA, stopB, 1, 'transit');
+
+		expect(r.transitSummary).toBeNull();
+		expect(r.transitLegs).toBeNull();
+		expect(r.transfers).toBeNull();
+		expect(r.travelDurationMinutes).toBe(0);
+	});
 
     it('fallback when all APIs fail', async () => {
         mockFetch.mockRejectedValue(new Error('Offline'));

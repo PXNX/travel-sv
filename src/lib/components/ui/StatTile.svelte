@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Papier & Tinte: small printed folio statistics with restrained amber separators.
 	type Tone = 'primary' | 'secondary' | 'accent' | 'neutral';
 
 	interface Props {
@@ -21,7 +22,7 @@
 	const valueSize = $derived(String(value).length <= 4 ? 'text-2xl' : 'text-lg');
 </script>
 
-<div class="bg-base-200/60 rounded-xl p-3 text-center">
-	<div class="{valueSize} font-bold tabular-nums {TONE[tone]}">{value}</div>
-	<div class="text-base-content/40 mt-0.5 text-xs">{label}</div>
-</div>
+	<div class="border-l-2 border-[#e6a527] bg-[#fffdf7]/75 p-3 text-center">
+		<div class="travel-display {valueSize} tabular-nums {TONE[tone]}">{value}</div>
+		<div class="mt-0.5 text-xs font-bold tracking-[0.08em] text-[#a45e38] uppercase">{label}</div>
+	</div>

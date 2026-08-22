@@ -1,4 +1,5 @@
 <script lang="ts">
+	// Papier & Tinte: compact folio header with ink rules and a serif destination title.
 	import type { Snippet } from 'svelte';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 	import IconButton from './IconButton.svelte';
@@ -30,9 +31,9 @@
 </script>
 
 <header
-	class="border-base-300/60 bg-base-100/80 sticky top-0 z-20 border-b px-4 py-3 backdrop-blur-lg"
+	class="sticky top-0 z-20 border-b border-[#172a45]/45 bg-[#fffdf7]/94 px-4 py-3 backdrop-blur-lg"
 >
-	<div class="mx-auto flex max-w-2xl flex-wrap items-center gap-2">
+		<div class="mx-auto flex max-w-2xl flex-wrap items-center gap-2 border-l-2 border-[#e6a527] pl-2">
 		{#if showBack}
 			<IconButton
 				icon={IconArrowBack}
@@ -47,10 +48,10 @@
 			{#if titleContent}
 				{@render titleContent()}
 			{:else if title}
-				<h1 class="truncate text-lg leading-tight font-bold sm:text-xl">{title}</h1>
+				<h1 class="travel-display truncate text-xl leading-tight text-[#172a45] sm:text-2xl">{title}</h1>
 			{/if}
 			{#if subtitle}
-				<p class="text-base-content/40 mt-0.5 truncate text-xs">{subtitle}</p>
+				<p class="mt-0.5 truncate text-xs font-bold tracking-[0.08em] text-[#a45e38] uppercase">{subtitle}</p>
 			{/if}
 		</div>
 

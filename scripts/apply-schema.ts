@@ -67,11 +67,13 @@ async function run() {
 			"is_public" boolean NOT NULL DEFAULT false,
 			"share_token" uuid,
 			"start_datetime" timestamp with time zone,
+			"minimum_transfer_minutes" integer NOT NULL DEFAULT 5,
 			"created_at" timestamp with time zone NOT NULL DEFAULT now(),
 			"updated_at" timestamp with time zone NOT NULL DEFAULT now()
 		)
 	`;
-    console.log('Journeys table ready.');
+	await sql`ALTER TABLE "journeys" ADD COLUMN IF NOT EXISTS "minimum_transfer_minutes" integer NOT NULL DEFAULT 5`;
+	console.log('Journeys table ready.');
 
     // Stops
     await sql`
