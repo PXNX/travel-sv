@@ -4,7 +4,7 @@ import { db } from '$lib/server/db';
 import { journeys, stops, segments } from '$lib/server/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { recomputeSegments } from '$lib/server/recomputeSegments';
-import { computeSegment } from '$lib/server/computeSegment';
+	import { computeSegment, NoConfirmedTransitError } from '$lib/server/computeSegment';
 import type { SegmentMode, Stop } from '$lib/types';
 
 // ── helpers ─────────────────────────────────────────────────────────
@@ -103,6 +103,7 @@ export const actions = {
 			updates.minimumTransferMinutes = Math.max(0, Math.min(30, minutes));
 		}
 		if (form.has('deutschlandticketOnly')) updates.deutschlandticketOnly = fd(form, 'deutschlandticketOnly') === 'true';
+		if (form.has('isCompleted')) updates.isCompleted = fd(form, 'isCompleted') === 'true';
 
 		await db.update(journeys).set(updates).where(eq(journeys.id, id));
 		if (typeof updates.minimumTransferMinutes === 'number' || typeof updates.deutschlandticketOnly === 'boolean') {
@@ -302,7 +303,12 @@ export const actions = {
 		const legs = segment.transitLegs ? JSON.parse(segment.transitLegs) as { type?: string; departure?: string }[] : [];
 		const reference = legs.find((leg) => leg.type === 'transport')?.departure;
 		if (!fromStop || !toStop || !reference) return fail(400, { error: 'connection reference unavailable' });
-		await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', journey.minimumTransferMinutes, journey.deutschlandticketOnly, { referenceTime: new Date(reference), earlierThan: direction < 0 });
-		return await fullPayload(id);
+			try {
+				await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', journey.minimumTransferMinutes, journey.deutschlandticketOnly, { referenceTime: new Date(reference), earlierThan: direction < 0, requireConfirmed: true });
+			} catch (cause) {
+				if (cause instanceof NoConfirmedTransitError) return fail(422, { error: 'No confirmed earlier or later connection is available. The current connection remains unchanged.' });
+				throw cause;
+			}
+			return await fullPayload(id);
 	}
 } satisfies Actions;

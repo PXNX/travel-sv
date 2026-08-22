@@ -25,6 +25,7 @@
 	import IconAdd from '~icons/material-symbols/add-rounded';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
 	import IconTune from '~icons/material-symbols/tune-rounded';
+	import IconCheckCircle from '~icons/material-symbols/check-circle-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -64,6 +65,7 @@
 	let showWalkRoute = $state(false);
 	let detailSegment = $state<Segment | null>(null);
 	let changingConnection = $state(false);
+	let transitAlternativeError = $state<string | null>(null);
 	let walkFromName = $state('');
 	let walkToName = $state('');
 
@@ -276,8 +278,15 @@
 
 	async function shiftTransitConnection(segment: Segment, direction: -1 | 1) {
 		changingConnection = true;
+		transitAlternativeError = null;
 		showStatus('saving');
-		await postAction('shiftTransitConnection', { segmentId: String(segment.id), direction: String(direction) });
+		const result = await postAction('shiftTransitConnection', { segmentId: String(segment.id), direction: String(direction) });
+		if (result.type === 'failure') {
+			transitAlternativeError = String((result.data as { error?: string }).error ?? 'No alternative connection is available.');
+			changingConnection = false;
+			showStatus('idle');
+			return;
+		}
 		detailSegment = journeySegments.find((entry) => entry.id === segment.id) ?? null;
 		changingConnection = false;
 		showStatus('saved');
@@ -285,6 +294,11 @@
 
 	async function publishJourney() { await postAction('publish', {}); }
 	async function unpublishJourney() { shareUrl = null; await postAction('unpublish', {}); }
+	async function toggleJourneyComplete() {
+		showStatus('saving');
+		await postAction('updateJourney', { isCompleted: String(!journey.isCompleted) });
+		showStatus('saved');
+	}
 	function toggleMapMode() { showMap = !showMap; }
 </script>
 
@@ -309,8 +323,12 @@
 					<button class="travel-display text-xl text-[#172a45] hover:underline" onclick={() => (editingTitle = true)}>{journey.title}</button>
 				{/if}
 			</div>
-			<input type="datetime-local" class="input input-bordered input-sm" value={startDatetime ? startDatetime.slice(0, 16) : ''} onchange={updateStartDatetime} />
-				<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
+				<input type="datetime-local" class="input input-bordered input-sm" value={startDatetime ? startDatetime.slice(0, 16) : ''} onchange={updateStartDatetime} />
+				<button class="btn btn-sm gap-1.5 {journey.isCompleted ? 'border-[#008d4f] bg-[#008d4f] text-white hover:bg-[#00753f]' : 'btn-ghost border border-[#172a45]/25'}" onclick={toggleJourneyComplete} aria-pressed={journey.isCompleted}>
+					<IconCheckCircle class="h-4 w-4" />
+					<span class="hidden sm:inline">{journey.isCompleted ? 'Completed' : 'Mark completed'}</span>
+				</button>
+					<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
 					<IconShare class="h-5 w-5" />
 				</button>
 				<button class="btn btn-ghost btn-sm" onclick={() => (showTransitSettings = true)} aria-label="Transit settings">
@@ -380,7 +398,7 @@
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-		<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} onconnectionchange={shiftTransitConnection} {changingConnection} />
+		<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} onconnectionchange={shiftTransitConnection} connectionError={transitAlternativeError} {changingConnection} />
 
 	<Modal bind:open={showTransitSettings} title="Transit settings" icon={IconTune} size="sm">
 		<div class="space-y-5">

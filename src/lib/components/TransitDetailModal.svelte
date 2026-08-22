@@ -10,6 +10,7 @@
 	import IconTimer from '~icons/material-symbols/timer-outline-rounded';
 	import IconChevronLeft from '~icons/material-symbols/chevron-left-rounded';
 	import IconChevronRight from '~icons/material-symbols/chevron-right-rounded';
+	import IconMap from '~icons/material-symbols/map-outline-rounded';
 	import { Modal, transitColor } from '$lib/components/ui';
 
 	interface Props {
@@ -19,11 +20,12 @@
 		onwalkclick?: (segment: Segment, fromName: string, toName: string) => void;
 		onconnectionchange?: (segment: Segment, direction: -1 | 1) => void;
 		changingConnection?: boolean;
+		connectionError?: string | null;
 		fromCoords?: [number, number];
 		toCoords?: [number, number];
 	}
 
-	let { open = $bindable(false), segment, onclose, onwalkclick, onconnectionchange, changingConnection = false, fromCoords, toCoords }: Props = $props();
+	let { open = $bindable(false), segment, onclose, onwalkclick, onconnectionchange, changingConnection = false, connectionError = null, fromCoords, toCoords }: Props = $props();
 
 	const legs = $derived((segment?.transitLegs ?? []) as TransitLeg[]);
 	const transfers = $derived(segment?.transfers ?? 0);
@@ -88,15 +90,32 @@
 	function lineLabel(leg: TransitLeg): string {
 		const rawProduct = leg.product ?? '';
 		const n = leg.lineName ?? '';
-		const product = ({ HIGHSPEED_RAIL: 'ICE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB' } as Record<string, string>)[rawProduct] ?? rawProduct;
-		if (n && product && n.toLowerCase().startsWith(product.toLowerCase())) return n;
-		if (product && n) return `${product} ${n}`;
-		return n || product || 'Öffi';
+		const product = ({ HIGHSPEED_RAIL: 'ICE', REGIONAL_RAIL: 'RE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB', COACH: '' } as Record<string, string>)[rawProduct] ?? rawProduct;
+		const spacedLine = n.replace(/^(ICE|IC|EC|RE|RB|S|U)(\d)/i, '$1 $2');
+		if (n && product && n.toLowerCase().startsWith(product.toLowerCase())) return spacedLine;
+		if (n && !product) return spacedLine;
+		if (product && n) return `${product} ${spacedLine}`;
+		return spacedLine || product || 'Öffi';
 	}
 
 	function walkLabel(leg: TransitLeg): string {
 		const parts = [leg.durationMinutes > 0 ? `~${formatDuration(leg.durationMinutes)}` : '', leg.distanceM && leg.distanceM > 0 ? formatDistance(leg.distanceM) : ''].filter(Boolean);
 		return parts.join(' · ');
+	}
+
+	function stationMapUrl(stationName?: string, product?: string): string | null {
+		if (!stationName || /^(BUS|Bus|TRAM|STR|COACH)$/i.test(product ?? '')) return null;
+		const slug = stationName
+			.toLocaleLowerCase('de-DE')
+			.replace(/ä/g, 'ae')
+			.replace(/ö/g, 'oe')
+			.replace(/ü/g, 'ue')
+			.replace(/ß/g, 'ss')
+			.normalize('NFKD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+		return slug ? `https://www.bahnhof.de/${slug}/karte` : null;
 	}
 
 	function fmtTime(iso?: string) {
@@ -206,6 +225,9 @@
 						<IconChevronRight class="h-4 w-4" />
 					</button>
 				</div>
+				{#if connectionError}
+					<p class="-mt-2 mb-3 rounded-md bg-[#a45e38]/10 px-3 py-2 text-xs text-[#7d4226]">{connectionError}</p>
+				{/if}
 			{/if}
 					{#if walkTo > 0}
 					<svelte:element
@@ -226,9 +248,9 @@
 						<div class="pt-1 flex-1">
 								<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station · {walkLabel({ durationMinutes: walkTo, distanceM: accessWalkTo?.distanceM } as TransitLeg)}</p>
 						</div>
-						{#if walkToClickable}
-							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
-						{/if}
+							{#if walkToClickable}
+								<span class="text-base text-primary self-center opacity-70" aria-hidden="true">›</span>
+							{/if}
 						</svelte:element>
 						{/if}
 
@@ -237,16 +259,14 @@
 					{@const active = activeLegIndex === i}
 
 					{#if wait > 1 && leg.type === 'transport'}
-						<div class="flex gap-3 items-start pb-2">
-							<div class="flex flex-col items-center">
-								<div class="w-0.5 h-full bg-base-300"></div>
-							</div>
-							<div class="flex items-center gap-1.5 py-0.5">
-								<IconTimer class="h-3 w-3 text-base-content/30" />
-								<span class="text-[10px] text-base-content/30"
-									>{formatDuration(wait)} wait</span
-								>
-							</div>
+							<div class="flex gap-3 items-start pb-3">
+								<div class="flex flex-col items-center">
+									<div class="w-0.5 h-full bg-base-300"></div>
+								</div>
+								<div class="flex items-center gap-2.5 rounded-lg border-2 border-[#e6a527]/55 bg-[#e6a527]/15 px-3 py-2 text-sm font-extrabold text-[#674500] shadow-sm">
+									<IconTimer class="h-5 w-5" />
+									<span>Umstieg · {formatDuration(wait)}</span>
+								</div>
 						</div>
 					{/if}
 
@@ -300,11 +320,6 @@
 						<div class="flex-1 min-w-0 pt-0.5">
 							{#if leg.type === 'walking'}
 								<p class="text-sm {active ? 'text-primary font-medium' : 'text-base-content/60'}">Walk · {walkLabel(leg)}</p>
-								{#if leg.departureStation && leg.arrivalStation && leg.departureStation !== leg.arrivalStation}
-									<p class="text-xs text-base-content/40 truncate">
-										{leg.departureStation} → {leg.arrivalStation}
-									</p>
-								{/if}
 							{:else}
 								<div class="flex items-center gap-2 flex-wrap">
 									<span class="badge badge-sm font-mono text-white border-0" style="background: {color}">{lineLabel(leg)}</span>
@@ -319,11 +334,16 @@
 									<span class="font-mono font-semibold"
 										>{fmtTime(leg.departure)}</span
 									>
-									<span class="truncate">{leg.departureStation}</span>
-									{#if leg.platform}
-										<span class="badge badge-xs badge-outline shrink-0"
-											>Gl. {leg.platform}</span
-										>
+										<span class="truncate">{leg.departureStation}</span>
+										{#if stationMapUrl(leg.departureStation, leg.product)}
+											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.departureStation, leg.product)!} target="_blank" rel="noreferrer" aria-label={`Open station map for ${leg.departureStation}`} title="Station map">
+												<IconMap class="h-3.5 w-3.5" />
+											</a>
+										{/if}
+											{#if leg.platform}
+											<span class="shrink-0 rounded-md border-2 border-[#172a45]/65 bg-[#fffdf7] px-2 py-0.5 text-xs font-extrabold text-[#172a45]"
+												>Gleis {leg.platform}</span
+											>
 									{/if}
 								</div>
 
@@ -337,14 +357,19 @@
 									<span class="font-mono font-semibold"
 										>{fmtTime(leg.arrival)}</span
 									>
-									<span class="truncate">{leg.arrivalStation}</span>
-								</div>
+										<span class="truncate">{leg.arrivalStation}</span>
+										{#if stationMapUrl(leg.arrivalStation, leg.product)}
+											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.arrivalStation, leg.product)!} target="_blank" rel="noreferrer" aria-label={`Open station map for ${leg.arrivalStation}`} title="Station map">
+												<IconMap class="h-3.5 w-3.5" />
+											</a>
+										{/if}
+									</div>
 							{/if}
 						</div>
 
-						{#if clickableWalk}
-							<span class="text-[10px] text-primary self-center opacity-60 shrink-0">map ›</span>
-						{/if}
+							{#if clickableWalk}
+								<span class="text-base text-primary self-center opacity-70 shrink-0" aria-hidden="true">›</span>
+							{/if}
 						</svelte:element>
 				{/each}
 
@@ -366,9 +391,9 @@
 						<div class="pt-1 flex-1">
 								<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">Walk from station · {walkLabel({ durationMinutes: walkFrom, distanceM: accessWalkFrom?.distanceM } as TransitLeg)}</p>
 						</div>
-						{#if walkFromClickable}
-							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
-						{/if}
+							{#if walkFromClickable}
+								<span class="text-base text-primary self-center opacity-70" aria-hidden="true">›</span>
+							{/if}
 						</svelte:element>
 						{/if}
 

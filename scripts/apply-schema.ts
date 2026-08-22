@@ -67,14 +67,16 @@ async function run() {
 			"is_public" boolean NOT NULL DEFAULT false,
 			"share_token" uuid,
 			"start_datetime" timestamp with time zone,
-			"minimum_transfer_minutes" integer NOT NULL DEFAULT 5,
-			"deutschlandticket_only" boolean NOT NULL DEFAULT true,
+		"minimum_transfer_minutes" integer NOT NULL DEFAULT 5,
+		"deutschlandticket_only" boolean NOT NULL DEFAULT true,
+		"is_completed" boolean NOT NULL DEFAULT false,
 			"created_at" timestamp with time zone NOT NULL DEFAULT now(),
 			"updated_at" timestamp with time zone NOT NULL DEFAULT now()
 		)
 	`;
 	await sql`ALTER TABLE "journeys" ADD COLUMN IF NOT EXISTS "minimum_transfer_minutes" integer NOT NULL DEFAULT 5`;
 	await sql`ALTER TABLE "journeys" ADD COLUMN IF NOT EXISTS "deutschlandticket_only" boolean NOT NULL DEFAULT true`;
+	await sql`ALTER TABLE "journeys" ADD COLUMN IF NOT EXISTS "is_completed" boolean NOT NULL DEFAULT false`;
 	console.log('Journeys table ready.');
 
     // Stops

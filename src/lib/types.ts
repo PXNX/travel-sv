@@ -67,6 +67,7 @@ export interface Journey {
 	startDatetime?: Date | string | null;
 	minimumTransferMinutes?: number;
 	deutschlandticketOnly?: boolean;
+	isCompleted?: boolean;
 	createdAt: string;
     updatedAt: string;
 }

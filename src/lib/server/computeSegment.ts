@@ -72,10 +72,11 @@ export async function computeSegment(
         result.distanceM = drive.distanceM;
         result.travelDurationMinutes = drive.travelDurationMinutes;
         result.driveGeometry = drive.geometry;
-    } else {
-        // transit
-        const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes, deutschlandticketOnly, options);
-        if (transit) {
+	} else {
+		// transit
+		const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes, deutschlandticketOnly, options);
+		if (!transit && options.requireConfirmed) throw new NoConfirmedTransitError();
+		if (transit) {
             result.travelDurationMinutes = transit.totalDurationMinutes;
             result.transitSummary = transit.summary;
             result.transitLegs = transit.legs;
@@ -172,6 +173,14 @@ interface TransitResult {
 interface TransitQueryOptions {
 	referenceTime?: Date;
 	earlierThan?: boolean;
+	requireConfirmed?: boolean;
+}
+
+export class NoConfirmedTransitError extends Error {
+	constructor() {
+		super('No confirmed transit connection available');
+		this.name = 'NoConfirmedTransitError';
+	}
 }
 
 function legDeparture(leg: any): string | undefined {
@@ -191,15 +200,16 @@ function isTimedVehicleLeg(leg: any): boolean {
 
 async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult | null> {
     const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
-    if (bothInGermany) {
-        try {
-            return await computeTransitHAFAS(from, to, minimumTransferMinutes, deutschlandticketOnly, options);
-        } catch (err) {
-            console.error('DB Transport REST transit failed:', err);
-        }
-    }
+	if (bothInGermany) {
+		try {
+			return await computeTransitHAFAS(from, to, minimumTransferMinutes, deutschlandticketOnly, options);
+		} catch (err) {
+			console.error('DB Transport REST transit failed:', err);
+		}
+	}
+	if (options.requireConfirmed) return null;
 
-    try {
+	try {
         return await computeTransitTransitous(from, to, minimumTransferMinutes, deutschlandticketOnly);
     } catch (err) {
         console.error('Transitous transit fallback failed:', err);
@@ -224,8 +234,9 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         results: '6',
         transferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
         startWithWalking: 'true',
-        nationalExpress: deutschlandticketOnly ? 'false' : 'true',
-        national: deutschlandticketOnly ? 'false' : 'true',
+		nationalExpress: deutschlandticketOnly ? 'false' : 'true',
+		national: deutschlandticketOnly ? 'false' : 'true',
+		deutschlandTicketConnectionsOnly: deutschlandticketOnly ? 'true' : 'false',
         bus: 'true',
         subway: 'true',
         suburban: 'true',
@@ -237,9 +248,9 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         language: 'en'
     });
 
-    if (options.referenceTime) {
-        params.set('departure', options.referenceTime.toISOString());
-        if (options.earlierThan) params.set('earlierThan', 'true');
+	if (options.referenceTime) {
+		const offsetMinutes = options.earlierThan ? -240 : 1;
+		params.set('departure', new Date(options.referenceTime.getTime() + offsetMinutes * 60_000).toISOString());
     }
 
     const url = `https://v6.db.transport.rest/journeys?${params}`;
@@ -270,7 +281,7 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
 			const firstDeparture = transportLegs[0] ? new Date(legDeparture(transportLegs[0])!).getTime() : Number.NaN;
 			return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt, firstDeparture };
         })
-        .filter((candidate: { confirmed: boolean }) => candidate.confirmed)
+		.filter((candidate: { confirmed: boolean; firstDeparture: number }) => candidate.confirmed && (!options.referenceTime || (options.earlierThan ? candidate.firstDeparture < options.referenceTime.getTime() : candidate.firstDeparture > options.referenceTime.getTime())))
         .sort((a: { score: number; firstDeparture: number }, b: { score: number; firstDeparture: number }) => options.referenceTime ? (options.earlierThan ? b.firstDeparture - a.firstDeparture : a.firstDeparture - b.firstDeparture) : a.score - b.score);
 
     if (candidates.length === 0) {
@@ -294,10 +305,11 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         const destLat = l.destination?.location?.latitude;
         const destLon = l.destination?.location?.longitude;
 
-        let legCoords: [number, number][] = [];
+		let legCoords = coordinatesFromHafasShape(l.polyline);
+		if (legCoords.length < 2 && l.tripId) legCoords = await fetchTripGeometry(l.tripId);
 
-        // 1. GeoJSON FeatureCollection polyline (v6.db.transport.rest format)
-        if (l.polyline?.features?.length) {
+		// 1. GeoJSON FeatureCollection polyline (v6.db.transport.rest format)
+		if (legCoords.length < 2 && l.polyline?.features?.length) {
             for (const f of l.polyline.features) {
                 const g = f.geometry;
                 if (g?.type === 'Point' && g.coordinates) {
@@ -319,10 +331,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
                 if (lat && lon) legCoords.push([lat, lon]);
             }
         }
-        // 4. Origin/destination fallback
-        if (legCoords.length < 2 && originLat && originLon && destLat && destLon) {
-            legCoords = [[originLat, originLon], [destLat, destLon]];
-        }
+		// 4. Walking may use its routeable end points; vehicle legs must not fall back to a straight line.
+		if (l.walking && legCoords.length < 2 && originLat && originLon && destLat && destLon) {
+			legCoords = [[originLat, originLon], [destLat, destLon]];
+		}
 
         if (l.walking) {
             legs.push({
@@ -422,15 +434,58 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         ? trainDuration
         : trainDuration + walkToStationMin + walkFromStationMin;
 
-    return {
-        totalDurationMinutes: totalDuration,
+	return {
+		totalDurationMinutes: totalDuration,
         summary,
         legs,
         walkToStationMin,
         walkFromStationMin,
         transfers,
         geometry
-    };
+	};
+}
+
+function coordinatesFromHafasShape(shape: any): [number, number][] {
+	const coords: [number, number][] = [];
+	const collect = (geometry: any) => {
+		if (!geometry) return;
+		if (geometry.type === 'FeatureCollection') {
+			for (const feature of geometry.features ?? []) collect(feature?.geometry);
+			return;
+		}
+		if (geometry.type === 'Feature') return collect(geometry.geometry);
+		if (geometry.type === 'GeometryCollection') {
+			for (const item of geometry.geometries ?? []) collect(item);
+			return;
+		}
+		if (geometry.type === 'LineString') {
+			for (const point of geometry.coordinates ?? []) coords.push([point[1], point[0]]);
+		}
+	};
+	collect(shape);
+	return coords;
+}
+
+async function fetchTripGeometry(tripId: string): Promise<[number, number][]> {
+	try {
+		const res = await fetch(`https://v6.db.transport.rest/trips/${encodeURIComponent(tripId)}?polyline=true&stopovers=true`, {
+			headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
+		});
+		if (!res.ok) return [];
+		const trip = await res.json();
+		const geometry = coordinatesFromHafasShape(trip.polyline);
+		if (geometry.length >= 2) return geometry;
+		return (trip.stopovers ?? [])
+			.map((stopover: any) => {
+				const location = stopover.stop?.location ?? stopover.location;
+				return location?.latitude != null && location?.longitude != null
+					? ([location.latitude, location.longitude] as [number, number])
+					: null;
+			})
+			.filter((point: [number, number] | null): point is [number, number] => point !== null);
+	} catch {
+		return [];
+	}
 }
 
 /**

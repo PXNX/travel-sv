@@ -15,6 +15,20 @@
 - [x] Fehlerseite auf eine kurze, verständliche Darstellung reduzieren.
 - [x] Fehlerbehandlung, Build und GitHub-Übertragung prüfen.
 
+- [x] Alternativverbindung der geteilten Reise reproduzieren und Fallback ohne bestätigte Fahrt verhindern.
+- [ ] Reale Alternativverbindung, Tests, Build und GitHub-Übertragung prüfen.
+- [x] Vorschaukarten mit tatsächlichen Fuß-, Fahr- und Transitgeometrien statt Direktlinien darstellen.
+- [x] Zoomsteuerung der großen Karte unten rechts platzieren.
+- [x] Reiseabschluss speichern und ausschließlich im Reiseeditor des Erstellers anzeigen.
+- [x] Fußwegbeine ohne Stationsunterzeilen, nur mit Distanz und Dauer anzeigen.
+- [x] Gleis und Umstiegszeit in Transitdetails deutlich hervorheben.
+- [x] Umstiegsanzeige in der Detailansicht vergrößern.
+- [x] Transitprodukte wie RE und FlixBus lesbar normalisieren.
+- [x] Kompletten Fußwegblock mit Chevron statt Kartentext anklickbar machen.
+- [x] Leaflet ausschließlich im Browser laden, damit Reiseeditor beim Neuladen nicht mit 500 fehlschlägt.
+- [x] Kartenladeansatz aus der Referenz auf SSR-Sicherheit und Übertragbarkeit prüfen.
+- [x] Bahnstationen in Transitdetails mit bahnhof.de-Bahnhofskarte verlinken.
+
 - [x] Neue Stopps auf Ort und Bundesland normalisieren.
 - [x] Schwebende Plus-Schaltfläche auf Mobilgeräten entfernen.
 

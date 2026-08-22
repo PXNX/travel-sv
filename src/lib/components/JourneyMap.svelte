@@ -68,7 +68,7 @@
 					const pt = endCoords[endCoords.length - 1];
 					if (pt) transferMarkers.push(pt);
 				}
-			} else {
+			} else if (seg.mode !== 'transit') {
 				const coords: [number, number][] = [
 					[from.lat, from.lon],
 					[to.lat, to.lon]
@@ -112,7 +112,7 @@
 		zoom: 13,
 		minZoom: 1,
 		maxZoom: 19,
-		zoomControl: true
+		zoomControl: false
 	});
 
 	$effect(() => {
@@ -154,8 +154,12 @@
 </script>
 
 {#if browser}
-<div class="relative h-[100dvh] w-full">
-	<div class="absolute top-4 left-4 z-[1000]">
+	<div class="relative h-[100dvh] w-full">
+		<div class="absolute right-4 bottom-5 z-[1000] flex flex-col overflow-hidden rounded-lg border border-[#172a45]/25 bg-[#fffdf7] shadow-lg">
+			<button class="btn btn-ghost btn-sm rounded-none border-b border-[#172a45]/15 text-xl" aria-label="Zoom in" onclick={() => mapInstance?.zoomIn()}>+</button>
+			<button class="btn btn-ghost btn-sm rounded-none text-xl" aria-label="Zoom out" onclick={() => mapInstance?.zoomOut()}>−</button>
+		</div>
+		<div class="absolute top-4 left-4 z-[1000]">
 		<button class="btn btn-sm bg-base-100 shadow-md gap-1" onclick={onback}>
 			<IconArrowBack class="h-4 w-4" />
 			List

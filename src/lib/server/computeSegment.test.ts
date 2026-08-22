@@ -169,6 +169,16 @@ describe('computeSegment', () => {
 		expect(r.travelDurationMinutes).toBe(0);
 	});
 
+	it('transit: keeps an existing connection safe when an alternative has no confirmed vehicle', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({ journeys: [{ legs: [{ walking: true, departure: '2024-01-01T08:00:00+01:00', arrival: '2024-01-01T08:10:00+01:00' }] }] })
+		});
+
+		const { computeSegment, NoConfirmedTransitError } = await import('./computeSegment');
+		await expect(computeSegment(stopA, stopB, 1, 'transit', 5, true, { requireConfirmed: true })).rejects.toBeInstanceOf(NoConfirmedTransitError);
+	});
+
 	it('transit: uses Transitous when DB Transport REST fails', async () => {
 		mockFetch.mockResolvedValueOnce({ ok: false, status: 503, text: () => Promise.resolve('unavailable') });
 		mockFetch.mockResolvedValueOnce({

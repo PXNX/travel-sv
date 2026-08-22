@@ -41,6 +41,7 @@ export const journeys = pgTable('journeys', {
 	startDatetime: timestamp('start_datetime', { withTimezone: true, mode: 'date' }),
 	minimumTransferMinutes: integer('minimum_transfer_minutes').notNull().default(5),
 	deutschlandticketOnly: boolean('deutschlandticket_only').notNull().default(true),
+	isCompleted: boolean('is_completed').notNull().default(false),
 	createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow()
 });
