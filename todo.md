@@ -1,5 +1,8 @@
 # Erweiterung travel-sv
 
+- [x] Mindestumsteigezeit-Migration in Neon ausführen.
+- [x] Neue Datenbankspalte prüfen und GitHub-Stand bestätigen.
+
 - [x] Unbestätigte Direktverbindungen ohne Transitdaten verhindern.
 - [x] Nächste schnelle Bahn- und Bushaltestellen für die Verbindungswahl bewerten.
 - [x] Konfigurierbare Mindestumsteigezeit ergänzen und anwenden.
