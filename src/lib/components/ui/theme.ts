@@ -3,11 +3,15 @@ import type { SegmentMode } from '$lib/types';
 /** Line colours for German public transport products, keyed by Öffi product code. */
 const TRANSIT_PRODUCT_COLORS: Record<string, string> = {
 	S: '#008d4f',
-	RE: '#ec1c24',
-	RB: '#ec1c24',
-	ARV: '#ec1c24',
-	MEX: '#ec1c24',
-	IRE: '#ec1c24',
+	RE: '#6b7280',
+	RB: '#6b7280',
+	ARV: '#6b7280',
+	MEX: '#6b7280',
+	IRE: '#6b7280',
+	ICE: '#ec1c24',
+	IC: '#ec1c24',
+	EC: '#ec1c24',
+	FLX: '#ec1c24',
 	Bus: '#a0158a',
 	STR: '#d6a100',
 	U: '#2e5ea8'
@@ -21,6 +25,7 @@ const TRANSIT_PRODUCT_ALIASES: Record<string, string> = {
 	BUS: 'Bus',
 	TRAM: 'STR',
 	STREETCAR: 'STR',
+	HIGHSPEED_RAIL: 'ICE',
 	RAIL: 'RB',
 	REGIONAL: 'RB',
 	REGIONAL_EXPRESS: 'RE'

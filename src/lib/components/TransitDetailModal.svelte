@@ -29,6 +29,8 @@
 	const transfers = $derived(segment?.transfers ?? 0);
 	const walkTo = $derived(segment?.walkToStationMin ?? 0);
 	const walkFrom = $derived(segment?.walkFromStationMin ?? 0);
+	const accessWalkTo = $derived(legs[0]?.type === 'walking' ? legs[0] : undefined);
+	const accessWalkFrom = $derived(legs.at(-1)?.type === 'walking' ? legs.at(-1) : undefined);
 	const firstTransport = $derived(legs.find((leg) => leg.type === 'transport'));
 
 	const visibleLegs = $derived.by(() =>
@@ -84,17 +86,17 @@
 	});
 
 	function lineLabel(leg: TransitLeg): string {
-		const p = leg.product ?? '';
+		const rawProduct = leg.product ?? '';
 		const n = leg.lineName ?? '';
-		if (n && p && n.toLowerCase().startsWith(p.toLowerCase())) return n;
-		if (p && n) return `${p}${n}`;
-		return n || p || 'Öffi';
+		const product = ({ HIGHSPEED_RAIL: 'ICE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB' } as Record<string, string>)[rawProduct] ?? rawProduct;
+		if (n && product && n.toLowerCase().startsWith(product.toLowerCase())) return n;
+		if (product && n) return `${product} ${n}`;
+		return n || product || 'Öffi';
 	}
 
 	function walkLabel(leg: TransitLeg): string {
-		if (leg.distanceM && leg.distanceM > 0) return formatDistance(leg.distanceM);
-		if (leg.durationMinutes > 0) return `~${formatDuration(leg.durationMinutes)}`;
-		return '';
+		const parts = [leg.durationMinutes > 0 ? `~${formatDuration(leg.durationMinutes)}` : '', leg.distanceM && leg.distanceM > 0 ? formatDistance(leg.distanceM) : ''].filter(Boolean);
+		return parts.join(' · ');
 	}
 
 	function fmtTime(iso?: string) {
@@ -222,7 +224,7 @@
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
 						<div class="pt-1 flex-1">
-								<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station · {formatDuration(walkTo)}</p>
+								<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station · {walkLabel({ durationMinutes: walkTo, distanceM: accessWalkTo?.distanceM } as TransitLeg)}</p>
 						</div>
 						{#if walkToClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
@@ -362,7 +364,7 @@
 							</div>
 						</div>
 						<div class="pt-1 flex-1">
-								<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">Walk from station · {formatDuration(walkFrom)}</p>
+								<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">Walk from station · {walkLabel({ durationMinutes: walkFrom, distanceM: accessWalkFrom?.distanceM } as TransitLeg)}</p>
 						</div>
 						{#if walkFromClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>

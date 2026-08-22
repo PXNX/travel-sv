@@ -4,6 +4,7 @@
 	import type { Stop, Segment, SegmentMode } from '$lib/types';
 	import { computeDerivedArrivalTimes } from '$lib/helpers';
 	import { deserialize } from '$app/forms';
+	import { browser } from '$app/environment';
 	import StopCard from '$lib/components/StopCard.svelte';
 	import SegmentChip from '$lib/components/SegmentChip.svelte';
 	import LocationPicker from '$lib/components/LocationPicker.svelte';
@@ -98,6 +99,7 @@
 	});
 
 	$effect(() => {
+		if (!browser) return;
 		if (journey.isPublic && journey.shareToken && !shareUrl) {
 			shareUrl = `${window.location.origin}/j/${journey.shareToken}`;
 		} else if (!journey.isPublic) {

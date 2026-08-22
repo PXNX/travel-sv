@@ -9,6 +9,12 @@
 - [x] Kartenkacheln mit begrenzter Laufzeit und Cachegröße zwischenspeichern.
 - [ ] Offlineverhalten und PWA-Build prüfen.
 
+- [x] 500-Fehler beim Laden einer Reise reproduzieren und Ursache protokollieren.
+- [x] Produktnamen und Farben für ICE, Regionalverkehr, U-Bahn und Bus vereinheitlichen.
+- [x] Fußwege mit Zeit und Distanz in einer Zeile darstellen.
+- [x] Fehlerseite auf eine kurze, verständliche Darstellung reduzieren.
+- [x] Fehlerbehandlung, Build und GitHub-Übertragung prüfen.
+
 - [x] Neue Stopps auf Ort und Bundesland normalisieren.
 - [x] Schwebende Plus-Schaltfläche auf Mobilgeräten entfernen.
 

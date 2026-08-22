@@ -25,6 +25,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 export const handleError: HandleServerError = ({ error, event, status, message }) => {
 	const requestId = event.locals.requestId || crypto.randomUUID();
-	console.error(JSON.stringify({ requestId, status, method: event.request.method, path: event.url.pathname, error }));
+	const err = error as { name?: unknown; message?: unknown; stack?: unknown; cause?: unknown; code?: unknown };
+	console.error(`[request ${requestId}] ${event.request.method} ${event.url.pathname} failed`, {
+		status,
+		name: err?.name ?? 'UnknownError',
+		message: err?.message ?? String(error),
+		code: err?.code,
+		cause: err?.cause,
+		stack: err?.stack
+	});
 	return { message, requestId };
 };
