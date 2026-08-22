@@ -11,6 +11,7 @@ import type { Stop, SegmentMode } from '$lib/types';
 export async function recomputeSegments(journeyId: number) {
 	const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId));
 	const minimumTransferMinutes = journey?.minimumTransferMinutes ?? 5;
+	const deutschlandticketOnly = journey?.deutschlandticketOnly ?? true;
     const orderedStops = await db
         .select()
         .from(stops)
@@ -43,7 +44,7 @@ export async function recomputeSegments(journeyId: number) {
         const mode = modeByPair.get(`${from.id}-${to.id}`) ?? 'walk';
 
         try {
-			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes);
+			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes, deutschlandticketOnly);
         } catch (err) {
             console.error(`Segment ${from.id}→${to.id} failed:`, err);
         }

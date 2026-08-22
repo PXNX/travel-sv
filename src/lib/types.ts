@@ -66,6 +66,7 @@ export interface Journey {
 	shareToken?: string | null;
 	startDatetime?: Date | string | null;
 	minimumTransferMinutes?: number;
+	deutschlandticketOnly?: boolean;
 	createdAt: string;
     updatedAt: string;
 }

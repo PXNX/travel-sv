@@ -1,5 +1,23 @@
 # Erweiterung travel-sv
 
+- [x] Zugangsfußwege zu und von Haltestellen je Richtung zusammenführen.
+- [x] ÖPNV-orientierte Bus- und Transitkartenebene ergänzen.
+
+- [x] U-Bahn- und Schnellbahnnetz als dritte Kartenebene ergänzen.
+
+- [x] Installierbare PWA-Metadaten und Offline-Shell vervollständigen.
+- [x] Kartenkacheln mit begrenzter Laufzeit und Cachegröße zwischenspeichern.
+- [ ] Offlineverhalten und PWA-Build prüfen.
+
+- [x] Neue Stopps auf Ort und Bundesland normalisieren.
+- [x] Schwebende Plus-Schaltfläche auf Mobilgeräten entfernen.
+
+- [x] U-, S-, Bus-, Tram- und Bahnlinien unterschiedlich einfärben.
+- [x] Fußweg- und Haltestellenabschnitte kompakt darstellen.
+- [x] Frühere und spätere Transitverbindungen per Steuerung ergänzen.
+- [x] Deutschlandticket-Filter speichern und Transitabfragen anpassen.
+- [ ] Verbindungsdarstellung, Filter, Build und GitHub-Übertragung prüfen.
+
 - [x] DB Transport REST mit kostenfreiem Transitous-Fallback integrieren.
 - [x] Fehlerseiten mit Request-ID und klaren Handlungsoptionen gestalten.
 - [x] Reiseoberfläche aufräumen und visuell konsistent verfeinern.

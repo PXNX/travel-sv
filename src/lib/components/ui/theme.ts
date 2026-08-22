@@ -13,11 +13,25 @@ const TRANSIT_PRODUCT_COLORS: Record<string, string> = {
 	U: '#2e5ea8'
 };
 
+const TRANSIT_PRODUCT_ALIASES: Record<string, string> = {
+	SUBWAY: 'U',
+	METRO: 'U',
+	SUBURBAN: 'S',
+	SBAHN: 'S',
+	BUS: 'Bus',
+	TRAM: 'STR',
+	STREETCAR: 'STR',
+	RAIL: 'RB',
+	REGIONAL: 'RB',
+	REGIONAL_EXPRESS: 'RE'
+};
+
 export const TRANSIT_FALLBACK_COLOR = '#3b82f6';
 
 export function transitColor(product?: string): string {
 	if (!product) return TRANSIT_FALLBACK_COLOR;
-	return TRANSIT_PRODUCT_COLORS[product] ?? TRANSIT_FALLBACK_COLOR;
+	const key = TRANSIT_PRODUCT_ALIASES[product.toUpperCase()] ?? product;
+	return TRANSIT_PRODUCT_COLORS[key] ?? TRANSIT_FALLBACK_COLOR;
 }
 
 /** Map polyline colours per segment mode. `walking` covers walk legs inside a transit segment. */

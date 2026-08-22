@@ -60,14 +60,14 @@ async function fullPayload(id: number) {
     };
 }
 
-async function recomputeTransitSegments(id: number, minimumTransferMinutes: number) {
+async function recomputeTransitSegments(id: number, minimumTransferMinutes: number, deutschlandticketOnly: boolean) {
 	const transitSegs = await db.select().from(segments).where(and(eq(segments.journeyId, id), eq(segments.mode, 'transit')));
 	for (const seg of transitSegs) {
 		const [fromStop] = await db.select().from(stops).where(eq(stops.id, seg.fromStopId));
 		const [toStop] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
 		if (!fromStop || !toStop) continue;
 		try {
-			await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', minimumTransferMinutes);
+			await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', minimumTransferMinutes, deutschlandticketOnly);
 		} catch (err) {
 			console.error(`recomputeTransit seg ${seg.id} failed:`, err);
 		}
@@ -102,9 +102,13 @@ export const actions = {
 			if (!Number.isFinite(minutes)) return fail(400, { error: 'minimumTransferMinutes required' });
 			updates.minimumTransferMinutes = Math.max(0, Math.min(30, minutes));
 		}
+		if (form.has('deutschlandticketOnly')) updates.deutschlandticketOnly = fd(form, 'deutschlandticketOnly') === 'true';
 
 		await db.update(journeys).set(updates).where(eq(journeys.id, id));
-		if (typeof updates.minimumTransferMinutes === 'number') await recomputeTransitSegments(id, updates.minimumTransferMinutes);
+		if (typeof updates.minimumTransferMinutes === 'number' || typeof updates.deutschlandticketOnly === 'boolean') {
+			const journey = await ownedJourney(id, locals.user!.id);
+			await recomputeTransitSegments(id, journey.minimumTransferMinutes, journey.deutschlandticketOnly);
+		}
 		return await fullPayload(id);
     },
 
@@ -240,7 +244,7 @@ export const actions = {
 
 		if (fromStop && toStop) {
 			const journey = await ownedJourney(id, locals.user!.id);
-			await computeSegment(fromStop as Stop, toStop as Stop, id, mode, journey.minimumTransferMinutes);
+			await computeSegment(fromStop as Stop, toStop as Stop, id, mode, journey.minimumTransferMinutes, journey.deutschlandticketOnly);
         }
 
         return await fullPayload(id);
@@ -279,8 +283,26 @@ export const actions = {
         await ownedJourney(id, locals.user!.id);
 
 		const journey = await ownedJourney(id, locals.user!.id);
-		await recomputeTransitSegments(id, journey.minimumTransferMinutes);
+		await recomputeTransitSegments(id, journey.minimumTransferMinutes, journey.deutschlandticketOnly);
 
         return await fullPayload(id);
-    }
+	},
+
+	shiftTransitConnection: async ({ params, request, locals }) => {
+		const id = journeyId(params);
+		const journey = await ownedJourney(id, locals.user!.id);
+		const form = await request.formData();
+		const segmentId = Number.parseInt(fd(form, 'segmentId'), 10);
+		const direction = Number.parseInt(fd(form, 'direction'), 10);
+		if (!Number.isInteger(segmentId) || ![-1, 1].includes(direction)) return fail(400, { error: 'segmentId and direction required' });
+		const [segment] = await db.select().from(segments).where(and(eq(segments.id, segmentId), eq(segments.journeyId, id)));
+		if (!segment || segment.mode !== 'transit') return fail(404, { error: 'transit segment not found' });
+		const [fromStop] = await db.select().from(stops).where(eq(stops.id, segment.fromStopId));
+		const [toStop] = await db.select().from(stops).where(eq(stops.id, segment.toStopId));
+		const legs = segment.transitLegs ? JSON.parse(segment.transitLegs) as { type?: string; departure?: string }[] : [];
+		const reference = legs.find((leg) => leg.type === 'transport')?.departure;
+		if (!fromStop || !toStop || !reference) return fail(400, { error: 'connection reference unavailable' });
+		await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', journey.minimumTransferMinutes, journey.deutschlandticketOnly, { referenceTime: new Date(reference), earlierThan: direction < 0 });
+		return await fullPayload(id);
+	}
 } satisfies Actions;

@@ -2,6 +2,7 @@
 	import { Map, TileLayer, ControlLayers, Polyline, CircleMarker, Marker, DivIcon } from 'sveaflet';
 	import { browser } from '$app/environment';
 	import type { Stop, Segment } from '$lib/types';
+	import { transitColor } from '$lib/components/ui';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
 	import IconClose from '~icons/material-symbols/close-rounded';
@@ -29,23 +30,6 @@
 		drive: '#f59e0b',
 		walking: '#94a3b8'
 	};
-
-	const transitProductColors: Record<string, string> = {
-		S: '#008d4f',
-		RE: '#ec1c24',
-		RB: '#ec1c24',
-		ARV: '#ec1c24',
-		MEX: '#ec1c24',
-		IRE: '#ec1c24',
-		Bus: '#a0158a',
-		STR: '#d6a100',
-		U: '#2e5ea8'
-	};
-
-	function transitColor(product?: string): string {
-		if (!product) return '#3b82f6';
-		return transitProductColors[product] ?? '#3b82f6';
-	}
 
 	interface PolylineData {
 		coords: [number, number][];
@@ -188,12 +172,24 @@
 					checked
 					options={{ attribution: '&copy; OSM', maxZoom: 19 }}
 				/>
-				<TileLayer
-					url={'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'}
-					name="Satellite"
-					layerType="base"
-					options={{ attribution: '&copy; Esri', maxZoom: 19 }}
-				/>
+					<TileLayer
+						url={'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'}
+						name="Satellite"
+						layerType="base"
+						options={{ attribution: '&copy; Esri', maxZoom: 19 }}
+					/>
+					<TileLayer
+						url={'https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png'}
+						name="Rail & metro"
+						layerType="base"
+						options={{ attribution: '&copy; OpenRailwayMap contributors, &copy; OpenStreetMap contributors', maxZoom: 19 }}
+					/>
+					<TileLayer
+						url={'https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png'}
+						name="Public transit"
+						layerType="base"
+						options={{ attribution: '&copy; ÖPNVKarte/OpenPtMap contributors, &copy; OpenStreetMap contributors', maxZoom: 18 }}
+					/>
 			</ControlLayers>
 
 			{#each renderData.polylines as poly, idx (idx)}

@@ -54,6 +54,7 @@
 	let showMap = $state(false);
 	let showTransitSettings = $state(false);
 	let minimumTransferMinutes = $state(data.journey.minimumTransferMinutes ?? 5);
+	let deutschlandticketOnly = $state(data.journey.deutschlandticketOnly ?? true);
 	let savingTransitSettings = $state(false);
 	let isOffline = $state(false);
 	let computingSegmentId = $state<number | null>(null);
@@ -61,6 +62,7 @@
 	let showTransitDetail = $state(false);
 	let showWalkRoute = $state(false);
 	let detailSegment = $state<Segment | null>(null);
+	let changingConnection = $state(false);
 	let walkFromName = $state('');
 	let walkToName = $state('');
 
@@ -155,7 +157,7 @@
 	async function saveTransitSettings() {
 		savingTransitSettings = true;
 		showStatus('saving');
-		await postAction('updateJourney', { minimumTransferMinutes: String(minimumTransferMinutes) });
+		await postAction('updateJourney', { minimumTransferMinutes: String(minimumTransferMinutes), deutschlandticketOnly: String(deutschlandticketOnly) });
 		savingTransitSettings = false;
 		showTransitSettings = false;
 		showStatus('saved');
@@ -270,6 +272,15 @@
 		showWalkRoute = true;
 	}
 
+	async function shiftTransitConnection(segment: Segment, direction: -1 | 1) {
+		changingConnection = true;
+		showStatus('saving');
+		await postAction('shiftTransitConnection', { segmentId: String(segment.id), direction: String(direction) });
+		detailSegment = journeySegments.find((entry) => entry.id === segment.id) ?? null;
+		changingConnection = false;
+		showStatus('saved');
+	}
+
 	async function publishJourney() { await postAction('publish', {}); }
 	async function unpublishJourney() { shareUrl = null; await postAction('unpublish', {}); }
 	function toggleMapMode() { showMap = !showMap; }
@@ -357,10 +368,7 @@
 					<IconAdd class="h-5 w-5" /> Add Stop
 				</button>
 			</div>
-			<button class="btn btn-primary btn-circle fixed right-4 bottom-6 z-50 shadow-lg sm:hidden" onclick={() => addStop()} aria-label="Add stop">
-				<IconAdd class="h-6 w-6" />
-			</button>
-		</main>
+			</main>
 	</div>
 {/if}
 
@@ -370,7 +378,7 @@
 <ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
 	onpublish={publishJourney} onunpublish={unpublishJourney} />
 
-	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
+		<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} onconnectionchange={shiftTransitConnection} {changingConnection} />
 
 	<Modal bind:open={showTransitSettings} title="Transit settings" icon={IconTune} size="sm">
 		<div class="space-y-5">
@@ -378,6 +386,10 @@
 			<label class="block space-y-3" for="minimum-transfer-time">
 				<span class="flex items-baseline justify-between gap-4 text-sm font-semibold"><span>Minimum transfer time</span><strong class="travel-display text-xl text-[#172a45]">{minimumTransferMinutes} min</strong></span>
 				<input id="minimum-transfer-time" class="range range-primary w-full" type="range" min="0" max="30" step="1" bind:value={minimumTransferMinutes} />
+			</label>
+			<label class="flex cursor-pointer items-start justify-between gap-4 border-t border-[#172a45]/15 pt-4" for="deutschlandticket-only">
+				<span><span class="block text-sm font-semibold">Deutschlandticket only</span><span class="text-base-content/60 mt-1 block text-xs">Exclude ICE, IC, EC and other non-ticket long-distance services.</span></span>
+				<input id="deutschlandticket-only" class="toggle toggle-primary shrink-0" type="checkbox" bind:checked={deutschlandticketOnly} />
 			</label>
 			<button class="btn btn-primary w-full" onclick={saveTransitSettings} disabled={savingTransitSettings}>{savingTransitSettings ? 'Updating connections…' : 'Save and update connections'}</button>
 		</div>

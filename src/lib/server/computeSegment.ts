@@ -39,7 +39,9 @@ export async function computeSegment(
     toStop: Stop,
     journeyId: number,
     mode: SegmentMode = 'walk',
-    minimumTransferMinutes = 5
+    minimumTransferMinutes = 5,
+    deutschlandticketOnly = true,
+    options: TransitQueryOptions = {}
 ): Promise<ComputeResult> {
     let result: ComputeResult = {
         distanceM: 0,
@@ -72,7 +74,7 @@ export async function computeSegment(
         result.driveGeometry = drive.geometry;
     } else {
         // transit
-        const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes);
+        const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes, deutschlandticketOnly, options);
         if (transit) {
             result.travelDurationMinutes = transit.totalDurationMinutes;
             result.transitSummary = transit.summary;
@@ -167,6 +169,11 @@ interface TransitResult {
     geometry: TransitGeoLeg[];
 }
 
+interface TransitQueryOptions {
+	referenceTime?: Date;
+	earlierThan?: boolean;
+}
+
 function legDeparture(leg: any): string | undefined {
     return leg.departure ?? leg.plannedDeparture;
 }
@@ -182,18 +189,18 @@ function isTimedVehicleLeg(leg: any): boolean {
     return hasTimedSchedule && hasVehicleIdentity;
 }
 
-async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult | null> {
+async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult | null> {
     const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
     if (bothInGermany) {
         try {
-            return await computeTransitHAFAS(from, to, minimumTransferMinutes);
+            return await computeTransitHAFAS(from, to, minimumTransferMinutes, deutschlandticketOnly, options);
         } catch (err) {
             console.error('DB Transport REST transit failed:', err);
         }
     }
 
     try {
-        return await computeTransitTransitous(from, to, minimumTransferMinutes);
+        return await computeTransitTransitous(from, to, minimumTransferMinutes, deutschlandticketOnly);
     } catch (err) {
         console.error('Transitous transit fallback failed:', err);
         return null;
@@ -205,7 +212,7 @@ async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: numb
  * Only timed responses with at least one actual vehicle leg count as confirmed transit.
  * Deutschlandticket: nationalExpress=false (no ICE), national=false (no IC/EC).
  */
-async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult> {
+async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult> {
     const requestedAt = Date.now();
     const params = new URLSearchParams({
         'from.latitude': String(from.lat),
@@ -217,8 +224,8 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         results: '6',
         transferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
         startWithWalking: 'true',
-        nationalExpress: 'false',
-        national: 'false',
+        nationalExpress: deutschlandticketOnly ? 'false' : 'true',
+        national: deutschlandticketOnly ? 'false' : 'true',
         bus: 'true',
         subway: 'true',
         suburban: 'true',
@@ -229,6 +236,11 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         polylines: 'true',
         language: 'en'
     });
+
+    if (options.referenceTime) {
+        params.set('departure', options.referenceTime.toISOString());
+        if (options.earlierThan) params.set('earlierThan', 'true');
+    }
 
     const url = `https://v6.db.transport.rest/journeys?${params}`;
     console.log('HAFAS request:', url);
@@ -253,12 +265,13 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
 		.map((journey: any) => {
 			const legs = Array.isArray(journey.legs) ? journey.legs : [];
 			const transportLegs = legs.filter(isTimedVehicleLeg);
-            const lastArrival = legs.at(-1)?.arrival ?? legs.at(-1)?.plannedArrival;
-            const arrivalTime = lastArrival ? new Date(lastArrival).getTime() : Number.NaN;
-            return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt };
+			const lastArrival = legs.at(-1)?.arrival ?? legs.at(-1)?.plannedArrival;
+			const arrivalTime = lastArrival ? new Date(lastArrival).getTime() : Number.NaN;
+			const firstDeparture = transportLegs[0] ? new Date(legDeparture(transportLegs[0])!).getTime() : Number.NaN;
+			return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt, firstDeparture };
         })
         .filter((candidate: { confirmed: boolean }) => candidate.confirmed)
-        .sort((a: { score: number }, b: { score: number }) => a.score - b.score);
+        .sort((a: { score: number; firstDeparture: number }, b: { score: number; firstDeparture: number }) => options.referenceTime ? (options.earlierThan ? b.firstDeparture - a.firstDeparture : a.firstDeparture - b.firstDeparture) : a.score - b.score);
 
     if (candidates.length === 0) {
         throw new Error('HAFAS returned no confirmed transport journey');
@@ -424,7 +437,7 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
  * Community-run Transitous/MOTIS fallback for the free/open and non-commercial use case.
  * It receives the same stored minimum transfer time as DB Transport REST.
  */
-async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult> {
+async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean): Promise<TransitResult> {
     const params = new URLSearchParams({
         fromPlace: `${from.lat},${from.lon}`,
         toPlace: `${to.lat},${to.lon}`,
@@ -441,9 +454,10 @@ async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMin
     if (!res.ok) throw new Error(`Transitous ${res.status}`);
 
     const data = await res.json();
-    const candidates = (data.itineraries ?? [])
-        .filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some((leg: any) => leg.mode && leg.mode !== 'WALK'))
-        .sort((a: any, b: any) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
+	const candidates = (data.itineraries ?? [])
+		.filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some((leg: any) => leg.mode && leg.mode !== 'WALK'))
+		.filter((itinerary: any) => !deutschlandticketOnly || itinerary.legs.every((leg: any) => leg.mode !== 'LONG_DISTANCE' && !/\b(ICE|IC|EC|FLX)\b/i.test(`${leg.routeShortName ?? ''} ${leg.displayName ?? ''}`)))
+		.sort((a: any, b: any) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
     if (candidates.length === 0) throw new Error('Transitous returned no confirmed transport journey');
 
     const itinerary = candidates[0];

@@ -8,6 +8,8 @@
 	import IconSubway from '~icons/material-symbols/subway-outline-rounded';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconTimer from '~icons/material-symbols/timer-outline-rounded';
+	import IconChevronLeft from '~icons/material-symbols/chevron-left-rounded';
+	import IconChevronRight from '~icons/material-symbols/chevron-right-rounded';
 	import { Modal, transitColor } from '$lib/components/ui';
 
 	interface Props {
@@ -15,20 +17,27 @@
 		segment: Segment | null;
 		onclose?: () => void;
 		onwalkclick?: (segment: Segment, fromName: string, toName: string) => void;
+		onconnectionchange?: (segment: Segment, direction: -1 | 1) => void;
+		changingConnection?: boolean;
 		fromCoords?: [number, number];
 		toCoords?: [number, number];
 	}
 
-	let { open = $bindable(false), segment, onclose, onwalkclick, fromCoords, toCoords }: Props = $props();
+	let { open = $bindable(false), segment, onclose, onwalkclick, onconnectionchange, changingConnection = false, fromCoords, toCoords }: Props = $props();
 
 	const legs = $derived((segment?.transitLegs ?? []) as TransitLeg[]);
 	const transfers = $derived(segment?.transfers ?? 0);
 	const walkTo = $derived(segment?.walkToStationMin ?? 0);
 	const walkFrom = $derived(segment?.walkFromStationMin ?? 0);
+	const firstTransport = $derived(legs.find((leg) => leg.type === 'transport'));
 
-	const visibleLegs = $derived(
-		legs.filter((leg) => {
-			if (leg.type === 'walking' && leg.durationMinutes <= 0) return false;
+	const visibleLegs = $derived.by(() =>
+		legs.filter((leg, index) => {
+			if (leg.type !== 'walking') return true;
+			if (leg.durationMinutes <= 0) return false;
+			// The dedicated access rows already represent first and last walking legs.
+			if (index === 0 && walkTo > 0) return false;
+			if (index === legs.length - 1 && walkFrom > 0) return false;
 			return true;
 		})
 	);
@@ -181,8 +190,22 @@
 		{/if}
 	{/snippet}
 
-	{#if segment}
-				{#if walkTo > 0}
+		{#if segment}
+			{#if firstTransport}
+				<div class="mb-4 flex items-center justify-between gap-2 border-y border-[#172a45]/15 py-2">
+					<button class="btn btn-ghost btn-xs btn-square" aria-label="Earlier connection" disabled={changingConnection} onclick={() => onconnectionchange?.(segment!, -1)}>
+						<IconChevronLeft class="h-4 w-4" />
+					</button>
+					<div class="min-w-0 text-center">
+						<p class="text-[10px] font-bold tracking-[0.08em] text-[#a45e38] uppercase">Connections from</p>
+						<p class="truncate text-sm font-semibold">{firstTransport.departureStation}</p>
+					</div>
+					<button class="btn btn-ghost btn-xs btn-square" aria-label="Later connection" disabled={changingConnection} onclick={() => onconnectionchange?.(segment!, 1)}>
+						<IconChevronRight class="h-4 w-4" />
+					</button>
+				</div>
+			{/if}
+					{#if walkTo > 0}
 					<svelte:element
 						this={walkToClickable ? 'button' : 'div'}
 						type={walkToClickable ? 'button' : undefined}
@@ -199,8 +222,7 @@
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
 						<div class="pt-1 flex-1">
-							<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station</p>
-							<p class="text-xs text-base-content/40">~{formatDuration(walkTo)}</p>
+								<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station · {formatDuration(walkTo)}</p>
 						</div>
 						{#if walkToClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>
@@ -340,12 +362,7 @@
 							</div>
 						</div>
 						<div class="pt-1 flex-1">
-							<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">
-								Walk from station
-							</p>
-							<p class="text-xs text-base-content/40">
-								~{formatDuration(walkFrom)}
-							</p>
+								<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">Walk from station · {formatDuration(walkFrom)}</p>
 						</div>
 						{#if walkFromClickable}
 							<span class="text-[10px] text-primary self-center opacity-60">map ›</span>

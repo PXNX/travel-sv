@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Segment, SegmentMode } from '$lib/types';
 	import { formatDistance, formatDuration } from '$lib/helpers';
-	import { Button, Segmented, SEGMENT_MODE_STYLES } from '$lib/components/ui';
+	import { Button, Segmented, SEGMENT_MODE_STYLES, transitColor } from '$lib/components/ui';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
 	import IconCar from '~icons/material-symbols/directions-car-outline-rounded';
@@ -37,6 +37,7 @@
 	const ModeIcon = $derived(MODE_ICONS[segment.mode] ?? IconWalk);
 	const detailHint = $derived(segment.mode === 'transit' ? 'details ›' : 'map ›');
 	const hasConfirmedTransit = $derived((segment.transitLegs ?? []).some((leg) => leg.type === 'transport'));
+	const transitLines = $derived((segment.transitLegs ?? []).filter((leg) => leg.type === 'transport'));
 </script>
 
 <div class="mx-1 my-1.5">
@@ -81,6 +82,11 @@
 								<span class="text-xs font-semibold">
 									{segment.transfers === 0 ? 'Direkt' : `${segment.transfers}× Umstieg`}
 								</span>
+								{#each transitLines as line, index (index)}
+									<span class="rounded px-1.5 py-0.5 text-[10px] leading-none font-bold text-white" style={`background:${transitColor(line.product)}`}>
+										{line.lineName ?? line.product ?? 'ÖPNV'}
+									</span>
+								{/each}
 							{:else}
 								<span class="text-warning text-xs font-semibold">Keine bestätigte Verbindung</span>
 							{/if}
