@@ -193,9 +193,16 @@ function legArrival(leg: any): string | undefined {
 
 function isTimedVehicleLeg(leg: any): boolean {
     if (leg?.walking) return false;
+	const product = String(leg?.line?.productName ?? leg?.line?.product ?? leg?.product ?? '').toUpperCase();
+	if (product === 'OTHER' || product === 'WALK') return false;
     const hasTimedSchedule = Boolean(legDeparture(leg) && legArrival(leg));
     const hasVehicleIdentity = Boolean(leg?.line || leg?.tripId || leg?.public || leg?.direction || leg?.product);
     return hasTimedSchedule && hasVehicleIdentity;
+}
+
+function isTransitousVehicleLeg(leg: any): boolean {
+	const mode = String(leg?.mode ?? '').toUpperCase();
+	return ['BUS', 'COACH', 'SUBWAY', 'METRO', 'SUBURBAN', 'TRAM', 'STREETCAR', 'RAIL', 'REGIONAL_RAIL', 'HIGHSPEED_RAIL', 'FERRY', 'TAXI'].includes(mode);
 }
 
 async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult | null> {
@@ -207,7 +214,10 @@ async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: numb
 			console.error('DB Transport REST transit failed:', err);
 		}
 	}
-	if (options.requireConfirmed) return null;
+	// For regular transit recalculations a confirmed Transitous result is a valid fallback.
+	// A previous/next alternative is time-bound, though, and Transitous currently has no
+	// matching reference-time token in this request, so keep that selection unchanged.
+	if (options.requireConfirmed && options.referenceTime) return null;
 
 	try {
         return await computeTransitTransitous(from, to, minimumTransferMinutes, deutschlandticketOnly);
@@ -331,17 +341,19 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
                 if (lat && lon) legCoords.push([lat, lon]);
             }
         }
-		// 4. Walking may use its routeable end points; vehicle legs must not fall back to a straight line.
+		// 4. Walking needs a real footpath; vehicle legs must never fall back to a straight line.
 		if (l.walking && legCoords.length < 2 && originLat && originLon && destLat && destLon) {
-			legCoords = [[originLat, originLon], [destLat, destLon]];
+			legCoords = await fetchWalkingGeometry(originLat, originLon, destLat, destLon);
 		}
 
         if (l.walking) {
             legs.push({
                 type: 'walking',
                 departure: dep, arrival: arr,
-                departureStation: l.origin?.name,
-                arrivalStation: l.destination?.name,
+				departureStation: l.origin?.name,
+				arrivalStation: l.destination?.name,
+				departureStationId: l.origin?.id ? String(l.origin.id) : undefined,
+				arrivalStationId: l.destination?.id ? String(l.destination.id) : undefined,
                 departureLat: originLat, departureLon: originLon,
                 arrivalLat: destLat, arrivalLon: destLon,
                 durationMinutes: Math.round(durMin),
@@ -352,10 +364,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
                 geometry.push({ coords: legCoords, mode: 'walking' });
             }
 		} else if (isTimedVehicleLeg(l)) {
-			const productName = l.line?.productName ?? l.line?.product ?? l.product ?? '';
+			const productName = l.line?.productName ?? l.line?.product ?? l.product ?? l.line?.mode ?? '';
 			const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? l.line?.id ?? '';
 			const lineName = rawLineName && productName && !rawLineName.toLowerCase().startsWith(productName.toLowerCase())
-				? `${productName}${rawLineName}`
+				? `${productName} ${rawLineName}`
 				: rawLineName || productName || 'ÖPNV';
 
             legs.push({
@@ -363,8 +375,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
                 lineName, product: productName,
                 direction: l.direction ?? '',
                 departure: dep, arrival: arr,
-                departureStation: l.origin?.name ?? '',
-                arrivalStation: l.destination?.name ?? '',
+				departureStation: l.origin?.name ?? '',
+				arrivalStation: l.destination?.name ?? '',
+				departureStationId: l.origin?.id ? String(l.origin.id) : undefined,
+				arrivalStationId: l.destination?.id ? String(l.destination.id) : undefined,
                 departureLat: originLat, departureLon: originLon,
                 arrivalLat: destLat, arrivalLon: destLon,
                 durationMinutes: Math.round(durMin),
@@ -488,6 +502,18 @@ async function fetchTripGeometry(tripId: string): Promise<[number, number][]> {
 	}
 }
 
+async function fetchWalkingGeometry(fromLat: number, fromLon: number, toLat: number, toLon: number): Promise<[number, number][]> {
+	try {
+		const res = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`);
+		const data = await res.json();
+		return data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates
+			? data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number])
+			: [];
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Community-run Transitous/MOTIS fallback for the free/open and non-commercial use case.
  * It receives the same stored minimum transfer time as DB Transport REST.
@@ -510,7 +536,7 @@ async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMin
 
     const data = await res.json();
 	const candidates = (data.itineraries ?? [])
-		.filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some((leg: any) => leg.mode && leg.mode !== 'WALK'))
+		.filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some(isTransitousVehicleLeg))
 		.filter((itinerary: any) => !deutschlandticketOnly || itinerary.legs.every((leg: any) => leg.mode !== 'LONG_DISTANCE' && !/\b(ICE|IC|EC|FLX)\b/i.test(`${leg.routeShortName ?? ''} ${leg.displayName ?? ''}`)))
 		.sort((a: any, b: any) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
     if (candidates.length === 0) throw new Error('Transitous returned no confirmed transport journey');
@@ -526,10 +552,12 @@ async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMin
         const durationMinutes = Math.round((leg.duration ?? 0) / 60);
         const coords = leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision ?? 6) : undefined;
 
-        if (leg.mode === 'WALK') {
+		if (leg.mode === 'WALK') {
             legs.push({
                 type: 'walking', departure, arrival,
-                departureStation: leg.from?.name, arrivalStation: leg.to?.name,
+				departureStation: leg.from?.name, arrivalStation: leg.to?.name,
+				departureStationId: leg.from?.id ? String(leg.from.id) : undefined,
+				arrivalStationId: leg.to?.id ? String(leg.to.id) : undefined,
                 departureLat: leg.from?.lat, departureLon: leg.from?.lon,
                 arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
                 durationMinutes, distanceM: leg.distance ?? undefined, polyline: coords
@@ -538,12 +566,15 @@ async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMin
             continue;
         }
 
-        const product = leg.mode ?? 'TRANSIT';
+		if (!isTransitousVehicleLeg(leg)) continue;
+		const product = leg.mode ?? 'TRANSIT';
         const lineName = leg.routeShortName ?? leg.displayName ?? leg.routeLongName ?? product;
         legs.push({
             type: 'transport', lineName, product, direction: leg.headsign ?? '',
             departure, arrival,
-            departureStation: leg.from?.name ?? '', arrivalStation: leg.to?.name ?? '',
+			departureStation: leg.from?.name ?? '', arrivalStation: leg.to?.name ?? '',
+			departureStationId: leg.from?.id ? String(leg.from.id) : undefined,
+			arrivalStationId: leg.to?.id ? String(leg.to.id) : undefined,
             departureLat: leg.from?.lat, departureLon: leg.from?.lon,
             arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
             durationMinutes, polyline: coords

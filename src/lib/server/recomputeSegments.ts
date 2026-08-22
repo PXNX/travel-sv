@@ -34,21 +34,28 @@ export async function recomputeSegments(journeyId: number) {
         modeByPair.set(`${seg.fromStopId}-${seg.toStopId}`, seg.mode as SegmentMode);
     }
 
-    // Delete old segments
-    await db.delete(segments).where(eq(segments.journeyId, journeyId));
+	const activePairs = new Set<string>();
 
-    // Compute fresh segments for every adjacent pair
-    for (let i = 0; i < orderedStops.length - 1; i++) {
-        const from = orderedStops[i] as Stop;
-        const to = orderedStops[i + 1] as Stop;
-        const mode = modeByPair.get(`${from.id}-${to.id}`) ?? 'walk';
+	// Compute fresh segments for every adjacent pair. Existing segments remain in place until
+	// a confirmed replacement succeeds, so an unavailable transit provider cannot erase a route.
+	for (let i = 0; i < orderedStops.length - 1; i++) {
+		const from = orderedStops[i] as Stop;
+		const to = orderedStops[i + 1] as Stop;
+		const mode = modeByPair.get(`${from.id}-${to.id}`) ?? 'walk';
+		activePairs.add(`${from.id}-${to.id}`);
 
-        try {
-			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes, deutschlandticketOnly);
-        } catch (err) {
-            console.error(`Segment ${from.id}→${to.id} failed:`, err);
-        }
-    }
+		try {
+			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes, deutschlandticketOnly, mode === 'transit' ? { requireConfirmed: true } : {});
+		} catch (err) {
+			console.error(`Segment ${from.id}→${to.id} failed:`, err);
+		}
+	}
+
+	for (const segment of existingSegments) {
+		if (!activePairs.has(`${segment.fromStopId}-${segment.toStopId}`)) {
+			await db.delete(segments).where(eq(segments.id, segment.id));
+		}
+	}
 
     return db.select().from(segments).where(eq(segments.journeyId, journeyId));
 }

@@ -28,6 +28,12 @@
 - [x] Leaflet ausschließlich im Browser laden, damit Reiseeditor beim Neuladen nicht mit 500 fehlschlägt.
 - [x] Kartenladeansatz aus der Referenz auf SSR-Sicherheit und Übertragbarkeit prüfen.
 - [x] Bahnstationen in Transitdetails mit bahnhof.de-Bahnhofskarte verlinken.
+- [x] Bahnhofskartenlinks über HAFAS-Station-IDs statt aus Stationsnamen ableiten.
+- [x] Buslinien mit Produkttyp und Nummer ausgeben, etwa „Bus 200“.
+- [x] Zugangsfußwege über eine echte Fußroute statt über Direktlinien in der Karte zeigen.
+- [x] „Walk to station“ neutral statt violett hervorheben.
+- [x] „OTHER“-Verkehrsmodi prüfen und ohne echte Fahrzeugkennung nicht als ÖPNV ausgeben.
+- [x] Providerausfall oder fehlende bestätigte Fallbackfahrt ohne Datenverlust und mit klarem Status behandeln.
 
 - [x] Neue Stopps auf Ort und Bundesland normalisieren.
 - [x] Schwebende Plus-Schaltfläche auf Mobilgeräten entfernen.

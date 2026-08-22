@@ -90,8 +90,8 @@
 	function lineLabel(leg: TransitLeg): string {
 		const rawProduct = leg.product ?? '';
 		const n = leg.lineName ?? '';
-		const product = ({ HIGHSPEED_RAIL: 'ICE', REGIONAL_RAIL: 'RE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB', COACH: '' } as Record<string, string>)[rawProduct] ?? rawProduct;
-		const spacedLine = n.replace(/^(ICE|IC|EC|RE|RB|S|U)(\d)/i, '$1 $2');
+		const product = ({ HIGHSPEED_RAIL: 'ICE', REGIONAL_RAIL: 'RE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB', COACH: '' } as Record<string, string>)[rawProduct.toUpperCase()] ?? rawProduct;
+		const spacedLine = n.replace(/^(ICE|IC|EC|RE|RB|S|U|Bus|FlixBus)\s*(\d)/i, '$1 $2');
 		if (n && product && n.toLowerCase().startsWith(product.toLowerCase())) return spacedLine;
 		if (n && !product) return spacedLine;
 		if (product && n) return `${product} ${spacedLine}`;
@@ -103,19 +103,10 @@
 		return parts.join(' · ');
 	}
 
-	function stationMapUrl(stationName?: string, product?: string): string | null {
-		if (!stationName || /^(BUS|Bus|TRAM|STR|COACH)$/i.test(product ?? '')) return null;
-		const slug = stationName
-			.toLocaleLowerCase('de-DE')
-			.replace(/ä/g, 'ae')
-			.replace(/ö/g, 'oe')
-			.replace(/ü/g, 'ue')
-			.replace(/ß/g, 'ss')
-			.normalize('NFKD')
-			.replace(/[\u0300-\u036f]/g, '')
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '');
-		return slug ? `https://www.bahnhof.de/${slug}/karte` : null;
+	function stationMapUrl(stationName?: string, product?: string, stationId?: string): string | null {
+		if ((!stationName && !stationId) || /^(BUS|Bus|TRAM|STR|COACH)$/i.test(product ?? '')) return null;
+		const query = stationId || stationName;
+		return query ? `https://www.bahnhof.de/suche?suchbegriff=${encodeURIComponent(query)}` : null;
 	}
 
 	function fmtTime(iso?: string) {
@@ -150,39 +141,59 @@
 		return !!(leg.polyline?.length || (leg.departureLat != null && leg.arrivalLat != null));
 	}
 
-	function handleWalkToClick() {
+	async function fetchWalkingRoute(from: [number, number], to: [number, number]): Promise<[number, number][] | null> {
+		try {
+			const res = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`);
+			const data = await res.json();
+			return data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates
+				? data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number])
+				: null;
+		} catch {
+			return null;
+		}
+	}
+
+	async function handleWalkToClick() {
 		if (!onwalkclick || !segment || !fromCoords) return;
 		const firstLeg = visibleLegs[0];
 		if (!firstLeg?.departureLat || !firstLeg?.departureLon) return;
-		const geo: [number, number][] = [fromCoords, [firstLeg.departureLat, firstLeg.departureLon]];
+		const endpoint: [number, number] = [firstLeg.departureLat, firstLeg.departureLon];
+		const geo = accessWalkTo?.polyline?.length && accessWalkTo.polyline.length > 1
+			? accessWalkTo.polyline
+			: await fetchWalkingRoute(fromCoords, endpoint);
+		if (!geo || geo.length < 2) return;
 		const synth: Segment = {
 			id: -1, journeyId: segment.journeyId,
 			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
-			mode: 'walk', walkGeometry: geo,
+			mode: 'walk', walkGeometry: geo, distanceM: accessWalkTo?.distanceM,
 			travelDurationMinutes: walkTo,
 		};
 		onwalkclick(synth, 'Start', firstLeg.departureStation ?? 'Station');
 	}
 
-	function handleWalkFromClick() {
+	async function handleWalkFromClick() {
 		if (!onwalkclick || !segment || !toCoords) return;
 		const lastLeg = visibleLegs[visibleLegs.length - 1];
 		if (!lastLeg?.arrivalLat || !lastLeg?.arrivalLon) return;
-		const geo: [number, number][] = [[lastLeg.arrivalLat, lastLeg.arrivalLon], toCoords];
+		const endpoint: [number, number] = [lastLeg.arrivalLat, lastLeg.arrivalLon];
+		const geo = accessWalkFrom?.polyline?.length && accessWalkFrom.polyline.length > 1
+			? accessWalkFrom.polyline
+			: await fetchWalkingRoute(endpoint, toCoords);
+		if (!geo || geo.length < 2) return;
 		const synth: Segment = {
 			id: -1, journeyId: segment.journeyId,
 			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
-			mode: 'walk', walkGeometry: geo,
+			mode: 'walk', walkGeometry: geo, distanceM: accessWalkFrom?.distanceM,
 			travelDurationMinutes: walkFrom,
 		};
 		onwalkclick(synth, lastLeg.arrivalStation ?? 'Station', 'Destination');
 	}
 
-	function handleWalkingLegClick(leg: TransitLeg) {
+	async function handleWalkingLegClick(leg: TransitLeg) {
 		if (!onwalkclick || !segment) return;
 		let geo: [number, number][] | null = leg.polyline ?? null;
 		if (!geo && leg.departureLat != null && leg.departureLon != null && leg.arrivalLat != null && leg.arrivalLon != null) {
-			geo = [[leg.departureLat, leg.departureLon], [leg.arrivalLat, leg.arrivalLon]];
+			geo = await fetchWalkingRoute([leg.departureLat, leg.departureLon], [leg.arrivalLat, leg.arrivalLon]);
 		}
 		if (!geo) return;
 		const synth: Segment = {
@@ -233,20 +244,20 @@
 					<svelte:element
 						this={walkToClickable ? 'button' : 'div'}
 						type={walkToClickable ? 'button' : undefined}
-						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkToClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
+						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-[#008d4f]/10 -mx-2 px-2 py-1.5' : ''} {walkToClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
 						onclick={walkToClickable ? handleWalkToClick : undefined}
 						onkeydown={walkToClickable ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkToClick() : undefined}
 					>
 						<div class="flex flex-col items-center">
 							<div
-								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkToActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
+								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkToActive ? 'bg-[#008d4f] text-white ring-2 ring-[#008d4f]/30 ring-offset-1' : 'bg-base-300'}"
 							>
 								<IconWalk class="h-4 w-4" />
 							</div>
 							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
 						</div>
 						<div class="pt-1 flex-1">
-								<p class="text-sm font-medium {walkToActive ? 'text-primary' : 'text-base-content/70'}">Walk to station · {walkLabel({ durationMinutes: walkTo, distanceM: accessWalkTo?.distanceM } as TransitLeg)}</p>
+							<p class="text-sm font-medium {walkToActive ? 'text-[#008d4f]' : 'text-base-content/70'}">Walk to station · {walkLabel({ durationMinutes: walkTo, distanceM: accessWalkTo?.distanceM } as TransitLeg)}</p>
 						</div>
 							{#if walkToClickable}
 								<span class="text-base text-primary self-center opacity-70" aria-hidden="true">›</span>
@@ -335,8 +346,8 @@
 										>{fmtTime(leg.departure)}</span
 									>
 										<span class="truncate">{leg.departureStation}</span>
-										{#if stationMapUrl(leg.departureStation, leg.product)}
-											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.departureStation, leg.product)!} target="_blank" rel="noreferrer" aria-label={`Open station map for ${leg.departureStation}`} title="Station map">
+										{#if stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)}
+											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)!} target="_blank" rel="noreferrer" aria-label={`Find station map for ${leg.departureStation}`} title="Find station map">
 												<IconMap class="h-3.5 w-3.5" />
 											</a>
 										{/if}
@@ -358,8 +369,8 @@
 										>{fmtTime(leg.arrival)}</span
 									>
 										<span class="truncate">{leg.arrivalStation}</span>
-										{#if stationMapUrl(leg.arrivalStation, leg.product)}
-											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.arrivalStation, leg.product)!} target="_blank" rel="noreferrer" aria-label={`Open station map for ${leg.arrivalStation}`} title="Station map">
+										{#if stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)}
+											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)!} target="_blank" rel="noreferrer" aria-label={`Find station map for ${leg.arrivalStation}`} title="Find station map">
 												<IconMap class="h-3.5 w-3.5" />
 											</a>
 										{/if}

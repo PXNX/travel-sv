@@ -101,14 +101,14 @@ describe('computeSegment', () => {
         const { computeSegment } = await import('./computeSegment');
 		const r = await computeSegment(stopA, stopB, 1, 'transit', 8);
 
-        expect(r.transitSummary).toBe('S8');
+		expect(r.transitSummary).toBe('S 8');
         expect(r.transfers).toBe(0);
         expect(r.walkToStationMin).toBe(8);
         expect(r.walkFromStationMin).toBe(5);
         expect(r.transitLegs).toHaveLength(3);
         expect(r.transitLegs![0].type).toBe('walking');
         expect(r.transitLegs![1].type).toBe('transport');
-        expect(r.transitLegs![1].lineName).toBe('S8');
+		expect(r.transitLegs![1].lineName).toBe('S 8');
         expect(r.transitLegs![1].platform).toBe('3');
         expect(r.transitLegs![1].direction).toBe('Wiesbaden Hbf');
         expect(r.travelDurationMinutes).toBe(40); // 08:50 → 09:30
@@ -131,7 +131,7 @@ describe('computeSegment', () => {
 		const { computeSegment } = await import('./computeSegment');
 		const r = await computeSegment(stopA, stopB, 1, 'transit');
 
-		expect(r.transitSummary).toBe('Bus55');
+		expect(r.transitSummary).toBe('Bus 55');
 		expect(r.transitLegs).toHaveLength(1);
 		expect(r.transitLegs![0].type).toBe('transport');
 		expect(r.transfers).toBe(0);
@@ -152,6 +152,19 @@ describe('computeSegment', () => {
 		expect(r.transitLegs![0].type).toBe('transport');
 		expect(r.transitSummary).toBe('ÖPNV');
 		expect(r.transfers).toBe(0);
+	});
+
+	it('transit: rejects an explicitly unknown OTHER mode as an unconfirmed vehicle', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({ journeys: [{ legs: [{ product: 'OTHER', tripId: 'unknown', direction: 'Ravensburg Polizeipräsidium', departure: '2024-01-01T08:02:00+01:00', arrival: '2024-01-01T08:20:00+01:00' }] }] })
+		});
+
+		const { computeSegment } = await import('./computeSegment');
+		const r = await computeSegment(stopA, stopB, 1, 'transit');
+
+		expect(r.transitLegs).toBeNull();
+		expect(r.transitSummary).toBeNull();
 	});
 
 	it('transit: stores no estimated direct connection when HAFAS returns no vehicle leg', async () => {

@@ -92,8 +92,10 @@ export interface TransitLeg {
     direction?: string;
     departure?: string;
     arrival?: string;
-    departureStation?: string;
-    arrivalStation?: string;
+	departureStation?: string;
+	arrivalStation?: string;
+	departureStationId?: string;
+	arrivalStationId?: string;
     departureLat?: number;
     departureLon?: number;
     arrivalLat?: number;

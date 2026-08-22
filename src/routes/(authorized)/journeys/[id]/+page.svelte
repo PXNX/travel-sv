@@ -60,6 +60,7 @@
 	let savingTransitSettings = $state(false);
 	let isOffline = $state(false);
 	let computingSegmentId = $state<number | null>(null);
+	let transitProviderError = $state<string | null>(null);
 
 	let showTransitDetail = $state(false);
 	let showWalkRoute = $state(false);
@@ -253,7 +254,9 @@
 
 	async function changeSegmentMode(segmentId: number, mode: SegmentMode) {
 		computingSegmentId = segmentId;
-		await postAction('changeSegmentMode', { segmentId: String(segmentId), mode });
+		transitProviderError = null;
+		const result = await postAction('changeSegmentMode', { segmentId: String(segmentId), mode });
+		if (result.type === 'failure') transitProviderError = String((result.data as { error?: string }).error ?? 'The connection could not be updated.');
 		computingSegmentId = null;
 	}
 
@@ -342,7 +345,13 @@
 		</header>
 
 			<main class="mx-auto max-w-2xl p-4 sm:p-5">
-			{#if dndItems.length === 0}
+				{#if transitProviderError}
+					<div class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[#a45e38]/35 bg-[#a45e38]/10 px-3 py-2.5 text-sm text-[#713a22]">
+						<p>{transitProviderError}</p>
+						<button class="btn btn-ghost btn-xs btn-square" aria-label="Dismiss transit notice" onclick={() => (transitProviderError = null)}>×</button>
+					</div>
+				{/if}
+				{#if dndItems.length === 0}
 				<div class="flex flex-col items-center gap-4 py-12 text-center">
 					<IconPin class="h-10 w-10 text-base-content/30" />
 					<p class="text-base-content/60">Add your first stop to get started.</p>

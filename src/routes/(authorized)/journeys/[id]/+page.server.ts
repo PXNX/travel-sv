@@ -67,7 +67,7 @@ async function recomputeTransitSegments(id: number, minimumTransferMinutes: numb
 		const [toStop] = await db.select().from(stops).where(eq(stops.id, seg.toStopId));
 		if (!fromStop || !toStop) continue;
 		try {
-			await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', minimumTransferMinutes, deutschlandticketOnly);
+			await computeSegment(fromStop as Stop, toStop as Stop, id, 'transit', minimumTransferMinutes, deutschlandticketOnly, { requireConfirmed: true });
 		} catch (err) {
 			console.error(`recomputeTransit seg ${seg.id} failed:`, err);
 		}
@@ -245,8 +245,13 @@ export const actions = {
 
 		if (fromStop && toStop) {
 			const journey = await ownedJourney(id, locals.user!.id);
-			await computeSegment(fromStop as Stop, toStop as Stop, id, mode, journey.minimumTransferMinutes, journey.deutschlandticketOnly);
-        }
+			try {
+				await computeSegment(fromStop as Stop, toStop as Stop, id, mode, journey.minimumTransferMinutes, journey.deutschlandticketOnly, mode === 'transit' ? { requireConfirmed: true } : {});
+			} catch (cause) {
+				if (cause instanceof NoConfirmedTransitError) return fail(503, { error: 'No confirmed public-transport connection is available right now. The current segment was left unchanged.' });
+				throw cause;
+			}
+		}
 
         return await fullPayload(id);
     },
