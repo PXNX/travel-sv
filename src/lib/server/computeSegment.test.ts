@@ -137,6 +137,23 @@ describe('computeSegment', () => {
 		expect(r.transfers).toBe(0);
 	});
 
+	it('transit: accepts a timed HAFAS vehicle leg even without an optional line object', async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({
+				journeys: [{ legs: [{ tripId: '1|confirmed-trip', direction: 'Hauptbahnhof', departure: '2024-01-01T08:02:00+01:00', arrival: '2024-01-01T08:20:00+01:00', origin: { name: 'Start' }, destination: { name: 'Ende' } }] }]
+			})
+		});
+
+		const { computeSegment } = await import('./computeSegment');
+		const r = await computeSegment(stopA, stopB, 1, 'transit');
+
+		expect(r.transitLegs).toHaveLength(1);
+		expect(r.transitLegs![0].type).toBe('transport');
+		expect(r.transitSummary).toBe('ÖPNV');
+		expect(r.transfers).toBe(0);
+	});
+
 	it('transit: stores no estimated direct connection when HAFAS returns no vehicle leg', async () => {
 		mockFetch.mockResolvedValueOnce({
 			ok: true,

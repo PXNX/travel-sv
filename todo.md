@@ -1,5 +1,9 @@
 # Erweiterung travel-sv
 
+- [x] Reale HAFAS-Antwort und aktuelles Bestätigungskriterium prüfen.
+- [x] Fahrzeugabschnitte unabhängig von optionalen Linienfeldern erkennen.
+- [x] Transitfälle, Build und GitHub-Übertragung prüfen.
+
 - [x] Mindestumsteigezeit-Migration in Neon ausführen.
 - [x] Neue Datenbankspalte prüfen und GitHub-Stand bestätigen.
 

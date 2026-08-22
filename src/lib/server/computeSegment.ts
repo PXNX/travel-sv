@@ -167,6 +167,21 @@ interface TransitResult {
     geometry: TransitGeoLeg[];
 }
 
+function legDeparture(leg: any): string | undefined {
+    return leg.departure ?? leg.plannedDeparture;
+}
+
+function legArrival(leg: any): string | undefined {
+    return leg.arrival ?? leg.plannedArrival;
+}
+
+function isTimedVehicleLeg(leg: any): boolean {
+    if (leg?.walking) return false;
+    const hasTimedSchedule = Boolean(legDeparture(leg) && legArrival(leg));
+    const hasVehicleIdentity = Boolean(leg?.line || leg?.tripId || leg?.public || leg?.direction || leg?.product);
+    return hasTimedSchedule && hasVehicleIdentity;
+}
+
 async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number): Promise<TransitResult | null> {
     const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
     if (!bothInGermany) return null;
@@ -227,10 +242,10 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         throw new Error('HAFAS returned 0 journeys');
     }
 
-    const candidates = data.journeys
-        .map((journey: any) => {
-            const legs = Array.isArray(journey.legs) ? journey.legs : [];
-            const transportLegs = legs.filter((leg: any) => !leg.walking && leg.line && (leg.departure ?? leg.plannedDeparture) && (leg.arrival ?? leg.plannedArrival));
+	const candidates = data.journeys
+		.map((journey: any) => {
+			const legs = Array.isArray(journey.legs) ? journey.legs : [];
+			const transportLegs = legs.filter(isTimedVehicleLeg);
             const lastArrival = legs.at(-1)?.arrival ?? legs.at(-1)?.plannedArrival;
             const arrivalTime = lastArrival ? new Date(lastArrival).getTime() : Number.NaN;
             return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt };
@@ -250,8 +265,8 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
     const geometry: TransitGeoLeg[] = [];
 
     for (const l of rawLegs) {
-        const dep = l.departure ?? l.plannedDeparture;
-        const arr = l.arrival ?? l.plannedArrival;
+		const dep = legDeparture(l);
+		const arr = legArrival(l);
         const durMin = dep && arr ? (new Date(arr).getTime() - new Date(dep).getTime()) / 60000 : 0;
 
         const originLat = l.origin?.location?.latitude;
@@ -304,12 +319,12 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
             if (legCoords.length >= 2) {
                 geometry.push({ coords: legCoords, mode: 'walking' });
             }
-        } else {
-            const productName = l.line?.productName ?? l.line?.product ?? '';
-            const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? '';
-            const lineName = rawLineName && productName && !rawLineName.toLowerCase().startsWith(productName.toLowerCase())
-                ? `${productName}${rawLineName}`
-                : rawLineName || productName;
+		} else if (isTimedVehicleLeg(l)) {
+			const productName = l.line?.productName ?? l.line?.product ?? l.product ?? '';
+			const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? l.line?.id ?? '';
+			const lineName = rawLineName && productName && !rawLineName.toLowerCase().startsWith(productName.toLowerCase())
+				? `${productName}${rawLineName}`
+				: rawLineName || productName || 'ÖPNV';
 
             legs.push({
                 type: 'transport',
@@ -357,7 +372,7 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
     }
     // Also compute walk from actual stop coords to the departure station
     if (walkToStationMin === 0) {
-        const firstTransport = rawLegs.find((leg: any) => !leg.walking && leg.line);
+		const firstTransport = rawLegs.find(isTimedVehicleLeg);
         const station = firstTransport?.origin?.location;
         if (station?.latitude && station?.longitude) walkToStationMin = await walkDurationOSRM(from.lat, from.lon, station.latitude, station.longitude);
     }
@@ -369,7 +384,7 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
         if (dep && arr) walkFromStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
     }
     if (walkFromStationMin === 0) {
-        const lastTransport = [...rawLegs].reverse().find((leg: any) => !leg.walking && leg.line);
+		const lastTransport = [...rawLegs].reverse().find(isTimedVehicleLeg);
         const station = lastTransport?.destination?.location;
         if (station?.latitude && station?.longitude) walkFromStationMin = await walkDurationOSRM(station.latitude, station.longitude, to.lat, to.lon);
     }
