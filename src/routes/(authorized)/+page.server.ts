@@ -2,14 +2,18 @@ import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { journeys, stops, segments } from '$lib/server/schema';
-import { eq, asc } from 'drizzle-orm';
+import { and, eq, asc } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const userJourneys = await db
 		.select()
 		.from(journeys)
-		.where(eq(journeys.ownerId, locals.user!.id))
+		.where(and(eq(journeys.ownerId, locals.user!.id), eq(journeys.isCompleted, false)))
 		.orderBy(journeys.createdAt);
+	const completedJourneys = await db
+		.select({ id: journeys.id })
+		.from(journeys)
+		.where(and(eq(journeys.ownerId, locals.user!.id), eq(journeys.isCompleted, true)));
 
 	const results = await Promise.all(
 		userJourneys.map(async (journey) => {
@@ -47,7 +51,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		})
 	);
 
-	return { journeys: results, user: locals.user };
+	return { journeys: results, completedCount: completedJourneys.length, user: locals.user };
 };
 
 export const actions = {

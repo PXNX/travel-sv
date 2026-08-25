@@ -9,165 +9,196 @@ const DE_LON_MIN = 5.9;
 const DE_LON_MAX = 15.1;
 
 function isInGermany(lat: number, lon: number): boolean {
-    return lat >= DE_LAT_MIN && lat <= DE_LAT_MAX && lon >= DE_LON_MIN && lon <= DE_LON_MAX;
+	return lat >= DE_LAT_MIN && lat <= DE_LAT_MAX && lon >= DE_LON_MIN && lon <= DE_LON_MAX;
 }
 
 interface TransitGeoLeg {
-    coords: [number, number][];
-    mode: string;
-    lineName?: string;
-    product?: string;
+	coords: [number, number][];
+	mode: string;
+	lineName?: string;
+	product?: string;
 }
 
 interface ComputeResult {
-    distanceM: number;
-    elevationUpM: number;
-    elevationDownM: number;
-    travelDurationMinutes: number;
-    transitSummary: string | null;
-    transitLegs: TransitLeg[] | null;
-    walkToStationMin: number | null;
-    walkFromStationMin: number | null;
-    transfers: number | null;
-    walkGeometry: [number, number][] | null;
-    driveGeometry: [number, number][] | null;
-    transitGeometry: TransitGeoLeg[] | null;
+	distanceM: number;
+	elevationUpM: number;
+	elevationDownM: number;
+	travelDurationMinutes: number;
+	transitSummary: string | null;
+	transitLegs: TransitLeg[] | null;
+	walkToStationMin: number | null;
+	walkFromStationMin: number | null;
+	transfers: number | null;
+	walkGeometry: [number, number][] | null;
+	driveGeometry: [number, number][] | null;
+	transitGeometry: TransitGeoLeg[] | null;
 }
 
 export async function computeSegment(
-    fromStop: Stop,
-    toStop: Stop,
-    journeyId: number,
-    mode: SegmentMode = 'walk',
-    minimumTransferMinutes = 5,
-    deutschlandticketOnly = true,
-    options: TransitQueryOptions = {}
+	fromStop: Stop,
+	toStop: Stop,
+	journeyId: number,
+	mode: SegmentMode = 'walk',
+	minimumTransferMinutes = 5,
+	deutschlandticketOnly = true,
+	options: TransitQueryOptions = {}
 ): Promise<ComputeResult> {
-    let result: ComputeResult = {
-        distanceM: 0,
-        elevationUpM: 0,
-        elevationDownM: 0,
-        travelDurationMinutes: 0,
-        transitSummary: null,
-        transitLegs: null,
-        walkToStationMin: null,
-        walkFromStationMin: null,
-        transfers: null,
-        walkGeometry: null,
-        driveGeometry: null,
-        transitGeometry: null
-    };
+	let result: ComputeResult = {
+		distanceM: 0,
+		elevationUpM: 0,
+		elevationDownM: 0,
+		travelDurationMinutes: 0,
+		transitSummary: null,
+		transitLegs: null,
+		walkToStationMin: null,
+		walkFromStationMin: null,
+		transfers: null,
+		walkGeometry: null,
+		driveGeometry: null,
+		transitGeometry: null
+	};
 
-    if (mode === 'walk') {
-        const walk = await computeOSRMWalk(fromStop, toStop);
-        result.distanceM = walk.distanceM;
-        result.travelDurationMinutes = walk.travelDurationMinutes;
-        result.walkGeometry = walk.geometry;
-        // elevation matters for walking
-        const elev = await computeElevation(fromStop, toStop);
-        result.elevationUpM = elev.up;
-        result.elevationDownM = elev.down;
-    } else if (mode === 'drive') {
-        const drive = await computeOSRMDrive(fromStop, toStop);
-        result.distanceM = drive.distanceM;
-        result.travelDurationMinutes = drive.travelDurationMinutes;
-        result.driveGeometry = drive.geometry;
+	if (mode === 'walk') {
+		const walk = await computeOSRMWalk(fromStop, toStop);
+		result.distanceM = walk.distanceM;
+		result.travelDurationMinutes = walk.travelDurationMinutes;
+		result.walkGeometry = walk.geometry;
+		// elevation matters for walking
+		const elev = await computeElevation(fromStop, toStop);
+		result.elevationUpM = elev.up;
+		result.elevationDownM = elev.down;
+	} else if (mode === 'drive') {
+		const drive = await computeOSRMDrive(fromStop, toStop);
+		result.distanceM = drive.distanceM;
+		result.travelDurationMinutes = drive.travelDurationMinutes;
+		result.driveGeometry = drive.geometry;
 	} else {
 		// transit
-		const transit = await computeTransit(fromStop, toStop, minimumTransferMinutes, deutschlandticketOnly, options);
+		const transit = await computeTransit(
+			fromStop,
+			toStop,
+			minimumTransferMinutes,
+			deutschlandticketOnly,
+			options
+		);
 		if (!transit && options.requireConfirmed) throw new NoConfirmedTransitError();
 		if (transit) {
-            result.travelDurationMinutes = transit.totalDurationMinutes;
-            result.transitSummary = transit.summary;
-            result.transitLegs = transit.legs;
-            result.walkToStationMin = transit.walkToStationMin;
-            result.walkFromStationMin = transit.walkFromStationMin;
-            result.transfers = transit.transfers;
-            result.transitGeometry = transit.geometry;
-        }
-    }
+			result.travelDurationMinutes = transit.totalDurationMinutes;
+			result.transitSummary = transit.summary;
+			result.transitLegs = transit.legs;
+			result.walkToStationMin = transit.walkToStationMin;
+			result.walkFromStationMin = transit.walkFromStationMin;
+			result.transfers = transit.transfers;
+			result.transitGeometry = transit.geometry;
+		}
+	}
 
-    // Upsert in DB
-    const existing = await db
-        .select()
-        .from(segments)
-        .where(and(eq(segments.fromStopId, fromStop.id), eq(segments.toStopId, toStop.id)))
-        .limit(1);
+	// Upsert in DB
+	const existing = await db
+		.select()
+		.from(segments)
+		.where(and(eq(segments.fromStopId, fromStop.id), eq(segments.toStopId, toStop.id)))
+		.limit(1);
 
-    const row = {
-        distanceM: result.distanceM,
-        elevationUpM: result.elevationUpM,
-        elevationDownM: result.elevationDownM,
-        travelDurationMinutes: result.travelDurationMinutes,
-        mode,
-        transitSummary: result.transitSummary,
-        transitLegs: result.transitLegs ? JSON.stringify(result.transitLegs) : null,
-        walkToStationMin: result.walkToStationMin,
-        walkFromStationMin: result.walkFromStationMin,
-        transfers: result.transfers,
-        walkGeometry: result.walkGeometry ? JSON.stringify(result.walkGeometry) : null,
-        driveGeometry: result.driveGeometry ? JSON.stringify(result.driveGeometry) : null,
-        transitGeometry: result.transitGeometry ? JSON.stringify(result.transitGeometry) : null
-    };
+	const row = {
+		distanceM: result.distanceM,
+		elevationUpM: result.elevationUpM,
+		elevationDownM: result.elevationDownM,
+		travelDurationMinutes: result.travelDurationMinutes,
+		mode,
+		transitSummary: result.transitSummary,
+		transitLegs: result.transitLegs ? JSON.stringify(result.transitLegs) : null,
+		walkToStationMin: result.walkToStationMin,
+		walkFromStationMin: result.walkFromStationMin,
+		transfers: result.transfers,
+		walkGeometry: result.walkGeometry ? JSON.stringify(result.walkGeometry) : null,
+		driveGeometry: result.driveGeometry ? JSON.stringify(result.driveGeometry) : null,
+		transitGeometry: result.transitGeometry ? JSON.stringify(result.transitGeometry) : null
+	};
 
-    if (existing.length > 0) {
-        await db.update(segments).set(row).where(eq(segments.id, existing[0].id));
-    } else {
-        await db.insert(segments).values({ journeyId, fromStopId: fromStop.id, toStopId: toStop.id, ...row });
-    }
+	if (existing.length > 0) {
+		await db.update(segments).set(row).where(eq(segments.id, existing[0].id));
+	} else {
+		await db
+			.insert(segments)
+			.values({ journeyId, fromStopId: fromStop.id, toStopId: toStop.id, ...row });
+	}
 
-    return result;
+	return result;
 }
 
 // ── OSRM Walk (with geometry) ───────────────────────────────────────
 async function computeOSRMWalk(from: Stop, to: Stop) {
-    try {
-        const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.code === 'Ok' && data.routes?.[0]) {
-            const route = data.routes[0];
-            const coords: [number, number][] = route.geometry.coordinates.map(
-                (c: [number, number]) => [c[1], c[0]] // GeoJSON is [lon,lat], Leaflet is [lat,lon]
-            );
-            return { distanceM: route.distance, travelDurationMinutes: route.duration / 60, geometry: coords };
-        }
-    } catch { /* fall through */ }
-    const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
-    return { distanceM: d, travelDurationMinutes: d / 83.33, geometry: [[from.lat, from.lon], [to.lat, to.lon]] as [number, number][] };
+	try {
+		const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
+		const res = await fetch(url);
+		const data = await res.json();
+		if (data.code === 'Ok' && data.routes?.[0]) {
+			const route = data.routes[0];
+			const coords: [number, number][] = route.geometry.coordinates.map(
+				(c: [number, number]) => [c[1], c[0]] // GeoJSON is [lon,lat], Leaflet is [lat,lon]
+			);
+			return {
+				distanceM: route.distance,
+				travelDurationMinutes: route.duration / 60,
+				geometry: coords
+			};
+		}
+	} catch {
+		/* fall through */
+	}
+	const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
+	return {
+		distanceM: d,
+		travelDurationMinutes: d / 83.33,
+		geometry: [
+			[from.lat, from.lon],
+			[to.lat, to.lon]
+		] as [number, number][]
+	};
 }
 
 // ── OSRM Drive (with geometry) ──────────────────────────────────────
 async function computeOSRMDrive(from: Stop, to: Stop) {
-    try {
-        const url = `https://router.project-osrm.org/route/v1/car/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.code === 'Ok' && data.routes?.[0]) {
-            const route = data.routes[0];
-            const coords: [number, number][] = route.geometry.coordinates.map(
-                (c: [number, number]) => [c[1], c[0]]
-            );
-            return { distanceM: route.distance, travelDurationMinutes: route.duration / 60, geometry: coords };
-        }
-    } catch { /* fall through */ }
-    const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
-    return {
-        distanceM: d,
-        travelDurationMinutes: d / 500,
-        geometry: [[from.lat, from.lon], [to.lat, to.lon]] as [number, number][]
-    };
+	try {
+		const url = `https://router.project-osrm.org/route/v1/car/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson`;
+		const res = await fetch(url);
+		const data = await res.json();
+		if (data.code === 'Ok' && data.routes?.[0]) {
+			const route = data.routes[0];
+			const coords: [number, number][] = route.geometry.coordinates.map((c: [number, number]) => [
+				c[1],
+				c[0]
+			]);
+			return {
+				distanceM: route.distance,
+				travelDurationMinutes: route.duration / 60,
+				geometry: coords
+			};
+		}
+	} catch {
+		/* fall through */
+	}
+	const d = haversineDistance(from.lat, from.lon, to.lat, to.lon);
+	return {
+		distanceM: d,
+		travelDurationMinutes: d / 500,
+		geometry: [
+			[from.lat, from.lon],
+			[to.lat, to.lon]
+		] as [number, number][]
+	};
 }
 
 // ── Transit (HAFAS) ─────────────────────────────────────────────────
 interface TransitResult {
-    totalDurationMinutes: number;
-    summary: string;
-    legs: TransitLeg[];
-    walkToStationMin: number;
-    walkFromStationMin: number;
-    transfers: number;
-    geometry: TransitGeoLeg[];
+	totalDurationMinutes: number;
+	summary: string;
+	legs: TransitLeg[];
+	walkToStationMin: number;
+	walkFromStationMin: number;
+	transfers: number;
+	geometry: TransitGeoLeg[];
 }
 
 interface TransitQueryOptions {
@@ -184,32 +215,61 @@ export class NoConfirmedTransitError extends Error {
 }
 
 function legDeparture(leg: any): string | undefined {
-    return leg.departure ?? leg.plannedDeparture;
+	return leg.departure ?? leg.plannedDeparture;
 }
 
 function legArrival(leg: any): string | undefined {
-    return leg.arrival ?? leg.plannedArrival;
+	return leg.arrival ?? leg.plannedArrival;
 }
 
 function isTimedVehicleLeg(leg: any): boolean {
-    if (leg?.walking) return false;
-	const product = String(leg?.line?.productName ?? leg?.line?.product ?? leg?.product ?? '').toUpperCase();
+	if (leg?.walking) return false;
+	const product = String(
+		leg?.line?.productName ?? leg?.line?.product ?? leg?.product ?? ''
+	).toUpperCase();
 	if (product === 'OTHER' || product === 'WALK') return false;
-    const hasTimedSchedule = Boolean(legDeparture(leg) && legArrival(leg));
-    const hasVehicleIdentity = Boolean(leg?.line || leg?.tripId || leg?.public || leg?.direction || leg?.product);
-    return hasTimedSchedule && hasVehicleIdentity;
+	const hasTimedSchedule = Boolean(legDeparture(leg) && legArrival(leg));
+	const hasVehicleIdentity = Boolean(
+		leg?.line || leg?.tripId || leg?.public || leg?.direction || leg?.product
+	);
+	return hasTimedSchedule && hasVehicleIdentity;
 }
 
 function isTransitousVehicleLeg(leg: any): boolean {
 	const mode = String(leg?.mode ?? '').toUpperCase();
-	return ['BUS', 'COACH', 'SUBWAY', 'METRO', 'SUBURBAN', 'TRAM', 'STREETCAR', 'RAIL', 'REGIONAL_RAIL', 'HIGHSPEED_RAIL', 'FERRY', 'TAXI'].includes(mode);
+	return [
+		'BUS',
+		'COACH',
+		'SUBWAY',
+		'METRO',
+		'SUBURBAN',
+		'TRAM',
+		'STREETCAR',
+		'RAIL',
+		'REGIONAL_RAIL',
+		'HIGHSPEED_RAIL',
+		'FERRY',
+		'TAXI'
+	].includes(mode);
 }
 
-async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult | null> {
-    const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
+async function computeTransit(
+	from: Stop,
+	to: Stop,
+	minimumTransferMinutes: number,
+	deutschlandticketOnly: boolean,
+	options: TransitQueryOptions
+): Promise<TransitResult | null> {
+	const bothInGermany = isInGermany(from.lat, from.lon) && isInGermany(to.lat, to.lon);
 	if (bothInGermany) {
 		try {
-			return await computeTransitHAFAS(from, to, minimumTransferMinutes, deutschlandticketOnly, options);
+			return await computeTransitHAFAS(
+				from,
+				to,
+				minimumTransferMinutes,
+				deutschlandticketOnly,
+				options
+			);
 		} catch (err) {
 			console.error('DB Transport REST transit failed:', err);
 		}
@@ -220,11 +280,11 @@ async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: numb
 	if (options.requireConfirmed && options.referenceTime) return null;
 
 	try {
-        return await computeTransitTransitous(from, to, minimumTransferMinutes, deutschlandticketOnly);
-    } catch (err) {
-        console.error('Transitous transit fallback failed:', err);
-        return null;
-    }
+		return await computeTransitTransitous(from, to, minimumTransferMinutes, deutschlandticketOnly);
+	} catch (err) {
+		console.error('Transitous transit fallback failed:', err);
+		return null;
+	}
 }
 
 /**
@@ -232,55 +292,64 @@ async function computeTransit(from: Stop, to: Stop, minimumTransferMinutes: numb
  * Only timed responses with at least one actual vehicle leg count as confirmed transit.
  * Deutschlandticket: nationalExpress=false (no ICE), national=false (no IC/EC).
  */
-async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean, options: TransitQueryOptions): Promise<TransitResult> {
-    const requestedAt = Date.now();
-    const params = new URLSearchParams({
-        'from.latitude': String(from.lat),
-        'from.longitude': String(from.lon),
-        'from.address': from.name,
-        'to.latitude': String(to.lat),
-        'to.longitude': String(to.lon),
-        'to.address': to.name,
-        results: '6',
-        transferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
-        startWithWalking: 'true',
+async function computeTransitHAFAS(
+	from: Stop,
+	to: Stop,
+	minimumTransferMinutes: number,
+	deutschlandticketOnly: boolean,
+	options: TransitQueryOptions
+): Promise<TransitResult> {
+	const requestedAt = Date.now();
+	const params = new URLSearchParams({
+		'from.latitude': String(from.lat),
+		'from.longitude': String(from.lon),
+		'from.address': from.name,
+		'to.latitude': String(to.lat),
+		'to.longitude': String(to.lon),
+		'to.address': to.name,
+		results: '6',
+		transferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
+		startWithWalking: 'true',
 		nationalExpress: deutschlandticketOnly ? 'false' : 'true',
 		national: deutschlandticketOnly ? 'false' : 'true',
 		deutschlandTicketConnectionsOnly: deutschlandticketOnly ? 'true' : 'false',
-        bus: 'true',
-        subway: 'true',
-        suburban: 'true',
-        tram: 'true',
-        regional: 'true',
-        regionalExpress: 'true',
-        stopovers: 'true',
-        polylines: 'true',
-        language: 'en'
-    });
+		bus: 'true',
+		subway: 'true',
+		suburban: 'true',
+		tram: 'true',
+		regional: 'true',
+		regionalExpress: 'true',
+		stopovers: 'true',
+		polylines: 'true',
+		language: 'en'
+	});
 
 	if (options.referenceTime) {
 		const offsetMinutes = options.earlierThan ? -240 : 1;
-		params.set('departure', new Date(options.referenceTime.getTime() + offsetMinutes * 60_000).toISOString());
-    }
+		params.set(
+			'departure',
+			new Date(options.referenceTime.getTime() + offsetMinutes * 60_000).toISOString()
+		);
+	}
 
-    const url = `https://v6.db.transport.rest/journeys?${params}`;
-    console.log('HAFAS request:', url);
+	const url = `https://v6.db.transport.rest/journeys?${params}`;
+	console.log('HAFAS request:', url);
 
-    const res = await fetch(url, {
-        headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
-    });
+	const res = await fetch(url, {
+		headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
+	});
 
-    if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        console.error('HAFAS error body:', body.slice(0, 500));
-        throw new Error(`HAFAS ${res.status}: ${body.slice(0, 200)}`);
-    }
+	if (!res.ok) {
+		const body = await res.text().catch(() => '');
+		console.error('HAFAS error body:', body.slice(0, 500));
+		throw new Error(`HAFAS ${res.status}: ${body.slice(0, 200)}`);
+	}
 
-    const data = await res.json();
+	const data = await res.json();
 
-    if (!data.journeys?.length) {
-        throw new Error('HAFAS returned 0 journeys');
-    }
+	if (!data.journeys?.length) {
+		throw new Error('HAFAS returned 0 journeys');
+	}
 
 	const candidates = data.journeys
 		.map((journey: any) => {
@@ -288,174 +357,233 @@ async function computeTransitHAFAS(from: Stop, to: Stop, minimumTransferMinutes:
 			const transportLegs = legs.filter(isTimedVehicleLeg);
 			const lastArrival = legs.at(-1)?.arrival ?? legs.at(-1)?.plannedArrival;
 			const arrivalTime = lastArrival ? new Date(lastArrival).getTime() : Number.NaN;
-			const firstDeparture = transportLegs[0] ? new Date(legDeparture(transportLegs[0])!).getTime() : Number.NaN;
-			return { journey, confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime), score: arrivalTime - requestedAt, firstDeparture };
-        })
-		.filter((candidate: { confirmed: boolean; firstDeparture: number }) => candidate.confirmed && (!options.referenceTime || (options.earlierThan ? candidate.firstDeparture < options.referenceTime.getTime() : candidate.firstDeparture > options.referenceTime.getTime())))
-        .sort((a: { score: number; firstDeparture: number }, b: { score: number; firstDeparture: number }) => options.referenceTime ? (options.earlierThan ? b.firstDeparture - a.firstDeparture : a.firstDeparture - b.firstDeparture) : a.score - b.score);
+			const firstDeparture = transportLegs[0]
+				? new Date(legDeparture(transportLegs[0])!).getTime()
+				: Number.NaN;
+			return {
+				journey,
+				confirmed: transportLegs.length > 0 && Number.isFinite(arrivalTime),
+				score: arrivalTime - requestedAt,
+				firstDeparture
+			};
+		})
+		.filter(
+			(candidate: { confirmed: boolean; firstDeparture: number }) =>
+				candidate.confirmed &&
+				(!options.referenceTime ||
+					(options.earlierThan
+						? candidate.firstDeparture < options.referenceTime.getTime()
+						: candidate.firstDeparture > options.referenceTime.getTime()))
+		)
+		.sort(
+			(
+				a: { score: number; firstDeparture: number },
+				b: { score: number; firstDeparture: number }
+			) =>
+				options.referenceTime
+					? options.earlierThan
+						? b.firstDeparture - a.firstDeparture
+						: a.firstDeparture - b.firstDeparture
+					: a.score - b.score
+		);
 
-    if (candidates.length === 0) {
-        throw new Error('HAFAS returned no confirmed transport journey');
-    }
+	if (candidates.length === 0) {
+		throw new Error('HAFAS returned no confirmed transport journey');
+	}
 
-    const j = candidates[0].journey;
-    const rawLegs: any[] = j.legs ?? [];
+	const j = candidates[0].journey;
+	const rawLegs: any[] = j.legs ?? [];
 
-    // Parse legs + build geometry
-    const legs: TransitLeg[] = [];
-    const geometry: TransitGeoLeg[] = [];
+	// Parse legs + build geometry
+	const legs: TransitLeg[] = [];
+	const geometry: TransitGeoLeg[] = [];
 
-    for (const l of rawLegs) {
+	for (const l of rawLegs) {
 		const dep = legDeparture(l);
 		const arr = legArrival(l);
-        const durMin = dep && arr ? (new Date(arr).getTime() - new Date(dep).getTime()) / 60000 : 0;
+		const durMin = dep && arr ? (new Date(arr).getTime() - new Date(dep).getTime()) / 60000 : 0;
 
-        const originLat = l.origin?.location?.latitude;
-        const originLon = l.origin?.location?.longitude;
-        const destLat = l.destination?.location?.latitude;
-        const destLon = l.destination?.location?.longitude;
+		const originLat = l.origin?.location?.latitude;
+		const originLon = l.origin?.location?.longitude;
+		const destLat = l.destination?.location?.latitude;
+		const destLon = l.destination?.location?.longitude;
 
 		let legCoords = coordinatesFromHafasShape(l.polyline);
 		if (legCoords.length < 2 && l.tripId) legCoords = await fetchTripGeometry(l.tripId);
 
 		// 1. GeoJSON FeatureCollection polyline (v6.db.transport.rest format)
 		if (legCoords.length < 2 && l.polyline?.features?.length) {
-            for (const f of l.polyline.features) {
-                const g = f.geometry;
-                if (g?.type === 'Point' && g.coordinates) {
-                    legCoords.push([g.coordinates[1], g.coordinates[0]]);
-                } else if (g?.type === 'LineString' && g.coordinates) {
-                    for (const c of g.coordinates) legCoords.push([c[1], c[0]]);
-                }
-            }
-        }
-        // 2. Encoded polyline string (Google format)
-        if (legCoords.length < 2 && typeof l.polyline === 'string') {
-            legCoords = decodePolyline(l.polyline);
-        }
-        // 3. Stopovers
-        if (legCoords.length < 2 && l.stopovers?.length) {
-            for (const s of l.stopovers) {
-                const lat = s.stop?.location?.latitude;
-                const lon = s.stop?.location?.longitude;
-                if (lat && lon) legCoords.push([lat, lon]);
-            }
-        }
+			for (const f of l.polyline.features) {
+				const g = f.geometry;
+				if (g?.type === 'Point' && g.coordinates) {
+					legCoords.push([g.coordinates[1], g.coordinates[0]]);
+				} else if (g?.type === 'LineString' && g.coordinates) {
+					for (const c of g.coordinates) legCoords.push([c[1], c[0]]);
+				}
+			}
+		}
+		// 2. Encoded polyline string (Google format)
+		if (legCoords.length < 2 && typeof l.polyline === 'string') {
+			legCoords = decodePolyline(l.polyline);
+		}
+		// 3. Stopovers
+		if (legCoords.length < 2 && l.stopovers?.length) {
+			for (const s of l.stopovers) {
+				const lat = s.stop?.location?.latitude;
+				const lon = s.stop?.location?.longitude;
+				if (lat && lon) legCoords.push([lat, lon]);
+			}
+		}
 		// 4. Walking needs a real footpath; vehicle legs must never fall back to a straight line.
 		if (l.walking && legCoords.length < 2 && originLat && originLon && destLat && destLon) {
 			legCoords = await fetchWalkingGeometry(originLat, originLon, destLat, destLon);
 		}
 
-        if (l.walking) {
-            legs.push({
-                type: 'walking',
-                departure: dep, arrival: arr,
+		if (l.walking) {
+			legs.push({
+				type: 'walking',
+				departure: dep,
+				arrival: arr,
 				departureStation: l.origin?.name,
 				arrivalStation: l.destination?.name,
 				departureStationId: l.origin?.id ? String(l.origin.id) : undefined,
 				arrivalStationId: l.destination?.id ? String(l.destination.id) : undefined,
-                departureLat: originLat, departureLon: originLon,
-                arrivalLat: destLat, arrivalLon: destLon,
-                durationMinutes: Math.round(durMin),
-                distanceM: l.distance ?? undefined,
-                polyline: legCoords.length >= 2 ? legCoords : undefined
-            });
-            if (legCoords.length >= 2) {
-                geometry.push({ coords: legCoords, mode: 'walking' });
-            }
+				departureLat: originLat,
+				departureLon: originLon,
+				arrivalLat: destLat,
+				arrivalLon: destLon,
+				durationMinutes: Math.round(durMin),
+				distanceM: l.distance ?? undefined,
+				polyline: legCoords.length >= 2 ? legCoords : undefined
+			});
+			if (legCoords.length >= 2) {
+				geometry.push({ coords: legCoords, mode: 'walking' });
+			}
 		} else if (isTimedVehicleLeg(l)) {
 			const productName = l.line?.productName ?? l.line?.product ?? l.product ?? l.line?.mode ?? '';
 			const rawLineName = l.line?.name ?? l.line?.fahrtNr ?? l.line?.id ?? '';
-			const lineName = rawLineName && productName && !rawLineName.toLowerCase().startsWith(productName.toLowerCase())
-				? `${productName} ${rawLineName}`
-				: rawLineName || productName || 'ÖPNV';
+			const hasOwnRoutePrefix = /^(ICE|IC|EC|RE|RB|S|U|Bus|FlixBus)\b/i.test(rawLineName);
+			const lineName =
+				rawLineName &&
+				productName &&
+				!hasOwnRoutePrefix &&
+				!rawLineName.toLowerCase().startsWith(productName.toLowerCase())
+					? `${productName} ${rawLineName}`
+					: rawLineName || productName || 'ÖPNV';
 
-            legs.push({
-                type: 'transport',
-                lineName, product: productName,
-                direction: l.direction ?? '',
-                departure: dep, arrival: arr,
+			legs.push({
+				type: 'transport',
+				lineName,
+				product: productName,
+				direction: l.direction ?? '',
+				departure: dep,
+				arrival: arr,
 				departureStation: l.origin?.name ?? '',
 				arrivalStation: l.destination?.name ?? '',
 				departureStationId: l.origin?.id ? String(l.origin.id) : undefined,
 				arrivalStationId: l.destination?.id ? String(l.destination.id) : undefined,
-                departureLat: originLat, departureLon: originLon,
-                arrivalLat: destLat, arrivalLon: destLon,
-                durationMinutes: Math.round(durMin),
-                platform: l.departurePlatform ?? l.plannedDeparturePlatform ?? undefined,
-                polyline: legCoords.length >= 2 ? legCoords : undefined
-            });
-            if (legCoords.length >= 2) {
-                geometry.push({ coords: legCoords, mode: 'transport', lineName: lineName || productName, product: productName });
-            }
-        }
-    }
+				departureLat: originLat,
+				departureLon: originLon,
+				arrivalLat: destLat,
+				arrivalLon: destLon,
+				durationMinutes: Math.round(durMin),
+				platform: l.departurePlatform ?? l.plannedDeparturePlatform ?? undefined,
+				polyline: legCoords.length >= 2 ? legCoords : undefined
+			});
+			if (legCoords.length >= 2) {
+				geometry.push({
+					coords: legCoords,
+					mode: 'transport',
+					lineName: lineName || productName,
+					product: productName
+				});
+			}
+		}
+	}
 
-    // Summary: clean line names, deduplicated
-    const transportLegs = legs.filter((l) => l.type === 'transport');
-    const lineNames = transportLegs.map((l) => {
-        const p = l.product ?? '';
-        const n = l.lineName ?? '';
-        // If line name already contains the product (e.g. "Bus RE5" with product "Bus"), just use line name
-        if (n && p && n.toLowerCase().startsWith(p.toLowerCase())) return n;
-        // If they're different (e.g. product "S", name "8"), combine
-        if (p && n) return `${p}${n}`;
-        return n || p || 'Öffi';
-    });
-    const summary = lineNames.length ? lineNames.join(' → ') : 'Öffi';
-    const transfers = Math.max(0, transportLegs.length - 1);
+	// Summary: clean line names, deduplicated
+	const transportLegs = legs.filter((l) => l.type === 'transport');
+	const lineNames = transportLegs.map((l) => {
+		const p = l.product ?? '';
+		const n = l.lineName ?? '';
+		// A route prefix (e.g. RB 93) is authoritative even when the provider product differs.
+		if (/^(ICE|IC|EC|RE|RB|S|U|Bus|FlixBus)\b/i.test(n)) return n;
+		if (n && p && n.toLowerCase().startsWith(p.toLowerCase())) return n;
+		// If they're different (e.g. product "S", name "8"), combine
+		if (p && n) return `${p} ${n}`;
+		return n || p || 'Öffi';
+	});
+	const summary = lineNames.length ? lineNames.join(' → ') : 'Öffi';
+	const transfers = Math.max(0, transportLegs.length - 1);
 
-    // Walk times: from user stop coords to departure station, and from arrival station to user stop coords
-    // Use OSRM foot for accuracy, with HAFAS walking legs as fallback
-    let walkToStationMin = 0;
-    let walkFromStationMin = 0;
+	// Walk times: from user stop coords to departure station, and from arrival station to user stop coords
+	// Use OSRM foot for accuracy, with HAFAS walking legs as fallback
+	let walkToStationMin = 0;
+	let walkFromStationMin = 0;
 
-    // HAFAS walking leg at start?
-    if (rawLegs.length > 0 && rawLegs[0].walking) {
-        const dep = rawLegs[0].departure ?? rawLegs[0].plannedDeparture;
-        const arr = rawLegs[0].arrival ?? rawLegs[0].plannedArrival;
-        if (dep && arr) walkToStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
-    }
-    // Also compute walk from actual stop coords to the departure station
-    if (walkToStationMin === 0) {
+	// HAFAS walking leg at start?
+	if (rawLegs.length > 0 && rawLegs[0].walking) {
+		const dep = rawLegs[0].departure ?? rawLegs[0].plannedDeparture;
+		const arr = rawLegs[0].arrival ?? rawLegs[0].plannedArrival;
+		if (dep && arr)
+			walkToStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
+	}
+	// Also compute walk from actual stop coords to the departure station
+	if (walkToStationMin === 0) {
 		const firstTransport = rawLegs.find(isTimedVehicleLeg);
-        const station = firstTransport?.origin?.location;
-        if (station?.latitude && station?.longitude) walkToStationMin = await walkDurationOSRM(from.lat, from.lon, station.latitude, station.longitude);
-    }
+		const station = firstTransport?.origin?.location;
+		if (station?.latitude && station?.longitude)
+			walkToStationMin = await walkDurationOSRM(
+				from.lat,
+				from.lon,
+				station.latitude,
+				station.longitude
+			);
+	}
 
-    // HAFAS walking leg at end?
-    if (rawLegs.length > 1 && rawLegs[rawLegs.length - 1].walking) {
-        const dep = rawLegs[rawLegs.length - 1].departure ?? rawLegs[rawLegs.length - 1].plannedDeparture;
-        const arr = rawLegs[rawLegs.length - 1].arrival ?? rawLegs[rawLegs.length - 1].plannedArrival;
-        if (dep && arr) walkFromStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
-    }
-    if (walkFromStationMin === 0) {
+	// HAFAS walking leg at end?
+	if (rawLegs.length > 1 && rawLegs[rawLegs.length - 1].walking) {
+		const dep =
+			rawLegs[rawLegs.length - 1].departure ?? rawLegs[rawLegs.length - 1].plannedDeparture;
+		const arr = rawLegs[rawLegs.length - 1].arrival ?? rawLegs[rawLegs.length - 1].plannedArrival;
+		if (dep && arr)
+			walkFromStationMin = Math.round((new Date(arr).getTime() - new Date(dep).getTime()) / 60000);
+	}
+	if (walkFromStationMin === 0) {
 		const lastTransport = [...rawLegs].reverse().find(isTimedVehicleLeg);
-        const station = lastTransport?.destination?.location;
-        if (station?.latitude && station?.longitude) walkFromStationMin = await walkDurationOSRM(station.latitude, station.longitude, to.lat, to.lon);
-    }
+		const station = lastTransport?.destination?.location;
+		if (station?.latitude && station?.longitude)
+			walkFromStationMin = await walkDurationOSRM(
+				station.latitude,
+				station.longitude,
+				to.lat,
+				to.lon
+			);
+	}
 
-    // Total: train time + walking
-    const firstDep = rawLegs[0]?.departure ?? rawLegs[0]?.plannedDeparture;
-    const lastArr = rawLegs[rawLegs.length - 1]?.arrival ?? rawLegs[rawLegs.length - 1]?.plannedArrival;
-    let trainDuration = firstDep && lastArr
-        ? Math.round((new Date(lastArr).getTime() - new Date(firstDep).getTime()) / 60000)
-        : 30;
+	// Total: train time + walking
+	const firstDep = rawLegs[0]?.departure ?? rawLegs[0]?.plannedDeparture;
+	const lastArr =
+		rawLegs[rawLegs.length - 1]?.arrival ?? rawLegs[rawLegs.length - 1]?.plannedArrival;
+	let trainDuration =
+		firstDep && lastArr
+			? Math.round((new Date(lastArr).getTime() - new Date(firstDep).getTime()) / 60000)
+			: 30;
 
-    // If HAFAS already included walk legs in its duration, don't double-count
-    const hafasIncludesWalk = rawLegs[0]?.walking || rawLegs[rawLegs.length - 1]?.walking;
-    const totalDuration = hafasIncludesWalk
-        ? trainDuration
-        : trainDuration + walkToStationMin + walkFromStationMin;
+	// If HAFAS already included walk legs in its duration, don't double-count
+	const hafasIncludesWalk = rawLegs[0]?.walking || rawLegs[rawLegs.length - 1]?.walking;
+	const totalDuration = hafasIncludesWalk
+		? trainDuration
+		: trainDuration + walkToStationMin + walkFromStationMin;
 
 	return {
 		totalDurationMinutes: totalDuration,
-        summary,
-        legs,
-        walkToStationMin,
-        walkFromStationMin,
-        transfers,
-        geometry
+		summary,
+		legs,
+		walkToStationMin,
+		walkFromStationMin,
+		transfers,
+		geometry
 	};
 }
 
@@ -482,9 +610,12 @@ function coordinatesFromHafasShape(shape: any): [number, number][] {
 
 async function fetchTripGeometry(tripId: string): Promise<[number, number][]> {
 	try {
-		const res = await fetch(`https://v6.db.transport.rest/trips/${encodeURIComponent(tripId)}?polyline=true&stopovers=true`, {
-			headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
-		});
+		const res = await fetch(
+			`https://v6.db.transport.rest/trips/${encodeURIComponent(tripId)}?polyline=true&stopovers=true`,
+			{
+				headers: { Accept: 'application/json', 'User-Agent': 'JourneyPlanner/1.0' }
+			}
+		);
 		if (!res.ok) return [];
 		const trip = await res.json();
 		const geometry = coordinatesFromHafasShape(trip.polyline);
@@ -502,12 +633,21 @@ async function fetchTripGeometry(tripId: string): Promise<[number, number][]> {
 	}
 }
 
-async function fetchWalkingGeometry(fromLat: number, fromLon: number, toLat: number, toLon: number): Promise<[number, number][]> {
+async function fetchWalkingGeometry(
+	fromLat: number,
+	fromLon: number,
+	toLat: number,
+	toLon: number
+): Promise<[number, number][]> {
 	try {
-		const res = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`);
+		const res = await fetch(
+			`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`
+		);
 		const data = await res.json();
 		return data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates
-			? data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number])
+			? data.routes[0].geometry.coordinates.map(
+					(coord: [number, number]) => [coord[1], coord[0]] as [number, number]
+				)
 			: [];
 	} catch {
 		return [];
@@ -518,131 +658,193 @@ async function fetchWalkingGeometry(fromLat: number, fromLon: number, toLat: num
  * Community-run Transitous/MOTIS fallback for the free/open and non-commercial use case.
  * It receives the same stored minimum transfer time as DB Transport REST.
  */
-async function computeTransitTransitous(from: Stop, to: Stop, minimumTransferMinutes: number, deutschlandticketOnly: boolean): Promise<TransitResult> {
-    const params = new URLSearchParams({
-        fromPlace: `${from.lat},${from.lon}`,
-        toPlace: `${to.lat},${to.lon}`,
-        minTransferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
-        preTransitModes: 'WALK',
-        postTransitModes: 'WALK',
-        transitModes: 'TRANSIT',
-        directModes: '',
-        detailedLegs: 'true'
-    });
-    const res = await fetch(`https://api.transitous.org/api/v6/plan?${params}`, {
-        headers: { Accept: 'application/json', 'User-Agent': 'travel-sv/1.0 (https://github.com/PXNX/travel-sv)' }
-    });
-    if (!res.ok) throw new Error(`Transitous ${res.status}`);
+async function computeTransitTransitous(
+	from: Stop,
+	to: Stop,
+	minimumTransferMinutes: number,
+	deutschlandticketOnly: boolean
+): Promise<TransitResult> {
+	const params = new URLSearchParams({
+		fromPlace: `${from.lat},${from.lon}`,
+		toPlace: `${to.lat},${to.lon}`,
+		minTransferTime: String(Math.max(0, Math.min(30, Math.round(minimumTransferMinutes)))),
+		preTransitModes: 'WALK',
+		postTransitModes: 'WALK',
+		transitModes: 'TRANSIT',
+		directModes: '',
+		detailedLegs: 'true'
+	});
+	const res = await fetch(`https://api.transitous.org/api/v6/plan?${params}`, {
+		headers: {
+			Accept: 'application/json',
+			'User-Agent': 'travel-sv/1.0 (https://github.com/PXNX/travel-sv)'
+		}
+	});
+	if (!res.ok) throw new Error(`Transitous ${res.status}`);
 
-    const data = await res.json();
+	const data = await res.json();
 	const candidates = (data.itineraries ?? [])
-		.filter((itinerary: any) => Array.isArray(itinerary.legs) && itinerary.legs.some(isTransitousVehicleLeg))
-		.filter((itinerary: any) => !deutschlandticketOnly || itinerary.legs.every((leg: any) => leg.mode !== 'LONG_DISTANCE' && !/\b(ICE|IC|EC|FLX)\b/i.test(`${leg.routeShortName ?? ''} ${leg.displayName ?? ''}`)))
+		.filter(
+			(itinerary: any) =>
+				Array.isArray(itinerary.legs) && itinerary.legs.some(isTransitousVehicleLeg)
+		)
+		.filter(
+			(itinerary: any) =>
+				!deutschlandticketOnly ||
+				itinerary.legs.every(
+					(leg: any) =>
+						leg.mode !== 'LONG_DISTANCE' &&
+						!/\b(ICE|IC|EC|FLX)\b/i.test(`${leg.routeShortName ?? ''} ${leg.displayName ?? ''}`)
+				)
+		)
 		.sort((a: any, b: any) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
-    if (candidates.length === 0) throw new Error('Transitous returned no confirmed transport journey');
+	if (candidates.length === 0)
+		throw new Error('Transitous returned no confirmed transport journey');
 
-    const itinerary = candidates[0];
-    const rawLegs: any[] = itinerary.legs;
-    const legs: TransitLeg[] = [];
-    const geometry: TransitGeoLeg[] = [];
+	const itinerary = candidates[0];
+	const rawLegs: any[] = itinerary.legs;
+	const legs: TransitLeg[] = [];
+	const geometry: TransitGeoLeg[] = [];
 
-    for (const leg of rawLegs) {
-        const departure = leg.startTime ?? leg.from?.departure ?? leg.from?.scheduledDeparture;
-        const arrival = leg.endTime ?? leg.to?.arrival ?? leg.to?.scheduledArrival;
-        const durationMinutes = Math.round((leg.duration ?? 0) / 60);
-        const coords = leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision ?? 6) : undefined;
+	for (const leg of rawLegs) {
+		const departure = leg.startTime ?? leg.from?.departure ?? leg.from?.scheduledDeparture;
+		const arrival = leg.endTime ?? leg.to?.arrival ?? leg.to?.scheduledArrival;
+		const durationMinutes = Math.round((leg.duration ?? 0) / 60);
+		const coords = leg.legGeometry?.points
+			? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision ?? 6)
+			: undefined;
 
 		if (leg.mode === 'WALK') {
-            legs.push({
-                type: 'walking', departure, arrival,
-				departureStation: leg.from?.name, arrivalStation: leg.to?.name,
+			legs.push({
+				type: 'walking',
+				departure,
+				arrival,
+				departureStation: leg.from?.name,
+				arrivalStation: leg.to?.name,
 				departureStationId: leg.from?.id ? String(leg.from.id) : undefined,
 				arrivalStationId: leg.to?.id ? String(leg.to.id) : undefined,
-                departureLat: leg.from?.lat, departureLon: leg.from?.lon,
-                arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
-                durationMinutes, distanceM: leg.distance ?? undefined, polyline: coords
-            });
-            if (coords && coords.length >= 2) geometry.push({ coords, mode: 'walking' });
-            continue;
-        }
+				departureLat: leg.from?.lat,
+				departureLon: leg.from?.lon,
+				arrivalLat: leg.to?.lat,
+				arrivalLon: leg.to?.lon,
+				durationMinutes,
+				distanceM: leg.distance ?? undefined,
+				polyline: coords
+			});
+			if (coords && coords.length >= 2) geometry.push({ coords, mode: 'walking' });
+			continue;
+		}
 
 		if (!isTransitousVehicleLeg(leg)) continue;
 		const product = leg.mode ?? 'TRANSIT';
-        const lineName = leg.routeShortName ?? leg.displayName ?? leg.routeLongName ?? product;
-        legs.push({
-            type: 'transport', lineName, product, direction: leg.headsign ?? '',
-            departure, arrival,
-			departureStation: leg.from?.name ?? '', arrivalStation: leg.to?.name ?? '',
+		const lineName = leg.routeShortName ?? leg.displayName ?? leg.routeLongName ?? product;
+		legs.push({
+			type: 'transport',
+			lineName,
+			product,
+			direction: leg.headsign ?? '',
+			departure,
+			arrival,
+			departureStation: leg.from?.name ?? '',
+			arrivalStation: leg.to?.name ?? '',
 			departureStationId: leg.from?.id ? String(leg.from.id) : undefined,
 			arrivalStationId: leg.to?.id ? String(leg.to.id) : undefined,
-            departureLat: leg.from?.lat, departureLon: leg.from?.lon,
-            arrivalLat: leg.to?.lat, arrivalLon: leg.to?.lon,
-            durationMinutes, polyline: coords
-        });
-        if (coords && coords.length >= 2) geometry.push({ coords, mode: 'transport', lineName, product });
-    }
+			departureLat: leg.from?.lat,
+			departureLon: leg.from?.lon,
+			arrivalLat: leg.to?.lat,
+			arrivalLon: leg.to?.lon,
+			durationMinutes,
+			polyline: coords
+		});
+		if (coords && coords.length >= 2)
+			geometry.push({ coords, mode: 'transport', lineName, product });
+	}
 
-    const transportLegs = legs.filter((leg) => leg.type === 'transport');
-    if (transportLegs.length === 0) throw new Error('Transitous itinerary contains no vehicle leg');
-    const first = rawLegs[0];
-    const last = rawLegs.at(-1);
+	const transportLegs = legs.filter((leg) => leg.type === 'transport');
+	if (transportLegs.length === 0) throw new Error('Transitous itinerary contains no vehicle leg');
+	const first = rawLegs[0];
+	const last = rawLegs.at(-1);
 
-    return {
-        totalDurationMinutes: Math.round((itinerary.duration ?? 0) / 60),
-        summary: transportLegs.map((leg) => leg.lineName || leg.product || 'ÖPNV').join(' → '),
-        legs,
-        walkToStationMin: first?.mode === 'WALK' ? Math.round((first.duration ?? 0) / 60) : 0,
-        walkFromStationMin: last?.mode === 'WALK' ? Math.round((last.duration ?? 0) / 60) : 0,
-        transfers: itinerary.transfers ?? Math.max(0, transportLegs.length - 1),
-        geometry
-    };
+	return {
+		totalDurationMinutes: Math.round((itinerary.duration ?? 0) / 60),
+		summary: transportLegs.map((leg) => leg.lineName || leg.product || 'ÖPNV').join(' → '),
+		legs,
+		walkToStationMin: first?.mode === 'WALK' ? Math.round((first.duration ?? 0) / 60) : 0,
+		walkFromStationMin: last?.mode === 'WALK' ? Math.round((last.duration ?? 0) / 60) : 0,
+		transfers: itinerary.transfers ?? Math.max(0, transportLegs.length - 1),
+		geometry
+	};
 }
 
-async function walkDurationOSRM(fromLat: number, fromLon: number, toLat: number, toLon: number): Promise<number> {
-    try {
-        const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.code === 'Ok' && data.routes?.[0]) return Math.round(data.routes[0].duration / 60);
-    } catch { /* fall through */ }
-    return Math.round(haversineDistance(fromLat, fromLon, toLat, toLon) / 83.33);
+async function walkDurationOSRM(
+	fromLat: number,
+	fromLon: number,
+	toLat: number,
+	toLon: number
+): Promise<number> {
+	try {
+		const url = `https://routing.openstreetmap.de/routed-foot/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false`;
+		const res = await fetch(url);
+		const data = await res.json();
+		if (data.code === 'Ok' && data.routes?.[0]) return Math.round(data.routes[0].duration / 60);
+	} catch {
+		/* fall through */
+	}
+	return Math.round(haversineDistance(fromLat, fromLon, toLat, toLon) / 83.33);
 }
 
 // ── Elevation ───────────────────────────────────────────────────────
 async function computeElevation(from: Stop, to: Stop): Promise<{ up: number; down: number }> {
-    try {
-        const url = `https://api.open-elevation.com/api/v1/lookup?locations=${from.lat},${from.lon}|${to.lat},${to.lon}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.results?.length === 2) {
-            const diff = data.results[1].elevation - data.results[0].elevation;
-            return { up: Math.max(0, diff), down: Math.abs(Math.min(0, diff)) };
-        }
-    } catch { /* ignore */ }
-    return { up: 0, down: 0 };
+	try {
+		const url = `https://api.open-elevation.com/api/v1/lookup?locations=${from.lat},${from.lon}|${to.lat},${to.lon}`;
+		const res = await fetch(url);
+		const data = await res.json();
+		if (data.results?.length === 2) {
+			const diff = data.results[1].elevation - data.results[0].elevation;
+			return { up: Math.max(0, diff), down: Math.abs(Math.min(0, diff)) };
+		}
+	} catch {
+		/* ignore */
+	}
+	return { up: 0, down: 0 };
 }
 
 // Decode Google encoded polyline → [lat, lon][]
 function decodePolyline(encoded: string, precision = 5): [number, number][] {
-    const points: [number, number][] = [];
-    let i = 0, lat = 0, lon = 0;
-    while (i < encoded.length) {
-        let shift = 0, result = 0, byte: number;
-        do { byte = encoded.charCodeAt(i++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
-        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
-        shift = 0; result = 0;
-        do { byte = encoded.charCodeAt(i++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
-        lon += (result & 1) ? ~(result >> 1) : (result >> 1);
-        const factor = 10 ** precision;
-        points.push([lat / factor, lon / factor]);
-    }
-    return points;
+	const points: [number, number][] = [];
+	let i = 0,
+		lat = 0,
+		lon = 0;
+	while (i < encoded.length) {
+		let shift = 0,
+			result = 0,
+			byte: number;
+		do {
+			byte = encoded.charCodeAt(i++) - 63;
+			result |= (byte & 0x1f) << shift;
+			shift += 5;
+		} while (byte >= 0x20);
+		lat += result & 1 ? ~(result >> 1) : result >> 1;
+		shift = 0;
+		result = 0;
+		do {
+			byte = encoded.charCodeAt(i++) - 63;
+			result |= (byte & 0x1f) << shift;
+			shift += 5;
+		} while (byte >= 0x20);
+		lon += result & 1 ? ~(result >> 1) : result >> 1;
+		const factor = 10 ** precision;
+		points.push([lat / factor, lon / factor]);
+	}
+	return points;
 }
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371000;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	const R = 6371000;
+	const dLat = ((lat2 - lat1) * Math.PI) / 180;
+	const dLon = ((lon2 - lon1) * Math.PI) / 180;
+	const a =
+		Math.sin(dLat / 2) ** 2 +
+		Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+	return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

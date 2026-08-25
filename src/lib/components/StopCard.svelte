@@ -15,10 +15,18 @@
 		ondelete?: (stopId: number) => void;
 		onpicklocation?: (stop: Stop) => void;
 		dragHandle?: boolean;
+		readonly?: boolean;
 	}
 
-	let { stop, arrivalTime = null, onupdate, ondelete, onpicklocation, dragHandle = true }: Props =
-		$props();
+	let {
+		stop,
+		arrivalTime = null,
+		onupdate,
+		ondelete,
+		onpicklocation,
+		dragHandle = true,
+		readonly = false
+	}: Props = $props();
 
 	let editingName = $state(false);
 	let nameInput = $state('');
@@ -79,7 +87,7 @@
 <Card padding="none">
 	<div class="flex flex-col gap-2 p-3">
 		<div class="flex items-center gap-2">
-			{#if dragHandle}
+			{#if dragHandle && !readonly}
 				<span
 					use:dragHandleAction
 					class="drag-handle text-base-content/40 cursor-grab touch-none select-none"
@@ -90,7 +98,7 @@
 			{/if}
 
 			<div class="min-w-0 flex-1">
-				{#if editingName}
+				{#if editingName && !readonly}
 					<!-- svelte-ignore a11y_autofocus -->
 					<input
 						class="input input-sm w-full"
@@ -100,69 +108,88 @@
 						use:focusOnMount
 					/>
 				{:else}
-					<button
-						class="truncate text-left font-semibold hover:underline"
-						onclick={() => (editingName = true)}
-					>
-						{stop.name}
-					</button>
+					{#if readonly}
+						<p class="truncate font-semibold">{stop.name}</p>
+					{:else}
+						<button
+							class="truncate text-left font-semibold hover:underline"
+							onclick={() => (editingName = true)}
+						>
+							{stop.name}
+						</button>
+					{/if}
 				{/if}
 			</div>
 
-			<IconButton
-				icon={IconClose}
-				label="Delete stop"
-				size="xs"
-				class="text-error shrink-0"
-				onclick={() => (confirmingDelete = true)}
-			/>
+			{#if !readonly}
+				<IconButton
+					icon={IconClose}
+					label="Delete stop"
+					size="xs"
+					class="text-error shrink-0"
+					onclick={() => (confirmingDelete = true)}
+				/>
+			{/if}
 		</div>
 
 		{#if arrivalFormatted}
 			<MetaItem icon={IconClock} class="text-base-content/50">Arrival: {arrivalFormatted}</MetaItem>
 		{/if}
 
-		<button
-			class="text-base-content/60 hover:text-primary flex items-center gap-1 text-left text-xs transition-colors"
-			onclick={() => onpicklocation?.(stop)}
+		<svelte:element
+			this={readonly ? 'div' : 'button'}
+			type={readonly ? undefined : 'button'}
+			class="text-base-content/60 flex items-center gap-1 text-left text-xs {readonly
+				? ''
+				: 'hover:text-primary transition-colors'}"
+			onclick={readonly ? undefined : () => onpicklocation?.(stop)}
 		>
 			<IconPin class="size-3.5 shrink-0" />
 			{stop.lat.toFixed(4)}, {stop.lon.toFixed(4)}
-		</button>
+		</svelte:element>
 
-		<div class="flex items-center gap-2">
-			<span class="text-base-content/60 text-xs">Stay:</span>
-			<input
-				type="number"
-				class="input input-xs w-14"
-				aria-label="Stay hours"
-				bind:value={stayHours}
-				onchange={updateDuration}
-				min="0"
-				max="72"
-			/>
-			<span class="text-xs">h</span>
-			<input
-				type="number"
-				class="input input-xs w-14"
-				aria-label="Stay minutes"
-				bind:value={stayMinutes}
-				onchange={updateDuration}
-				min="0"
-				max="59"
-				step="5"
-			/>
-			<span class="text-xs">m</span>
-		</div>
+		{#if readonly}
+			<div class="text-base-content/60 flex items-center gap-1.5 text-xs">
+				<span>Stay:</span><span>{stayHours} h {stayMinutes} m</span>
+			</div>
+		{:else}
+			<div class="flex items-center gap-2">
+				<span class="text-base-content/60 text-xs">Stay:</span>
+				<input
+					type="number"
+					class="input input-xs w-14"
+					aria-label="Stay hours"
+					bind:value={stayHours}
+					onchange={updateDuration}
+					min="0"
+					max="72"
+				/>
+				<span class="text-xs">h</span>
+				<input
+					type="number"
+					class="input input-xs w-14"
+					aria-label="Stay minutes"
+					bind:value={stayMinutes}
+					onchange={updateDuration}
+					min="0"
+					max="59"
+					step="5"
+				/>
+				<span class="text-xs">m</span>
+			</div>
+		{/if}
 
-		<textarea
-			class="textarea textarea-xs w-full"
-			placeholder="Notes..."
-			aria-label="Notes"
-			bind:value={notes}
-			onblur={updateNotes}
-			rows="1"
-		></textarea>
+		{#if readonly}
+			{#if notes}<p class="text-base-content/60 text-xs leading-relaxed">{notes}</p>{/if}
+		{:else}
+			<textarea
+				class="textarea textarea-xs w-full"
+				placeholder="Notes..."
+				aria-label="Notes"
+				bind:value={notes}
+				onblur={updateNotes}
+				rows="1"></textarea>
+		{/if}
 	</div>
 </Card>
 

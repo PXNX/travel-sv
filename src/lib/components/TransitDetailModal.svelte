@@ -21,11 +21,23 @@
 		onconnectionchange?: (segment: Segment, direction: -1 | 1) => void;
 		changingConnection?: boolean;
 		connectionError?: string | null;
+		readonly?: boolean;
 		fromCoords?: [number, number];
 		toCoords?: [number, number];
 	}
 
-	let { open = $bindable(false), segment, onclose, onwalkclick, onconnectionchange, changingConnection = false, connectionError = null, fromCoords, toCoords }: Props = $props();
+	let {
+		open = $bindable(false),
+		segment,
+		onclose,
+		onwalkclick,
+		onconnectionchange,
+		changingConnection = false,
+		connectionError = null,
+		readonly = false,
+		fromCoords,
+		toCoords
+	}: Props = $props();
 
 	const legs = $derived((segment?.transitLegs ?? []) as TransitLeg[]);
 	const transfers = $derived(segment?.transfers ?? 0);
@@ -52,12 +64,19 @@
 	$effect(() => {
 		if (open) {
 			now = Date.now();
-			timer = setInterval(() => { now = Date.now(); }, 30_000);
+			timer = setInterval(() => {
+				now = Date.now();
+			}, 30_000);
 		} else {
-			if (timer) { clearInterval(timer); timer = undefined; }
+			if (timer) {
+				clearInterval(timer);
+				timer = undefined;
+			}
 		}
 	});
-	onDestroy(() => { if (timer) clearInterval(timer); });
+	onDestroy(() => {
+		if (timer) clearInterval(timer);
+	});
 
 	const walkToActive = $derived.by(() => {
 		if (walkTo <= 0 || visibleLegs.length === 0) return false;
@@ -90,21 +109,42 @@
 	function lineLabel(leg: TransitLeg): string {
 		const rawProduct = leg.product ?? '';
 		const n = leg.lineName ?? '';
-		const product = ({ HIGHSPEED_RAIL: 'ICE', REGIONAL_RAIL: 'RE', SUBWAY: 'U', SUBURBAN: 'S', BUS: 'Bus', TRAM: 'Tram', RAIL: 'RB', COACH: '' } as Record<string, string>)[rawProduct.toUpperCase()] ?? rawProduct;
+		const product =
+			(
+				{
+					HIGHSPEED_RAIL: 'ICE',
+					REGIONAL_RAIL: 'RE',
+					SUBWAY: 'U',
+					SUBURBAN: 'S',
+					BUS: 'Bus',
+					TRAM: 'Tram',
+					RAIL: 'RB',
+					COACH: ''
+				} as Record<string, string>
+			)[rawProduct.toUpperCase()] ?? rawProduct;
 		const spacedLine = n.replace(/^(ICE|IC|EC|RE|RB|S|U|Bus|FlixBus)\s*(\d)/i, '$1 $2');
-		if (n && product && n.toLowerCase().startsWith(product.toLowerCase())) return spacedLine;
+		// The route label is authoritative: providers may classify RB 93 as regional rail (RE).
+		if (/^(ICE|IC|EC|RE|RB|S|U|Bus|FlixBus)\b/i.test(spacedLine)) return spacedLine;
 		if (n && !product) return spacedLine;
 		if (product && n) return `${product} ${spacedLine}`;
 		return spacedLine || product || 'Öffi';
 	}
 
 	function walkLabel(leg: TransitLeg): string {
-		const parts = [leg.durationMinutes > 0 ? `~${formatDuration(leg.durationMinutes)}` : '', leg.distanceM && leg.distanceM > 0 ? formatDistance(leg.distanceM) : ''].filter(Boolean);
+		const parts = [
+			leg.durationMinutes > 0 ? `~${formatDuration(leg.durationMinutes)}` : '',
+			leg.distanceM && leg.distanceM > 0 ? formatDistance(leg.distanceM) : ''
+		].filter(Boolean);
 		return parts.join(' · ');
 	}
 
-	function stationMapUrl(stationName?: string, product?: string, stationId?: string): string | null {
-		if ((!stationName && !stationId) || /^(BUS|Bus|TRAM|STR|COACH)$/i.test(product ?? '')) return null;
+	function stationMapUrl(
+		stationName?: string,
+		product?: string,
+		stationId?: string
+	): string | null {
+		if ((!stationName && !stationId) || /^(BUS|Bus|TRAM|STR|COACH)$/i.test(product ?? ''))
+			return null;
 		const query = stationId || stationName;
 		return query ? `https://www.bahnhof.de/suche?suchbegriff=${encodeURIComponent(query)}` : null;
 	}
@@ -119,8 +159,7 @@
 		const prev = visibleLegs[index - 1];
 		const curr = visibleLegs[index];
 		if (!prev?.arrival || !curr?.departure) return 0;
-		const diff =
-			(new Date(curr.departure).getTime() - new Date(prev.arrival).getTime()) / 60000;
+		const diff = (new Date(curr.departure).getTime() - new Date(prev.arrival).getTime()) / 60000;
 		return Math.max(0, Math.round(diff));
 	}
 
@@ -141,12 +180,19 @@
 		return !!(leg.polyline?.length || (leg.departureLat != null && leg.arrivalLat != null));
 	}
 
-	async function fetchWalkingRoute(from: [number, number], to: [number, number]): Promise<[number, number][] | null> {
+	async function fetchWalkingRoute(
+		from: [number, number],
+		to: [number, number]
+	): Promise<[number, number][] | null> {
 		try {
-			const res = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`);
+			const res = await fetch(
+				`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
+			);
 			const data = await res.json();
 			return data.code === 'Ok' && data.routes?.[0]?.geometry?.coordinates
-				? data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number])
+				? data.routes[0].geometry.coordinates.map(
+						(coord: [number, number]) => [coord[1], coord[0]] as [number, number]
+					)
 				: null;
 		} catch {
 			return null;
@@ -158,15 +204,20 @@
 		const firstLeg = visibleLegs[0];
 		if (!firstLeg?.departureLat || !firstLeg?.departureLon) return;
 		const endpoint: [number, number] = [firstLeg.departureLat, firstLeg.departureLon];
-		const geo = accessWalkTo?.polyline?.length && accessWalkTo.polyline.length > 1
-			? accessWalkTo.polyline
-			: await fetchWalkingRoute(fromCoords, endpoint);
+		const geo =
+			accessWalkTo?.polyline?.length && accessWalkTo.polyline.length > 1
+				? accessWalkTo.polyline
+				: await fetchWalkingRoute(fromCoords, endpoint);
 		if (!geo || geo.length < 2) return;
 		const synth: Segment = {
-			id: -1, journeyId: segment.journeyId,
-			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
-			mode: 'walk', walkGeometry: geo, distanceM: accessWalkTo?.distanceM,
-			travelDurationMinutes: walkTo,
+			id: -1,
+			journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId,
+			toStopId: segment.toStopId,
+			mode: 'walk',
+			walkGeometry: geo,
+			distanceM: accessWalkTo?.distanceM,
+			travelDurationMinutes: walkTo
 		};
 		onwalkclick(synth, 'Start', firstLeg.departureStation ?? 'Station');
 	}
@@ -176,15 +227,20 @@
 		const lastLeg = visibleLegs[visibleLegs.length - 1];
 		if (!lastLeg?.arrivalLat || !lastLeg?.arrivalLon) return;
 		const endpoint: [number, number] = [lastLeg.arrivalLat, lastLeg.arrivalLon];
-		const geo = accessWalkFrom?.polyline?.length && accessWalkFrom.polyline.length > 1
-			? accessWalkFrom.polyline
-			: await fetchWalkingRoute(endpoint, toCoords);
+		const geo =
+			accessWalkFrom?.polyline?.length && accessWalkFrom.polyline.length > 1
+				? accessWalkFrom.polyline
+				: await fetchWalkingRoute(endpoint, toCoords);
 		if (!geo || geo.length < 2) return;
 		const synth: Segment = {
-			id: -1, journeyId: segment.journeyId,
-			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
-			mode: 'walk', walkGeometry: geo, distanceM: accessWalkFrom?.distanceM,
-			travelDurationMinutes: walkFrom,
+			id: -1,
+			journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId,
+			toStopId: segment.toStopId,
+			mode: 'walk',
+			walkGeometry: geo,
+			distanceM: accessWalkFrom?.distanceM,
+			travelDurationMinutes: walkFrom
 		};
 		onwalkclick(synth, lastLeg.arrivalStation ?? 'Station', 'Destination');
 	}
@@ -192,16 +248,28 @@
 	async function handleWalkingLegClick(leg: TransitLeg) {
 		if (!onwalkclick || !segment) return;
 		let geo: [number, number][] | null = leg.polyline ?? null;
-		if (!geo && leg.departureLat != null && leg.departureLon != null && leg.arrivalLat != null && leg.arrivalLon != null) {
-			geo = await fetchWalkingRoute([leg.departureLat, leg.departureLon], [leg.arrivalLat, leg.arrivalLon]);
+		if (
+			!geo &&
+			leg.departureLat != null &&
+			leg.departureLon != null &&
+			leg.arrivalLat != null &&
+			leg.arrivalLon != null
+		) {
+			geo = await fetchWalkingRoute(
+				[leg.departureLat, leg.departureLon],
+				[leg.arrivalLat, leg.arrivalLon]
+			);
 		}
 		if (!geo) return;
 		const synth: Segment = {
-			id: -1, journeyId: segment.journeyId,
-			fromStopId: segment.fromStopId, toStopId: segment.toStopId,
-			mode: 'walk', walkGeometry: geo,
+			id: -1,
+			journeyId: segment.journeyId,
+			fromStopId: segment.fromStopId,
+			toStopId: segment.toStopId,
+			mode: 'walk',
+			walkGeometry: geo,
 			distanceM: leg.distanceM,
-			travelDurationMinutes: leg.durationMinutes,
+			travelDurationMinutes: leg.durationMinutes
 		};
 		onwalkclick(synth, leg.departureStation ?? '', leg.arrivalStation ?? '');
 	}
@@ -222,191 +290,249 @@
 		{/if}
 	{/snippet}
 
-		{#if segment}
-			{#if firstTransport}
-				<div class="mb-4 flex items-center justify-between gap-2 border-y border-[#172a45]/15 py-2">
-					<button class="btn btn-ghost btn-xs btn-square" aria-label="Earlier connection" disabled={changingConnection} onclick={() => onconnectionchange?.(segment!, -1)}>
-						<IconChevronLeft class="h-4 w-4" />
-					</button>
-					<div class="min-w-0 text-center">
-						<p class="text-[10px] font-bold tracking-[0.08em] text-[#a45e38] uppercase">Connections from</p>
-						<p class="truncate text-sm font-semibold">{firstTransport.departureStation}</p>
-					</div>
-					<button class="btn btn-ghost btn-xs btn-square" aria-label="Later connection" disabled={changingConnection} onclick={() => onconnectionchange?.(segment!, 1)}>
-						<IconChevronRight class="h-4 w-4" />
-					</button>
+	{#if segment}
+		{#if firstTransport && !readonly && onconnectionchange}
+			<div class="mb-4 flex items-center justify-between gap-2 border-y border-[#172a45]/15 py-2">
+				<button
+					class="btn btn-ghost btn-xs btn-square"
+					aria-label="Earlier connection"
+					disabled={changingConnection}
+					onclick={() => onconnectionchange?.(segment!, -1)}
+				>
+					<IconChevronLeft class="h-4 w-4" />
+				</button>
+				<div class="min-w-0 text-center">
+					<p class="text-[10px] font-bold tracking-[0.08em] text-[#a45e38] uppercase">
+						Connections from
+					</p>
+					<p class="truncate text-sm font-semibold">{firstTransport.departureStation}</p>
 				</div>
-				{#if connectionError}
-					<p class="-mt-2 mb-3 rounded-md bg-[#a45e38]/10 px-3 py-2 text-xs text-[#7d4226]">{connectionError}</p>
-				{/if}
+				<button
+					class="btn btn-ghost btn-xs btn-square"
+					aria-label="Later connection"
+					disabled={changingConnection}
+					onclick={() => onconnectionchange?.(segment!, 1)}
+				>
+					<IconChevronRight class="h-4 w-4" />
+				</button>
+			</div>
+			{#if connectionError}
+				<p class="-mt-2 mb-3 rounded-md bg-[#a45e38]/10 px-3 py-2 text-xs text-[#7d4226]">
+					{connectionError}
+				</p>
 			{/if}
-					{#if walkTo > 0}
-					<svelte:element
-						this={walkToClickable ? 'button' : 'div'}
-						type={walkToClickable ? 'button' : undefined}
-						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {walkToActive ? 'bg-[#008d4f]/10 -mx-2 px-2 py-1.5' : ''} {walkToClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
-						onclick={walkToClickable ? handleWalkToClick : undefined}
-						onkeydown={walkToClickable ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkToClick() : undefined}
+		{/if}
+		{#if walkTo > 0}
+			<svelte:element
+				this={walkToClickable ? 'button' : 'div'}
+				type={walkToClickable ? 'button' : undefined}
+				class="flex items-start gap-3 rounded-lg pb-3 transition-colors {walkToActive
+					? '-mx-2 bg-[#008d4f]/10 px-2 py-1.5'
+					: ''} {walkToClickable ? 'hover:bg-base-200/60 cursor-pointer' : ''}"
+				onclick={walkToClickable ? handleWalkToClick : undefined}
+				onkeydown={walkToClickable
+					? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkToClick()
+					: undefined}
+			>
+				<div class="flex flex-col items-center">
+					<div
+						class="flex h-8 w-8 items-center justify-center rounded-full transition-all {walkToActive
+							? 'bg-[#008d4f] text-white ring-2 ring-[#008d4f]/30 ring-offset-1'
+							: 'bg-base-300'}"
 					>
-						<div class="flex flex-col items-center">
-							<div
-								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkToActive ? 'bg-[#008d4f] text-white ring-2 ring-[#008d4f]/30 ring-offset-1' : 'bg-base-300'}"
-							>
-								<IconWalk class="h-4 w-4" />
-							</div>
-							<div class="w-0.5 flex-1 bg-base-300 mt-1"></div>
+						<IconWalk class="h-4 w-4" />
+					</div>
+					<div class="bg-base-300 mt-1 w-0.5 flex-1"></div>
+				</div>
+				<div class="flex-1 pt-1">
+					<p class="text-sm font-medium {walkToActive ? 'text-[#008d4f]' : 'text-base-content/70'}">
+						Walk to station · {walkLabel({
+							durationMinutes: walkTo,
+							distanceM: accessWalkTo?.distanceM
+						} as TransitLeg)}
+					</p>
+				</div>
+				{#if walkToClickable}
+					<span class="text-primary self-center text-base opacity-70" aria-hidden="true">›</span>
+				{/if}
+			</svelte:element>
+		{/if}
+
+		{#each visibleLegs as leg, i}
+			{@const wait = waitBefore(i)}
+			{@const active = activeLegIndex === i}
+
+			{#if wait > 1 && leg.type === 'transport'}
+				<div class="flex items-start gap-3 pb-3">
+					<div class="flex flex-col items-center">
+						<div class="bg-base-300 h-full w-0.5"></div>
+					</div>
+					<div class="text-base-content/50 flex items-center gap-1.5 px-1 py-1 text-xs font-medium">
+						<IconTimer class="h-3.5 w-3.5" />
+						<span>Umstieg · {formatDuration(wait)}</span>
+					</div>
+				</div>
+			{/if}
+
+			{@const color = leg.type === 'transport' ? transitColor(leg.product) : ''}
+			{@const clickableWalk = leg.type === 'walking' && isWalkingLegClickable(leg)}
+			<svelte:element
+				this={clickableWalk ? 'button' : 'div'}
+				type={clickableWalk ? 'button' : undefined}
+				class="flex items-start gap-3 rounded-lg pb-3 transition-colors {clickableWalk
+					? 'hover:bg-base-200/60 cursor-pointer'
+					: ''}"
+				style={active
+					? `background: ${color ? color + '15' : 'color-mix(in oklch, var(--color-primary) 8%, transparent)'}; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;`
+					: ''}
+				onclick={clickableWalk ? () => handleWalkingLegClick(leg) : undefined}
+				onkeydown={clickableWalk
+					? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkingLegClick(leg)
+					: undefined}
+			>
+				<div class="flex flex-col items-center">
+					{#if leg.type === 'walking'}
+						<div
+							class="flex h-8 w-8 items-center justify-center rounded-full transition-all {active
+								? 'text-white ring-2 ring-offset-1'
+								: 'bg-base-300'}"
+							style={active
+								? 'background: var(--color-primary); --tw-ring-color: color-mix(in oklch, var(--color-primary) 30%, transparent)'
+								: ''}
+						>
+							<IconWalk class="h-4 w-4" />
 						</div>
-						<div class="pt-1 flex-1">
-							<p class="text-sm font-medium {walkToActive ? 'text-[#008d4f]' : 'text-base-content/70'}">Walk to station · {walkLabel({ durationMinutes: walkTo, distanceM: accessWalkTo?.distanceM } as TransitLeg)}</p>
-						</div>
-							{#if walkToClickable}
-								<span class="text-base text-primary self-center opacity-70" aria-hidden="true">›</span>
+					{:else}
+						<div
+							class="flex h-8 w-8 items-center justify-center rounded-full text-[10px] leading-none font-bold text-white transition-all {active
+								? 'ring-2 ring-offset-1'
+								: ''}"
+							style="background: {color}; {active ? `--tw-ring-color: ${color}50` : ''}"
+						>
+							{#if leg.product === 'Bus'}
+								<IconBus class="h-4 w-4" />
+							{:else if leg.product === 'STR'}
+								<IconTram class="h-4 w-4" />
+							{:else if leg.product === 'U'}
+								<IconSubway class="h-4 w-4" />
+							{:else}
+								<IconTrain class="h-4 w-4" />
 							{/if}
-						</svelte:element>
-						{/if}
-
-				{#each visibleLegs as leg, i}
-					{@const wait = waitBefore(i)}
-					{@const active = activeLegIndex === i}
-
-					{#if wait > 1 && leg.type === 'transport'}
-							<div class="flex gap-3 items-start pb-3">
-								<div class="flex flex-col items-center">
-									<div class="w-0.5 h-full bg-base-300"></div>
-								</div>
-								<div class="flex items-center gap-2.5 rounded-lg border-2 border-[#e6a527]/55 bg-[#e6a527]/15 px-3 py-2 text-sm font-extrabold text-[#674500] shadow-sm">
-									<IconTimer class="h-5 w-5" />
-									<span>Umstieg · {formatDuration(wait)}</span>
-								</div>
 						</div>
 					{/if}
+					{#if i < visibleLegs.length - 1}
+						<div
+							class="mt-1 w-0.5 flex-1"
+							class:bg-base-300={leg.type === 'walking'}
+							style={leg.type === 'transport' ? `background: ${color}` : ''}
+						></div>
+					{/if}
+				</div>
 
-					{@const color = leg.type === 'transport' ? transitColor(leg.product) : ''}
-					{@const clickableWalk = leg.type === 'walking' && isWalkingLegClickable(leg)}
-					<svelte:element
-						this={clickableWalk ? 'button' : 'div'}
-						type={clickableWalk ? 'button' : undefined}
-						class="flex gap-3 items-start pb-3 rounded-lg transition-colors {clickableWalk ? 'cursor-pointer hover:bg-base-200/60' : ''}"
-						style={active
-							? `background: ${color ? color + '15' : 'color-mix(in oklch, var(--color-primary) 8%, transparent)'}; margin-inline: -0.5rem; padding: 0.375rem 0.5rem;`
-							: ''}
-						onclick={clickableWalk ? () => handleWalkingLegClick(leg) : undefined}
-						onkeydown={clickableWalk ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkingLegClick(leg) : undefined}
-					>
-						<div class="flex flex-col items-center">
-							{#if leg.type === 'walking'}
-								<div
-									class="w-8 h-8 rounded-full flex items-center justify-center transition-all {active ? 'text-white ring-2 ring-offset-1' : 'bg-base-300'}"
-									style={active
-										? 'background: var(--color-primary); --tw-ring-color: color-mix(in oklch, var(--color-primary) 30%, transparent)'
-										: ''}
-								>
-									<IconWalk class="h-4 w-4" />
-								</div>
-							{:else}
-								<div
-									class="w-8 h-8 rounded-full text-white flex items-center justify-center text-[10px] font-bold leading-none transition-all {active ? 'ring-2 ring-offset-1' : ''}"
-									style="background: {color}; {active ? `--tw-ring-color: ${color}50` : ''}"
-								>
-									{#if leg.product === 'Bus'}
-										<IconBus class="h-4 w-4" />
-									{:else if leg.product === 'STR'}
-										<IconTram class="h-4 w-4" />
-									{:else if leg.product === 'U'}
-										<IconSubway class="h-4 w-4" />
-									{:else}
-										<IconTrain class="h-4 w-4" />
-									{/if}
-								</div>
-							{/if}
-							{#if i < visibleLegs.length - 1}
-								<div
-									class="w-0.5 flex-1 mt-1"
-									class:bg-base-300={leg.type === 'walking'}
-									style={leg.type === 'transport' ? `background: ${color}` : ''}
-								></div>
-							{/if}
-						</div>
-
-						<div class="flex-1 min-w-0 pt-0.5">
-							{#if leg.type === 'walking'}
-								<p class="text-sm {active ? 'text-primary font-medium' : 'text-base-content/60'}">Walk · {walkLabel(leg)}</p>
-							{:else}
-								<div class="flex items-center gap-2 flex-wrap">
-									<span class="badge badge-sm font-mono text-white border-0" style="background: {color}">{lineLabel(leg)}</span>
-									{#if leg.direction}
-										<span class="text-xs text-base-content/40 truncate"
-											>→ {leg.direction}</span
-										>
-									{/if}
-								</div>
-
-								<div class="mt-1.5 flex items-center gap-2 text-sm">
-									<span class="font-mono font-semibold"
-										>{fmtTime(leg.departure)}</span
-									>
-										<span class="truncate">{leg.departureStation}</span>
-										{#if stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)}
-											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)!} target="_blank" rel="noreferrer" aria-label={`Find station map for ${leg.departureStation}`} title="Find station map">
-												<IconMap class="h-3.5 w-3.5" />
-											</a>
-										{/if}
-											{#if leg.platform}
-											<span class="shrink-0 rounded-md border-2 border-[#172a45]/65 bg-[#fffdf7] px-2 py-0.5 text-xs font-extrabold text-[#172a45]"
-												>Gleis {leg.platform}</span
-											>
-									{/if}
-								</div>
-
-								<div class="ml-[18px] border-l-2 pl-3 py-1.5" style="border-color: {color}50">
-									<span class="text-xs text-base-content/40"
-										>{formatDuration(leg.durationMinutes)}</span
-									>
-								</div>
-
-								<div class="flex items-center gap-2 text-sm">
-									<span class="font-mono font-semibold"
-										>{fmtTime(leg.arrival)}</span
-									>
-										<span class="truncate">{leg.arrivalStation}</span>
-										{#if stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)}
-											<a class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]" href={stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)!} target="_blank" rel="noreferrer" aria-label={`Find station map for ${leg.arrivalStation}`} title="Find station map">
-												<IconMap class="h-3.5 w-3.5" />
-											</a>
-										{/if}
-									</div>
-							{/if}
-						</div>
-
-							{#if clickableWalk}
-								<span class="text-base text-primary self-center opacity-70 shrink-0" aria-hidden="true">›</span>
-							{/if}
-						</svelte:element>
-				{/each}
-
-				{#if walkFrom > 0}
-					<svelte:element
-						this={walkFromClickable ? 'button' : 'div'}
-						type={walkFromClickable ? 'button' : undefined}
-						class="flex gap-3 items-start rounded-lg transition-colors {walkFromActive ? 'bg-primary/10 -mx-2 px-2 py-1.5' : ''} {walkFromClickable ? 'cursor-pointer hover:bg-base-200/60' : ''}"
-						onclick={walkFromClickable ? handleWalkFromClick : undefined}
-						onkeydown={walkFromClickable ? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkFromClick() : undefined}
-					>
-						<div class="flex flex-col items-center">
-							<div
-								class="w-8 h-8 rounded-full flex items-center justify-center transition-all {walkFromActive ? 'bg-primary text-primary-content ring-2 ring-primary/30 ring-offset-1' : 'bg-base-300'}"
+				<div class="min-w-0 flex-1 pt-0.5">
+					{#if leg.type === 'walking'}
+						<p class="text-sm {active ? 'text-primary font-medium' : 'text-base-content/60'}">
+							Walk · {walkLabel(leg)}
+						</p>
+					{:else}
+						<div class="flex flex-wrap items-center gap-2">
+							<span class="badge badge-sm border-0 font-mono text-white" style="background: {color}"
+								>{lineLabel(leg)}</span
 							>
-								<IconWalk class="h-4 w-4" />
-							</div>
-						</div>
-						<div class="pt-1 flex-1">
-								<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">Walk from station · {walkLabel({ durationMinutes: walkFrom, distanceM: accessWalkFrom?.distanceM } as TransitLeg)}</p>
-						</div>
-							{#if walkFromClickable}
-								<span class="text-base text-primary self-center opacity-70" aria-hidden="true">›</span>
+							{#if leg.direction}
+								<span class="text-base-content/40 truncate text-xs">→ {leg.direction}</span>
 							{/if}
-						</svelte:element>
-						{/if}
+						</div>
+
+						<div class="mt-1.5 flex items-center gap-2 text-sm">
+							<span class="font-mono font-semibold">{fmtTime(leg.departure)}</span>
+							<span class="truncate">{leg.departureStation}</span>
+							{#if stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)}
+								<a
+									class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]"
+									href={stationMapUrl(leg.departureStation, leg.product, leg.departureStationId)!}
+									target="_blank"
+									rel="noreferrer"
+									aria-label={`Find station map for ${leg.departureStation}`}
+									title="Find station map"
+								>
+									<IconMap class="h-3.5 w-3.5" />
+								</a>
+							{/if}
+							{#if leg.platform}
+								<span
+									class="shrink-0 rounded-md border-2 border-[#172a45]/65 bg-[#fffdf7] px-2 py-0.5 text-xs font-extrabold text-[#172a45]"
+									>Gleis {leg.platform}</span
+								>
+							{/if}
+						</div>
+
+						<div class="ml-[18px] border-l-2 py-1.5 pl-3" style="border-color: {color}50">
+							<span class="text-base-content/40 text-xs">{formatDuration(leg.durationMinutes)}</span
+							>
+						</div>
+
+						<div class="flex items-center gap-2 text-sm">
+							<span class="font-mono font-semibold">{fmtTime(leg.arrival)}</span>
+							<span class="truncate">{leg.arrivalStation}</span>
+							{#if stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)}
+								<a
+									class="btn btn-ghost btn-xs btn-square shrink-0 text-[#172a45]"
+									href={stationMapUrl(leg.arrivalStation, leg.product, leg.arrivalStationId)!}
+									target="_blank"
+									rel="noreferrer"
+									aria-label={`Find station map for ${leg.arrivalStation}`}
+									title="Find station map"
+								>
+									<IconMap class="h-3.5 w-3.5" />
+								</a>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				{#if clickableWalk}
+					<span class="text-primary shrink-0 self-center text-base opacity-70" aria-hidden="true"
+						>›</span
+					>
+				{/if}
+			</svelte:element>
+		{/each}
+
+		{#if walkFrom > 0}
+			<svelte:element
+				this={walkFromClickable ? 'button' : 'div'}
+				type={walkFromClickable ? 'button' : undefined}
+				class="flex items-start gap-3 rounded-lg transition-colors {walkFromActive
+					? 'bg-primary/10 -mx-2 px-2 py-1.5'
+					: ''} {walkFromClickable ? 'hover:bg-base-200/60 cursor-pointer' : ''}"
+				onclick={walkFromClickable ? handleWalkFromClick : undefined}
+				onkeydown={walkFromClickable
+					? (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && handleWalkFromClick()
+					: undefined}
+			>
+				<div class="flex flex-col items-center">
+					<div
+						class="flex h-8 w-8 items-center justify-center rounded-full transition-all {walkFromActive
+							? 'bg-primary text-primary-content ring-primary/30 ring-2 ring-offset-1'
+							: 'bg-base-300'}"
+					>
+						<IconWalk class="h-4 w-4" />
+					</div>
+				</div>
+				<div class="flex-1 pt-1">
+					<p class="text-sm font-medium {walkFromActive ? 'text-primary' : 'text-base-content/70'}">
+						Walk from station · {walkLabel({
+							durationMinutes: walkFrom,
+							distanceM: accessWalkFrom?.distanceM
+						} as TransitLeg)}
+					</p>
+				</div>
+				{#if walkFromClickable}
+					<span class="text-primary self-center text-base opacity-70" aria-hidden="true">›</span>
+				{/if}
+			</svelte:element>
+		{/if}
 
 		{#if visibleLegs.length === 0}
 			<p class="text-base-content/50 py-6 text-center text-sm">

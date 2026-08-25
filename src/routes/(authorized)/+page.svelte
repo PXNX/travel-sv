@@ -13,6 +13,7 @@
 	import IconAdd from '~icons/material-symbols/add-rounded';
 	import IconMap from '~icons/material-symbols/map-outline-rounded';
 	import IconAutoAwesome from '~icons/material-symbols/auto-awesome-rounded';
+	import IconCheckCircle from '~icons/material-symbols/check-circle-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,7 +67,20 @@
 		{/snippet}
 	</PageHeader>
 
-		<main class="mx-auto max-w-2xl p-4 sm:p-5">
+	<main class="mx-auto max-w-2xl p-4 sm:p-5">
+		{#if data.completedCount > 0}
+			<a
+				href="/journeys/completed"
+				class="mb-4 flex items-center justify-between border-y border-[#172a45]/20 bg-[#fffdf7] px-3 py-2.5 text-sm font-semibold text-[#172a45] transition-colors hover:bg-[#eef4f8]"
+			>
+				<span class="flex items-center gap-2"
+					><IconCheckCircle class="h-5 w-5 text-[#008d4f]" />Completed trips</span
+				>
+				<span class="text-xs font-medium text-[#172a45]/60"
+					>{data.completedCount} {data.completedCount === 1 ? 'trip' : 'trips'} →</span
+				>
+			</a>
+		{/if}
 		{#if journeys.length === 0}
 			<EmptyState
 				icon={IconMap}
@@ -80,13 +94,20 @@
 			</EmptyState>
 		{:else}
 			{#if totalStops > 0 || totalDuration > 0}
-					<div class="mb-5 grid grid-cols-3 gap-px border-y border-[#172a45]/20 bg-[#172a45]/20" class:animate-fade-in-up={mounted}>
+				<div
+					class="mb-5 grid grid-cols-3 gap-px border-y border-[#172a45]/20 bg-[#172a45]/20"
+					class:animate-fade-in-up={mounted}
+				>
 					<StatTile
 						value={journeys.length}
 						label={journeys.length === 1 ? 'Journey' : 'Journeys'}
 						tone="primary"
 					/>
-					<StatTile value={totalStops} label={totalStops === 1 ? 'Stop' : 'Stops'} tone="secondary" />
+					<StatTile
+						value={totalStops}
+						label={totalStops === 1 ? 'Stop' : 'Stops'}
+						tone="secondary"
+					/>
 					<StatTile
 						value={totalDuration > 0 ? formatDuration(totalDuration) : '—'}
 						label="Total Time"
@@ -95,7 +116,7 @@
 				</div>
 			{/if}
 
-				<div class="flex flex-col gap-3 border-t border-[#172a45]/25 pt-3">
+			<div class="flex flex-col gap-3 border-t border-[#172a45]/25 pt-3">
 				{#each journeys as journey, i (journey.id)}
 					<div
 						class:animate-fade-in-up={mounted}

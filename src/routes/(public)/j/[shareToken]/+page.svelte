@@ -15,7 +15,9 @@
 	let { data }: { data: PageData } = $props();
 
 	let journey = $derived(data.journey);
-	let sortedStops = $derived([...(data.stops as Stop[])].sort((a, b) => a.orderIndex - b.orderIndex));
+	let sortedStops = $derived(
+		[...(data.stops as Stop[])].sort((a, b) => a.orderIndex - b.orderIndex)
+	);
 	let journeySegments = $derived(data.segments as Segment[]);
 
 	const arrivalTimes = $derived(
@@ -35,30 +37,24 @@
 	let walkToName = $state('');
 
 	const startTime = $derived(arrivalTimes[0] ?? null);
-	const endTime = $derived(
-		arrivalTimes.length > 0 ? arrivalTimes[arrivalTimes.length - 1] : null
-	);
+	const endTime = $derived(arrivalTimes.length > 0 ? arrivalTimes[arrivalTimes.length - 1] : null);
 	const totalDurationMin = $derived(
-		startTime && endTime
-			? (endTime.getTime() - startTime.getTime()) / 60000
-			: null
+		startTime && endTime ? (endTime.getTime() - startTime.getTime()) / 60000 : null
 	);
 	const totalWalkDistanceM = $derived(
-		journeySegments
-			.filter((s) => s.mode === 'walk')
-			.reduce((sum, s) => sum + (s.distanceM ?? 0), 0)
+		journeySegments.filter((s) => s.mode === 'walk').reduce((sum, s) => sum + (s.distanceM ?? 0), 0)
 	);
 	const spansMultipleDays = $derived(
-		startTime && endTime
-			? startTime.toDateString() !== endTime.toDateString()
-			: false
+		startTime && endTime ? startTime.toDateString() !== endTime.toDateString() : false
 	);
 
 	function fmtTime(date: Date): string {
 		if (spansMultipleDays) {
-			return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+			return (
+				date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
 				', ' +
-				date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+				date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+			);
 		}
 		return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 	}
@@ -73,13 +69,13 @@
 
 	const transitFromCoords = $derived.by((): [number, number] | undefined => {
 		if (!detailSegment) return undefined;
-		const stop = sortedStops.find(s => s.id === detailSegment!.fromStopId);
+		const stop = sortedStops.find((s) => s.id === detailSegment!.fromStopId);
 		return stop ? [stop.lat, stop.lon] : undefined;
 	});
 
 	const transitToCoords = $derived.by((): [number, number] | undefined => {
 		if (!detailSegment) return undefined;
-		const stop = sortedStops.find(s => s.id === detailSegment!.toStopId);
+		const stop = sortedStops.find((s) => s.id === detailSegment!.toStopId);
 		return stop ? [stop.lat, stop.lon] : undefined;
 	});
 
@@ -105,22 +101,29 @@
 
 <svelte:head><title>{journey.title} — Shared Journey</title></svelte:head>
 
-<div class="min-h-[100dvh] bg-base-100">
-	<header class="flex items-center justify-between border-b border-base-300 px-4 py-3">
+<div class="bg-base-100 min-h-[100dvh]">
+	<header class="border-base-300 flex items-center justify-between border-b px-4 py-3">
 		<div class="flex items-center gap-2">
 			<a href="/" class="btn btn-ghost btn-sm">
 				<IconArrowBack class="h-5 w-5" />
 			</a>
 			<div>
 				<h1 class="text-lg font-bold">{journey.title}</h1>
-				<p class="text-xs text-base-content/50">by {journey.ownerName}</p>
+				<p class="text-base-content/50 text-xs">by {journey.ownerName}</p>
 			</div>
 		</div>
 
-		<form method="POST" action="?/import" use:enhance={() => {
-			isImporting = true;
-			return async ({ update }) => { await update(); isImporting = false; };
-		}}>
+		<form
+			method="POST"
+			action="?/import"
+			use:enhance={() => {
+				isImporting = true;
+				return async ({ update }) => {
+					await update();
+					isImporting = false;
+				};
+			}}
+		>
 			<button class="btn btn-primary btn-sm gap-1.5" disabled={isImporting}>
 				{#if isImporting}
 					<span class="loading loading-spinner loading-xs"></span>
@@ -134,41 +137,46 @@
 
 	<main class="mx-auto max-w-2xl p-4">
 		{#if journey.description}
-			<p class="mb-4 text-sm text-base-content/70">{journey.description}</p>
+			<p class="text-base-content/70 mb-4 text-sm">{journey.description}</p>
 		{/if}
 
 		{#if sortedStops.length > 0 || (startTime && endTime && totalDurationMin != null)}
-	<div class="mb-4 overflow-hidden rounded-xl border border-base-300">
-			{#if browser && sortedStops.length > 0}
-			<div class="h-40 pointer-events-none select-none" aria-hidden="true">
-				{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
-					<MiniMap coords={sortedStops.map(s => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
-				{/await}
-			</div>
-		{/if}
+			<div class="border-base-300 mb-4 overflow-hidden rounded-xl border">
+				{#if browser && sortedStops.length > 0}
+					<div class="pointer-events-none h-40 select-none" aria-hidden="true">
+						{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
+							<MiniMap
+								coords={sortedStops.map((s) => ({ lat: s.lat, lon: s.lon }))}
+								class="h-full w-full"
+							/>
+						{/await}
+					</div>
+				{/if}
 
-		{#if startTime && endTime && totalDurationMin != null}
-			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 bg-base-200/50 px-4 py-2.5 text-sm">
-				<span class="flex items-center gap-1.5 text-base-content/70">
-					<IconClock class="h-4 w-4 shrink-0" />
-					{fmtTime(startTime)} – {fmtTime(endTime)}
-				</span>
-				<span class="text-base-content/30">·</span>
-				<span class="flex items-center gap-1.5 text-base-content/70">
-					<IconTimer class="h-4 w-4 shrink-0" />
-					{formatDuration(totalDurationMin)}
-				</span>
-				{#if totalWalkDistanceM > 0}
-					<span class="text-base-content/30">·</span>
-					<span class="flex items-center gap-1.5 text-base-content/70">
-						<IconWalk class="h-4 w-4 shrink-0" />
-						{formatDistance(totalWalkDistanceM)}
-					</span>
+				{#if startTime && endTime && totalDurationMin != null}
+					<div
+						class="bg-base-200/50 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm"
+					>
+						<span class="text-base-content/70 flex items-center gap-1.5">
+							<IconClock class="h-4 w-4 shrink-0" />
+							{fmtTime(startTime)} – {fmtTime(endTime)}
+						</span>
+						<span class="text-base-content/30">·</span>
+						<span class="text-base-content/70 flex items-center gap-1.5">
+							<IconTimer class="h-4 w-4 shrink-0" />
+							{formatDuration(totalDurationMin)}
+						</span>
+						{#if totalWalkDistanceM > 0}
+							<span class="text-base-content/30">·</span>
+							<span class="text-base-content/70 flex items-center gap-1.5">
+								<IconWalk class="h-4 w-4 shrink-0" />
+								{formatDistance(totalWalkDistanceM)}
+							</span>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		{/if}
-	</div>
-{/if}
 
 		{#each sortedStops as stop, i (stop.id)}
 			{#if i > 0}
@@ -186,31 +194,43 @@
 					</div>
 
 					{#if arrivalTimes[i]}
-						<span class="flex items-center gap-1 text-xs text-base-content/50">
+						<span class="text-base-content/50 flex items-center gap-1 text-xs">
 							<IconClock class="h-3.5 w-3.5" />
 							{arrivalTimes[i]?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
 						</span>
 					{/if}
 
 					{#if stop.stayDurationMinutes}
-						<span class="text-xs text-base-content/60">
+						<span class="text-base-content/60 text-xs">
 							Stay: {formatDuration(stop.stayDurationMinutes)}
 						</span>
 					{/if}
 
 					{#if stop.notes}
-						<p class="text-xs text-base-content/50 mt-1">{stop.notes}</p>
+						<p class="text-base-content/50 mt-1 text-xs">{stop.notes}</p>
 					{/if}
 				</div>
 			</div>
 		{/each}
 	</main>
-	</div>
+</div>
 
-	<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} />
+<TransitDetailModal
+	bind:open={showTransitDetail}
+	segment={detailSegment}
+	readonly
+	fromCoords={transitFromCoords}
+	toCoords={transitToCoords}
+	onwalkclick={handleTransitWalkClick}
+/>
 
-	{#if browser && showWalkRoute}
-		{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
-			<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
-		{/await}
-	{/if}
+{#if browser && showWalkRoute}
+	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+		<WalkRouteModal
+			bind:open={showWalkRoute}
+			segment={detailSegment}
+			fromName={walkFromName}
+			toName={walkToName}
+		/>
+	{/await}
+{/if}

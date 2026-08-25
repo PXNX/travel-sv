@@ -15,7 +15,13 @@
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { cacheJourney } from '$lib/db/local';
+	import {
+		cacheJourney,
+		clearLocalJourneyDraft,
+		getLocalJourneyDraft,
+		saveLocalJourneyDraft,
+		type LocalJourneySnapshot
+	} from '$lib/db/local';
 	import { flip } from 'svelte/animate';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 	import IconShare from '~icons/material-symbols/share-outline';
@@ -32,19 +38,34 @@
 	let journeyStops = $state<Stop[]>([]);
 	let journeySegments = $state<Segment[]>([]);
 
-	$effect.pre(() => { journey = data.journey; });
-	$effect.pre(() => { journeyStops = data.stops as Stop[]; });
-	$effect.pre(() => { journeySegments = data.segments as Segment[]; });
+	$effect.pre(() => {
+		journey = data.journey;
+	});
+	$effect.pre(() => {
+		journeyStops = data.stops as Stop[];
+	});
+	$effect.pre(() => {
+		journeySegments = data.segments as Segment[];
+	});
 
 	let editingTitle = $state(false);
 	let titleInput = $state('');
 	let startDatetime = $state('');
 
-	$effect.pre(() => { titleInput = data.journey.title; });
-	$effect.pre(() => { startDatetime = data.journey.startDatetime ?? ''; });
+	$effect.pre(() => {
+		titleInput = data.journey.title;
+	});
+	$effect.pre(() => {
+		startDatetime = data.journey.startDatetime ?? '';
+	});
 
 	let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
 	let saveTimer: ReturnType<typeof setTimeout>;
+	let syncState = $state<'synced' | 'local' | 'conflict' | 'uploading'>('synced');
+	let localBaseUpdatedAt = $state<string | null>(null);
+	let syncError = $state<string | null>(null);
+	let localStopId = $state(-1);
+	let localSegmentId = $state(-1);
 
 	let showLocationPicker = $state(false);
 	let insertAtIndex = $state<number | null>(null);
@@ -71,13 +92,13 @@
 
 	const transitFromCoords = $derived.by((): [number, number] | undefined => {
 		if (!detailSegment) return undefined;
-		const stop = dndItems.find(s => s.id === detailSegment!.fromStopId);
+		const stop = dndItems.find((s) => s.id === detailSegment!.fromStopId);
 		return stop ? [stop.lat, stop.lon] : undefined;
 	});
 
 	const transitToCoords = $derived.by((): [number, number] | undefined => {
 		if (!detailSegment) return undefined;
-		const stop = dndItems.find(s => s.id === detailSegment!.toStopId);
+		const stop = dndItems.find((s) => s.id === detailSegment!.toStopId);
 		return stop ? [stop.lat, stop.lon] : undefined;
 	});
 
@@ -86,18 +107,37 @@
 	let recomputeTimer: ReturnType<typeof setTimeout>;
 
 	let dndItems = $state<(Stop & { id: number })[]>([]);
-	$effect(() => { dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex); });
+	$effect(() => {
+		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
+	});
 
 	const hasTransitSegments = $derived(journeySegments.some((s) => s.mode === 'transit'));
+	const isReadOnly = $derived(journey.isCompleted === true);
 
-	onMount(() => {
+	onMount(async () => {
 		isOffline = !navigator.onLine;
-		const off = () => { isOffline = true; goto(`/j/${journey.shareToken || journey.id}`).catch(() => {}); };
+		const off = () => {
+			isOffline = true;
+			goto(`/j/${journey.shareToken || journey.id}`).catch(() => {});
+		};
 		const on = () => (isOffline = false);
 		window.addEventListener('offline', off);
 		window.addEventListener('online', on);
-		cacheJourney(journey.id, { journey, stops: journeyStops, segments: journeySegments });
-		return () => { window.removeEventListener('offline', off); window.removeEventListener('online', on); };
+		const draft = await getLocalJourneyDraft(journey.id);
+		if (draft) {
+			journey = draft.snapshot.journey as typeof journey;
+			journeyStops = draft.snapshot.stops;
+			journeySegments = draft.snapshot.segments;
+			localBaseUpdatedAt = draft.baseUpdatedAt;
+			syncState = draft.baseUpdatedAt !== data.journey.updatedAt ? 'conflict' : 'local';
+		} else {
+			localBaseUpdatedAt = data.journey.updatedAt;
+			await cacheJourney(journey.id, { journey, stops: journeyStops, segments: journeySegments });
+		}
+		return () => {
+			window.removeEventListener('offline', off);
+			window.removeEventListener('online', on);
+		};
 	});
 
 	$effect(() => {
@@ -110,7 +150,11 @@
 	});
 
 	const arrivalTimes = $derived(
-		computeDerivedArrivalTimes(dndItems, journeySegments, startDatetime ? new Date(startDatetime) : null)
+		computeDerivedArrivalTimes(
+			dndItems,
+			journeySegments,
+			startDatetime ? new Date(startDatetime) : null
+		)
 	);
 
 	function findSegment(fromId: number, toId: number): Segment | undefined {
@@ -119,6 +163,47 @@
 
 	function stopName(id: number): string {
 		return dndItems.find((s) => s.id === id)?.name ?? '';
+	}
+
+	function snapshot(): LocalJourneySnapshot {
+		return {
+			journey: structuredClone(journey),
+			stops: structuredClone(journeyStops),
+			segments: structuredClone(journeySegments)
+		};
+	}
+
+	async function saveLocally(force = false) {
+		if (isReadOnly && !force) return;
+		showStatus('saving');
+		await saveLocalJourneyDraft(
+			journey.id,
+			snapshot(),
+			localBaseUpdatedAt ?? data.journey.updatedAt
+		);
+		await cacheJourney(journey.id, snapshot());
+		syncState = syncState === 'conflict' ? 'conflict' : 'local';
+		showStatus('saved');
+	}
+
+	function rebuildLocalSegments(stopsToConnect: Stop[]) {
+		const ordered = [...stopsToConnect].sort((a, b) => a.orderIndex - b.orderIndex);
+		journeySegments = ordered.slice(1).map((stop, index) => {
+			const fromStop = ordered[index];
+			return (
+				journeySegments.find(
+					(segment) => segment.fromStopId === fromStop.id && segment.toStopId === stop.id
+				) ?? {
+					id: localSegmentId--,
+					journeyId: journey.id,
+					fromStopId: fromStop.id,
+					toStopId: stop.id,
+					mode: 'walk' as SegmentMode,
+					travelDurationMinutes: null,
+					distanceM: null
+				}
+			);
+		});
 	}
 
 	async function postAction(action: string, fields: Record<string, string>) {
@@ -142,29 +227,19 @@
 	}
 
 	function scheduleTransitRecompute() {
-		if (!hasTransitSegments) return;
-		clearTimeout(recomputeTimer);
-		recomputeTimer = setTimeout(() => {
-			showRecomputeConfirm = true;
-		}, 2000);
+		if (hasTransitSegments && !isReadOnly) showRecomputeConfirm = true;
 	}
 
 	async function confirmRecomputeTransit() {
 		showRecomputeConfirm = false;
-		isRecomputing = true;
-		showStatus('saving');
-		await postAction('recomputeTransit', {});
 		isRecomputing = false;
-		showStatus('saved');
+		syncError = 'Connection updates run when you upload your local changes.';
 	}
 
 	async function saveTransitSettings() {
-		savingTransitSettings = true;
-		showStatus('saving');
-		await postAction('updateJourney', { minimumTransferMinutes: String(minimumTransferMinutes), deutschlandticketOnly: String(deutschlandticketOnly) });
-		savingTransitSettings = false;
+		journey = { ...journey, minimumTransferMinutes, deutschlandticketOnly };
+		await saveLocally();
 		showTransitSettings = false;
-		showStatus('saved');
 	}
 
 	function dismissRecompute() {
@@ -175,9 +250,15 @@
 		clearTimeout(saveTimer);
 		showStatus('saving');
 		saveTimer = setTimeout(async () => {
-			await postAction('updateJourney', fields);
-			showStatus('saved');
-		}, 1500);
+			journey = {
+				...journey,
+				...(fields.title !== undefined ? { title: fields.title } : {}),
+				...(fields.startDatetime !== undefined
+					? { startDatetime: fields.startDatetime || null }
+					: {})
+			};
+			await saveLocally();
+		}, 250);
 	}
 
 	function saveTitle() {
@@ -210,53 +291,107 @@
 		}
 	};
 
-	function handleDndConsider(e: CustomEvent<{ items: (Stop & { id: number })[] }>) { dndItems = e.detail.items; }
+	function handleDndConsider(e: CustomEvent<{ items: (Stop & { id: number })[] }>) {
+		dndItems = e.detail.items;
+	}
 	async function handleDndFinalize(e: CustomEvent<{ items: (Stop & { id: number })[] }>) {
+		if (isReadOnly) return;
 		dndItems = e.detail.items;
 		journeyStops = dndItems.map((s, i) => ({ ...s, orderIndex: i }));
-		showStatus('saving');
-		await postAction('reorderStops', { stopIds: JSON.stringify(dndItems.map((s) => s.id)) });
-		showStatus('saved');
+		rebuildLocalSegments(journeyStops);
+		await saveLocally();
 	}
 
-	function addStop(insertIndex?: number) { insertAtIndex = insertIndex ?? null; locationPickerStop = null; showLocationPicker = true; }
+	function addStop(insertIndex?: number) {
+		insertAtIndex = insertIndex ?? null;
+		locationPickerStop = null;
+		showLocationPicker = true;
+	}
 
 	async function handleLocationConfirm(result: { name: string; lat: number; lon: number }) {
-		const orderIndex = insertAtIndex !== null ? insertAtIndex : dndItems.length > 0 ? dndItems[dndItems.length - 1].orderIndex + 1 : 0;
-		showStatus('saving');
-		await postAction('addStop', { name: result.name, lat: String(result.lat), lon: String(result.lon), orderIndex: String(orderIndex), stayDurationMinutes: '60' });
-		showStatus('saved');
+		if (isReadOnly) return;
+		const orderIndex =
+			insertAtIndex !== null
+				? insertAtIndex
+				: dndItems.length > 0
+					? dndItems[dndItems.length - 1].orderIndex + 1
+					: 0;
+		const stop: Stop = {
+			id: localStopId--,
+			journeyId: journey.id,
+			name: result.name,
+			lat: result.lat,
+			lon: result.lon,
+			orderIndex,
+			stayDurationMinutes: 60,
+			notes: null
+		};
+		journeyStops = [
+			...journeyStops.map((entry) =>
+				entry.orderIndex >= orderIndex ? { ...entry, orderIndex: entry.orderIndex + 1 } : entry
+			),
+			stop
+		];
+		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
+		rebuildLocalSegments(journeyStops);
+		await saveLocally();
 	}
 
 	async function updateStop(update: Partial<Stop> & { id: number }) {
-		showStatus('saving');
-		const fields: Record<string, string> = { stopId: String(update.id) };
-		if (update.name !== undefined) fields.name = update.name;
-		if (update.lat !== undefined) fields.lat = String(update.lat);
-		if (update.lon !== undefined) fields.lon = String(update.lon);
-		if (update.stayDurationMinutes !== undefined) fields.stayDurationMinutes = String(update.stayDurationMinutes);
-		if (update.notes !== undefined) fields.notes = update.notes ?? '';
-		await postAction('updateStop', fields);
-		showStatus('saved');
+		if (isReadOnly) return;
+		journeyStops = journeyStops.map((stop) =>
+			stop.id === update.id ? { ...stop, ...update } : stop
+		);
+		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
+		if (update.lat !== undefined || update.lon !== undefined) rebuildLocalSegments(journeyStops);
+		await saveLocally();
+		if (update.stayDurationMinutes !== undefined) scheduleTransitRecompute();
+	}
 
-		if (update.stayDurationMinutes !== undefined) {
-			scheduleTransitRecompute();
+	async function deleteStop(stopId: number) {
+		if (isReadOnly) return;
+		journeyStops = journeyStops
+			.filter((stop) => stop.id !== stopId)
+			.sort((a, b) => a.orderIndex - b.orderIndex)
+			.map((stop, orderIndex) => ({ ...stop, orderIndex }));
+		dndItems = [...journeyStops];
+		rebuildLocalSegments(journeyStops);
+		await saveLocally();
+	}
+
+	function editStopLocation(stop: Stop) {
+		locationPickerStop = stop;
+		showLocationPicker = true;
+	}
+	async function handleLocationUpdateConfirm(result: { name: string; lat: number; lon: number }) {
+		if (locationPickerStop) {
+			await updateStop({
+				id: locationPickerStop.id,
+				name: result.name,
+				lat: result.lat,
+				lon: result.lon
+			});
+			locationPickerStop = null;
 		}
 	}
 
-	async function deleteStop(stopId: number) { showStatus('saving'); await postAction('deleteStop', { stopId: String(stopId) }); showStatus('saved'); }
-
-	function editStopLocation(stop: Stop) { locationPickerStop = stop; showLocationPicker = true; }
-	async function handleLocationUpdateConfirm(result: { name: string; lat: number; lon: number }) {
-		if (locationPickerStop) { await updateStop({ id: locationPickerStop.id, name: result.name, lat: result.lat, lon: result.lon }); locationPickerStop = null; }
-	}
-
 	async function changeSegmentMode(segmentId: number, mode: SegmentMode) {
-		computingSegmentId = segmentId;
-		transitProviderError = null;
-		const result = await postAction('changeSegmentMode', { segmentId: String(segmentId), mode });
-		if (result.type === 'failure') transitProviderError = String((result.data as { error?: string }).error ?? 'The connection could not be updated.');
-		computingSegmentId = null;
+		if (isReadOnly) return;
+		journeySegments = journeySegments.map((segment) =>
+			segment.id === segmentId
+				? {
+						...segment,
+						mode,
+						...(mode !== 'transit'
+							? { transitLegs: null, transitSummary: null, transfers: null }
+							: {})
+					}
+				: segment
+		);
+		await saveLocally();
+		if (mode === 'transit')
+			transitProviderError =
+				'Public-transport connections are refreshed after you upload this local edit.';
 	}
 
 	function openSegmentDetail(seg: Segment) {
@@ -279,29 +414,71 @@
 	}
 
 	async function shiftTransitConnection(segment: Segment, direction: -1 | 1) {
-		changingConnection = true;
-		transitAlternativeError = null;
-		showStatus('saving');
-		const result = await postAction('shiftTransitConnection', { segmentId: String(segment.id), direction: String(direction) });
+		transitAlternativeError =
+			'Alternative connections are searched after your local changes are uploaded.';
+	}
+
+	async function publishJourney() {
+		await postAction('publish', {});
+	}
+	async function unpublishJourney() {
+		shareUrl = null;
+		await postAction('unpublish', {});
+	}
+	async function toggleJourneyComplete() {
+		if (isReadOnly) return;
+		journey = { ...journey, isCompleted: true };
+		await saveLocally(true);
+	}
+
+	async function uploadLocalChanges() {
+		if (isOffline || syncState === 'uploading') return;
+		syncState = 'uploading';
+		syncError = null;
+		const form = new FormData();
+		form.set('baseUpdatedAt', localBaseUpdatedAt ?? '');
+		form.set('snapshot', JSON.stringify(snapshot()));
+		const response = await fetch('?/replaceFromLocal', { method: 'POST', body: form });
+		const result = deserialize(await response.text());
 		if (result.type === 'failure') {
-			transitAlternativeError = String((result.data as { error?: string }).error ?? 'No alternative connection is available.');
-			changingConnection = false;
-			showStatus('idle');
+			const details = result.data as { conflict?: boolean; error?: string } | undefined;
+			syncState = details?.conflict ? 'conflict' : 'local';
+			syncError = details?.conflict
+				? 'The cloud version changed after this local draft began. Uploading would overwrite it.'
+				: (details?.error ?? 'Local changes could not be uploaded.');
 			return;
 		}
-		detailSegment = journeySegments.find((entry) => entry.id === segment.id) ?? null;
-		changingConnection = false;
+		const payload = result.data as {
+			journey?: typeof journey;
+			stops?: Stop[];
+			segments?: Segment[];
+		};
+		if (payload.journey) journey = payload.journey;
+		if (payload.stops) journeyStops = payload.stops;
+		if (payload.segments) journeySegments = payload.segments;
+		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
+		localBaseUpdatedAt = journey.updatedAt;
+		await clearLocalJourneyDraft(journey.id);
+		await cacheJourney(journey.id, snapshot());
+		syncState = 'synced';
 		showStatus('saved');
 	}
 
-	async function publishJourney() { await postAction('publish', {}); }
-	async function unpublishJourney() { shareUrl = null; await postAction('unpublish', {}); }
-	async function toggleJourneyComplete() {
-		showStatus('saving');
-		await postAction('updateJourney', { isCompleted: String(!journey.isCompleted) });
-		showStatus('saved');
+	async function abortLocalEdits() {
+		clearTimeout(saveTimer);
+		await clearLocalJourneyDraft(data.journey.id);
+		journey = data.journey;
+		journeyStops = data.stops as Stop[];
+		journeySegments = data.segments as Segment[];
+		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
+		localBaseUpdatedAt = data.journey.updatedAt;
+		syncState = 'synced';
+		syncError = null;
+		showStatus('idle');
 	}
-	function toggleMapMode() { showMap = !showMap; }
+	function toggleMapMode() {
+		showMap = !showMap;
+	}
 </script>
 
 <svelte:head><title>{journey.title} — Journey Editor</title></svelte:head>
@@ -310,55 +487,153 @@
 
 {#if showMap}
 	{#await import('$lib/components/JourneyMap.svelte') then { default: JourneyMap }}
-		<JourneyMap stops={journeyStops} segments={journeySegments} onback={toggleMapMode} onupdatestop={updateStop} />
+		<JourneyMap
+			stops={journeyStops}
+			segments={journeySegments}
+			onback={toggleMapMode}
+			onupdatestop={isReadOnly ? undefined : updateStop}
+		/>
 	{/await}
 {:else}
-		<div class="travel-page" style="view-transition-name: journey-{journey.id}">
-			<header class="flex flex-wrap items-center gap-2 border-b border-[#172a45]/45 bg-[#fffdf7]/94 px-4 py-3 backdrop-blur-lg">
+	<div class="travel-page" style="view-transition-name: journey-{journey.id}">
+		<header
+			class="flex flex-wrap items-center gap-2 border-b border-[#172a45]/45 bg-[#fffdf7]/94 px-4 py-3 backdrop-blur-lg"
+		>
 			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>
 				<IconArrowBack class="h-5 w-5" />
 			</button>
 			<div class="flex-1">
-				{#if editingTitle}
-					<input class="input input-bordered input-sm w-full max-w-xs" bind:value={titleInput} onblur={saveTitle} onkeydown={(e) => e.key === 'Enter' && saveTitle()} />
+				{#if editingTitle && !isReadOnly}
+					<input
+						class="input input-bordered input-sm w-full max-w-xs"
+						bind:value={titleInput}
+						onblur={saveTitle}
+						onkeydown={(e) => e.key === 'Enter' && saveTitle()}
+					/>
+				{:else if isReadOnly}
+					<p class="travel-display text-xl text-[#172a45]">{journey.title}</p>
 				{:else}
-					<button class="travel-display text-xl text-[#172a45] hover:underline" onclick={() => (editingTitle = true)}>{journey.title}</button>
+					<button
+						class="travel-display text-xl text-[#172a45] hover:underline"
+						onclick={() => (editingTitle = true)}>{journey.title}</button
+					>
 				{/if}
 			</div>
-				<input type="datetime-local" class="input input-bordered input-sm" value={startDatetime ? startDatetime.slice(0, 16) : ''} onchange={updateStartDatetime} />
-				<button class="btn btn-sm gap-1.5 {journey.isCompleted ? 'border-[#008d4f] bg-[#008d4f] text-white hover:bg-[#00753f]' : 'btn-ghost border border-[#172a45]/25'}" onclick={toggleJourneyComplete} aria-pressed={journey.isCompleted}>
-					<IconCheckCircle class="h-4 w-4" />
-					<span class="hidden sm:inline">{journey.isCompleted ? 'Completed' : 'Mark completed'}</span>
-				</button>
-					<button class="btn btn-ghost btn-sm" onclick={() => (showShareModal = true)}>
-					<IconShare class="h-5 w-5" />
-				</button>
-				<button class="btn btn-ghost btn-sm" onclick={() => (showTransitSettings = true)} aria-label="Transit settings">
-					<IconTune class="h-5 w-5" />
-				</button>
-				<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
+			<input
+				type="datetime-local"
+				class="input input-bordered input-sm"
+				value={startDatetime ? startDatetime.slice(0, 16) : ''}
+				onchange={updateStartDatetime}
+				disabled={isReadOnly}
+			/>
+			<button
+				class="btn btn-sm gap-1.5 {journey.isCompleted
+					? 'border-[#008d4f] bg-[#008d4f] text-white'
+					: 'btn-ghost border border-[#172a45]/25'}"
+				onclick={toggleJourneyComplete}
+				aria-pressed={journey.isCompleted}
+				disabled={isReadOnly}
+			>
+				<IconCheckCircle class="h-4 w-4" />
+				<span class="hidden sm:inline">{journey.isCompleted ? 'Completed' : 'Mark completed'}</span>
+			</button>
+			<button
+				class="btn btn-ghost btn-sm"
+				onclick={() => (showShareModal = true)}
+				disabled={isReadOnly}
+				title={isReadOnly ? 'Completed journeys are view only' : 'Share journey'}
+			>
+				<IconShare class="h-5 w-5" />
+			</button>
+			<button
+				class="btn btn-ghost btn-sm"
+				onclick={() => (showTransitSettings = true)}
+				aria-label="Transit settings"
+				disabled={isReadOnly}
+			>
+				<IconTune class="h-5 w-5" />
+			</button>
+			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
 				<IconMap class="h-5 w-5" />
 			</button>
-			{#if saveStatus === 'saving'}<span class="text-xs text-base-content/50">Saving…</span>
-			{:else if saveStatus === 'saved'}<span class="text-xs text-success">Saved ✓</span>{/if}
+			{#if saveStatus === 'saving'}<span class="text-base-content/50 text-xs">Saving…</span>
+			{:else if saveStatus === 'saved'}<span class="text-success text-xs">Saved ✓</span>{/if}
 		</header>
 
-			<main class="mx-auto max-w-2xl p-4 sm:p-5">
-				{#if transitProviderError}
-					<div class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[#a45e38]/35 bg-[#a45e38]/10 px-3 py-2.5 text-sm text-[#713a22]">
-						<p>{transitProviderError}</p>
-						<button class="btn btn-ghost btn-xs btn-square" aria-label="Dismiss transit notice" onclick={() => (transitProviderError = null)}>×</button>
+		<main class="mx-auto max-w-2xl p-4 sm:p-5">
+			{#if isReadOnly}
+				<div
+					class="mb-4 flex items-start gap-3 border border-[#008d4f]/30 bg-[#008d4f]/8 px-3 py-3 text-sm text-[#075e36]"
+				>
+					<IconCheckCircle class="mt-0.5 h-5 w-5 shrink-0" />
+					<div>
+						<strong>Completed journey</strong>
+						<p class="mt-0.5 text-xs text-[#075e36]/80">
+							This trip is preserved as a view-only record.
+						</p>
 					</div>
-				{/if}
-				{#if dndItems.length === 0}
+				</div>
+			{:else if syncState !== 'synced'}
+				<div class="mb-4 border border-[#174a7e]/25 bg-[#f4f7fa] px-3 py-3 text-sm text-[#172a45]">
+					<div class="flex flex-wrap items-center justify-between gap-3">
+						<div>
+							<strong
+								>{syncState === 'conflict'
+									? 'Cloud version changed'
+									: 'Changes saved locally'}</strong
+							>
+							<p class="mt-0.5 text-xs text-[#172a45]/65">
+								{syncState === 'conflict'
+									? 'Choose whether to overwrite the cloud with this local draft or abandon your local edits.'
+									: 'This device has the newest edit. Upload when you are ready.'}
+							</p>
+						</div>
+						<div class="flex gap-2">
+							<button
+								class="btn btn-primary btn-sm"
+								onclick={uploadLocalChanges}
+								disabled={syncState === 'uploading' || isOffline}
+								>{syncState === 'uploading' ? 'Uploading…' : 'Upload changes'}</button
+							>
+							<button
+								class="btn btn-ghost btn-sm"
+								onclick={abortLocalEdits}
+								disabled={syncState === 'uploading'}>Abort edits</button
+							>
+						</div>
+					</div>
+					{#if syncError}<p class="mt-2 border-t border-[#174a7e]/15 pt-2 text-xs text-[#a45e38]">
+							{syncError}
+						</p>{/if}
+				</div>
+			{/if}
+			{#if transitProviderError}
+				<div
+					class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[#a45e38]/35 bg-[#a45e38]/10 px-3 py-2.5 text-sm text-[#713a22]"
+				>
+					<p>{transitProviderError}</p>
+					<button
+						class="btn btn-ghost btn-xs btn-square"
+						aria-label="Dismiss transit notice"
+						onclick={() => (transitProviderError = null)}>×</button
+					>
+				</div>
+			{/if}
+			{#if dndItems.length === 0}
 				<div class="flex flex-col items-center gap-4 py-12 text-center">
-					<IconPin class="h-10 w-10 text-base-content/30" />
+					<IconPin class="text-base-content/30 h-10 w-10" />
 					<p class="text-base-content/60">Add your first stop to get started.</p>
 				</div>
 			{/if}
 
 			<div
-				use:dragHandleZone={{ items: dndItems, flipDurationMs: 200, dropTargetStyle: { outline: '2px dashed oklch(var(--p))', borderRadius: '12px' }, transformDraggedElement }}
+				use:dragHandleZone={{
+					items: dndItems,
+					flipDurationMs: 200,
+					dragDisabled: isReadOnly,
+					dropTargetStyle: { outline: '2px dashed oklch(var(--p))', borderRadius: '12px' },
+					transformDraggedElement
+				}}
 				onconsider={handleDndConsider}
 				onfinalize={handleDndFinalize}
 				class="flex flex-col gap-0"
@@ -371,14 +646,18 @@
 								{#if seg}
 									<SegmentChip
 										segment={seg}
-										onmodechange={changeSegmentMode}
+										readonly={isReadOnly}
+										onmodechange={isReadOnly ? undefined : changeSegmentMode}
 										onclickdetail={openSegmentDetail}
 										loading={computingSegmentId === seg.id}
-										oninsert={() => addStop(stop.orderIndex)}
+										oninsert={isReadOnly ? undefined : () => addStop(stop.orderIndex)}
 									/>
-								{:else}
+								{:else if !isReadOnly}
 									<div class="flex justify-center py-1">
-										<button class="btn btn-ghost btn-xs gap-0.5" onclick={() => addStop(stop.orderIndex)}>
+										<button
+											class="btn btn-ghost btn-xs gap-0.5"
+											onclick={() => addStop(stop.orderIndex)}
+										>
 											<IconAdd class="h-3.5 w-3.5" /> Insert stop
 										</button>
 									</div>
@@ -386,68 +665,152 @@
 							</div>
 						{/if}
 
-						<StopCard {stop} arrivalTime={arrivalTimes[i] ?? null} onupdate={updateStop} ondelete={deleteStop} onpicklocation={editStopLocation} />
+						<StopCard
+							{stop}
+							arrivalTime={arrivalTimes[i] ?? null}
+							readonly={isReadOnly}
+							onupdate={isReadOnly ? undefined : updateStop}
+							ondelete={isReadOnly ? undefined : deleteStop}
+							onpicklocation={isReadOnly ? undefined : editStopLocation}
+						/>
 					</div>
 				{/each}
 			</div>
 
-				<div class="mt-5 flex justify-center border-t border-[#172a45]/25 pt-4">
-				<button class="btn btn-primary btn-sm sm:btn-md gap-1.5" onclick={() => addStop()}>
-					<IconAdd class="h-5 w-5" /> Add Stop
-				</button>
-			</div>
-			</main>
+			{#if !isReadOnly}<div class="mt-5 flex justify-center border-t border-[#172a45]/25 pt-4">
+					<button class="btn btn-primary btn-sm sm:btn-md gap-1.5" onclick={() => addStop()}>
+						<IconAdd class="h-5 w-5" /> Add Stop
+					</button>
+				</div>{/if}
+		</main>
 	</div>
 {/if}
 
 {#if browser && showLocationPicker}
 	{#await import('$lib/components/LocationPicker.svelte') then { default: LocationPicker }}
-		<LocationPicker bind:open={showLocationPicker} initialLat={locationPickerStop?.lat ?? 50} initialLon={locationPickerStop?.lon ?? 8}
-			onconfirm={locationPickerStop ? handleLocationUpdateConfirm : handleLocationConfirm} />
+		<LocationPicker
+			bind:open={showLocationPicker}
+			initialLat={locationPickerStop?.lat ?? 50}
+			initialLon={locationPickerStop?.lon ?? 8}
+			onconfirm={locationPickerStop ? handleLocationUpdateConfirm : handleLocationConfirm}
+		/>
 	{/await}
 {/if}
 
-<ShareModal bind:open={showShareModal} journeyId={journey.id} journeyTitle={journey.title} isPublic={journey.isPublic} {shareUrl}
-	onpublish={publishJourney} onunpublish={unpublishJourney} />
+{#if !isReadOnly}<ShareModal
+		bind:open={showShareModal}
+		journeyId={journey.id}
+		journeyTitle={journey.title}
+		isPublic={journey.isPublic}
+		{shareUrl}
+		onpublish={publishJourney}
+		onunpublish={unpublishJourney}
+	/>
+{/if}
 
-		<TransitDetailModal bind:open={showTransitDetail} segment={detailSegment} fromCoords={transitFromCoords} toCoords={transitToCoords} onwalkclick={handleTransitWalkClick} onconnectionchange={shiftTransitConnection} connectionError={transitAlternativeError} {changingConnection} />
+<TransitDetailModal
+	bind:open={showTransitDetail}
+	segment={detailSegment}
+	readonly={isReadOnly}
+	fromCoords={transitFromCoords}
+	toCoords={transitToCoords}
+	onwalkclick={handleTransitWalkClick}
+	onconnectionchange={isReadOnly ? undefined : shiftTransitConnection}
+	connectionError={transitAlternativeError}
+	{changingConnection}
+/>
 
-	<Modal bind:open={showTransitSettings} title="Transit settings" icon={IconTune} size="sm">
-		<div class="space-y-5">
-			<p class="text-base-content/60 text-sm">Use a minimum buffer for every interchange. Updating this value recalculates confirmed public-transport segments.</p>
-			<label class="block space-y-3" for="minimum-transfer-time">
-				<span class="flex items-baseline justify-between gap-4 text-sm font-semibold"><span>Minimum transfer time</span><strong class="travel-display text-xl text-[#172a45]">{minimumTransferMinutes} min</strong></span>
-				<input id="minimum-transfer-time" class="range range-primary w-full" type="range" min="0" max="30" step="1" bind:value={minimumTransferMinutes} />
-			</label>
-			<label class="flex cursor-pointer items-start justify-between gap-4 border-t border-[#172a45]/15 pt-4" for="deutschlandticket-only">
-				<span><span class="block text-sm font-semibold">Deutschlandticket only</span><span class="text-base-content/60 mt-1 block text-xs">Exclude ICE, IC, EC and other non-ticket long-distance services.</span></span>
-				<input id="deutschlandticket-only" class="toggle toggle-primary shrink-0" type="checkbox" bind:checked={deutschlandticketOnly} />
-			</label>
-			<button class="btn btn-primary w-full" onclick={saveTransitSettings} disabled={savingTransitSettings}>{savingTransitSettings ? 'Updating connections…' : 'Save and update connections'}</button>
-		</div>
-	</Modal>
+<Modal bind:open={showTransitSettings} title="Transit settings" icon={IconTune} size="sm">
+	<div class="space-y-5">
+		<p class="text-base-content/60 text-sm">
+			Use a minimum buffer for every interchange. Updating this value recalculates confirmed
+			public-transport segments.
+		</p>
+		<label class="block space-y-3" for="minimum-transfer-time">
+			<span class="flex items-baseline justify-between gap-4 text-sm font-semibold"
+				><span>Minimum transfer time</span><strong class="travel-display text-xl text-[#172a45]"
+					>{minimumTransferMinutes} min</strong
+				></span
+			>
+			<input
+				id="minimum-transfer-time"
+				class="range range-primary w-full"
+				type="range"
+				min="0"
+				max="30"
+				step="1"
+				bind:value={minimumTransferMinutes}
+			/>
+		</label>
+		<label
+			class="flex cursor-pointer items-start justify-between gap-4 border-t border-[#172a45]/15 pt-4"
+			for="deutschlandticket-only"
+		>
+			<span
+				><span class="block text-sm font-semibold">Deutschlandticket only</span><span
+					class="text-base-content/60 mt-1 block text-xs"
+					>Exclude ICE, IC, EC and other non-ticket long-distance services.</span
+				></span
+			>
+			<input
+				id="deutschlandticket-only"
+				class="toggle toggle-primary shrink-0"
+				type="checkbox"
+				bind:checked={deutschlandticketOnly}
+			/>
+		</label>
+		<button
+			class="btn btn-primary w-full"
+			onclick={saveTransitSettings}
+			disabled={savingTransitSettings}
+			>{savingTransitSettings ? 'Updating connections…' : 'Save and update connections'}</button
+		>
+	</div>
+</Modal>
 
 {#if browser && showWalkRoute}
 	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
-		<WalkRouteModal bind:open={showWalkRoute} segment={detailSegment} fromName={walkFromName} toName={walkToName} />
+		<WalkRouteModal
+			bind:open={showWalkRoute}
+			segment={detailSegment}
+			fromName={walkFromName}
+			toName={walkToName}
+		/>
 	{/await}
 {/if}
 
 {#if showRecomputeConfirm}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Update connections" tabindex="-1" onclick={dismissRecompute} onkeydown={(e) => e.key === 'Escape' && dismissRecompute()}>
+	<div
+		class="fixed inset-0 z-[5000] flex items-center justify-center bg-black/50 p-4"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Update connections"
+		tabindex="-1"
+		onclick={dismissRecompute}
+		onkeydown={(e) => e.key === 'Escape' && dismissRecompute()}
+	>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="bg-base-100 rounded-2xl shadow-2xl max-w-sm w-full p-5" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-			<div class="flex items-center gap-3 mb-3">
-				<IconTrain class="h-6 w-6 text-primary" />
-				<h3 class="font-bold text-base">Update Öffi connections?</h3>
+		<div
+			class="bg-base-100 w-full max-w-sm rounded-2xl p-5 shadow-2xl"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={() => {}}
+		>
+			<div class="mb-3 flex items-center gap-3">
+				<IconTrain class="text-primary h-6 w-6" />
+				<h3 class="text-base font-bold">Update Öffi connections?</h3>
 			</div>
-			<p class="text-sm text-base-content/60 mb-4">
-				You changed the timing of your journey. Want to search for new Öffi connections that match the updated schedule?
+			<p class="text-base-content/60 mb-4 text-sm">
+				You changed the timing of your journey. Want to search for new Öffi connections that match
+				the updated schedule?
 			</p>
-			<div class="flex gap-2 justify-end">
+			<div class="flex justify-end gap-2">
 				<button class="btn btn-ghost btn-sm" onclick={dismissRecompute}>Keep current</button>
-				<button class="btn btn-primary btn-sm" onclick={confirmRecomputeTransit} disabled={isRecomputing}>
+				<button
+					class="btn btn-primary btn-sm"
+					onclick={confirmRecomputeTransit}
+					disabled={isRecomputing}
+				>
 					{#if isRecomputing}
 						<span class="loading loading-spinner loading-xs"></span>
 					{:else}
