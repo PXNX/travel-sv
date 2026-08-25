@@ -74,3 +74,4 @@
 - [x] Reiseoberfläche mit editorischen Karten, Linien und Bewegungsdetails verfeinern.
 - [ ] Darstellung, Build und GitHub-Übertragung prüfen.
 - [x] Local-first-Reisebearbeitung in den Hauptbranch übertragen.
+- [x] Lokales Speichern und Save-Status im Reiseeditor reparieren und prüfen.

@@ -166,24 +166,40 @@
 	}
 
 	function snapshot(): LocalJourneySnapshot {
+		// Svelte $state values are reactive proxies, which IndexedDB and structuredClone cannot store.
+		// JSON serialization intentionally turns the snapshot into plain, durable browser-storage data.
+		const plain = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 		return {
-			journey: structuredClone(journey),
-			stops: structuredClone(journeyStops),
-			segments: structuredClone(journeySegments)
+			journey: plain(journey),
+			stops: plain(journeyStops),
+			segments: plain(journeySegments)
 		};
 	}
 
 	async function saveLocally(force = false) {
 		if (isReadOnly && !force) return;
 		showStatus('saving');
-		await saveLocalJourneyDraft(
-			journey.id,
-			snapshot(),
-			localBaseUpdatedAt ?? data.journey.updatedAt
-		);
-		await cacheJourney(journey.id, snapshot());
-		syncState = syncState === 'conflict' ? 'conflict' : 'local';
-		showStatus('saved');
+		try {
+			const localSnapshot = snapshot();
+			await saveLocalJourneyDraft(
+				journey.id,
+				localSnapshot,
+				localBaseUpdatedAt ?? data.journey.updatedAt
+			);
+			try {
+				await cacheJourney(journey.id, localSnapshot);
+			} catch (cause) {
+				console.warn('Journey cache update failed after the local draft was saved.', cause);
+			}
+			syncState = syncState === 'conflict' ? 'conflict' : 'local';
+			syncError = null;
+			showStatus('saved');
+		} catch (cause) {
+			console.error('Journey could not be saved locally.', cause);
+			syncError =
+				'This browser could not save the change locally. Check private-browsing or storage permissions and try again.';
+			showStatus('idle');
+		}
 	}
 
 	function rebuildLocalSegments(stopsToConnect: Stop[]) {
