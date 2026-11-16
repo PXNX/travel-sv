@@ -32,6 +32,7 @@
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
 	import IconTune from '~icons/material-symbols/tune-rounded';
 	import IconCheckCircle from '~icons/material-symbols/check-circle-rounded';
+	import IconDownload from '~icons/material-symbols/download-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -526,6 +527,27 @@
 	function toggleMapMode() {
 		showMap = !showMap;
 	}
+
+	function exportJourney() {
+		if (!browser) return;
+		const payload = {
+			title: journey.title,
+			startDatetime: journey.startDatetime,
+			stops: journeyStops,
+			segments: journeySegments
+		};
+		const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${journey.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'journey'}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+
+	function focusStop(id: number) {
+		document.getElementById(`stop-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
 </script>
 
 <svelte:head><title>{journey.title} — Journey Editor</title></svelte:head>
@@ -587,6 +609,14 @@
 			>
 				<IconCheckCircle class="h-4 w-4" />
 				<span class="hidden sm:inline">{journey.isCompleted ? 'Completed' : 'Mark completed'}</span>
+			</button>
+			<button
+				class="btn btn-ghost btn-sm"
+				onclick={exportJourney}
+				aria-label="Export journey"
+				title="Export JSON"
+			>
+				<IconDownload class="h-5 w-5" />
 			</button>
 			<button
 				class="btn btn-ghost btn-sm"
@@ -673,28 +703,48 @@
 				</div>
 			{/if}
 			{#if dndItems.length > 0}
-				<section
-					class="animate-fade-in-up mb-4 border border-t-4 border-[#172a45]/35 border-t-[#e6a527] bg-[#fffdf7] px-4 py-3"
-				>
-					<div class="flex items-baseline justify-between gap-3">
-						<p class="travel-eyebrow text-[9px]">Route overview</p>
-						<p class="travel-folio text-xs text-[#a45e38]">
-							{formatDuration(overview.total)} end to end
-						</p>
+				<section class="paper-sheet animate-unfold mb-4 overflow-hidden">
+					<div
+						class="flex items-center justify-between gap-3 border-b border-[#1b2b3a]/15 px-4 py-2.5"
+					>
+						<p class="paper-eyebrow text-[#1b2b3a]">Itinerary</p>
+						<p class="text-xs font-bold text-[#a24e2c]">{formatDuration(overview.total)}</p>
 					</div>
-					<div class="mt-2 flex items-center gap-2">
-						<span class="h-2 w-2 shrink-0 rounded-full bg-[#172a45]"></span>
-						<span class="travel-display min-w-0 truncate text-base text-[#172a45]"
-							>{dndItems[0].name}</span
-						>
-						<span class="h-px min-w-3 flex-1 bg-[#e6a527]"></span>
-						<span class="h-2 w-2 shrink-0 rounded-full bg-[#e6a527]"></span>
-						<span class="travel-display min-w-0 truncate text-base text-[#172a45]"
-							>{dndItems[dndItems.length - 1].name}</span
-						>
+					<div class="flex overflow-x-auto px-3 py-3">
+						{#each dndItems as stop, i (stop.id)}
+							<button
+								class="flex min-w-[110px] flex-1 flex-col items-start pr-2 text-left"
+								onclick={() => focusStop(stop.id)}
+								title={`Jump to ${stop.name}`}
+							>
+								<span class="flex w-full items-center">
+									<span
+										class="h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#fffdf7] {i === 0
+											? 'bg-[#2f7d58]'
+											: i === dndItems.length - 1
+												? 'bg-[#b23b2e]'
+												: 'bg-[#1b2b3a]'} shadow-sm transition-transform group-hover:scale-125"
+									></span>
+									{#if i < dndItems.length - 1}<span
+											class="paper-rule-drawn animate-draw-line h-px flex-1 bg-[#c98a1f]"
+										></span>{/if}
+								</span>
+								<span class="travel-display mt-1 max-w-full truncate text-sm text-[#1b2b3a]"
+									>{stop.name}</span
+								>
+								<span class="paper-eyebrow mt-0.5 text-[9px] text-[#a24e2c]">
+									{arrivalTimes[i]
+										? arrivalTimes[i]!.toLocaleTimeString('en-US', {
+												hour: '2-digit',
+												minute: '2-digit'
+											})
+										: `Stop ${i + 1}`}
+								</span>
+							</button>
+						{/each}
 					</div>
 					<div
-						class="travel-eyebrow mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-[#172a45]/55"
+						class="paper-eyebrow flex flex-wrap gap-x-4 gap-y-1 border-t border-[#1b2b3a]/10 px-4 py-2 text-[9px] text-[#1b2b3a]/55"
 					>
 						<span>{dndItems.length} {dndItems.length === 1 ? 'stop' : 'stops'}</span>
 						<span>{formatDuration(overview.travel)} travelling</span>
@@ -725,7 +775,7 @@
 				class="flex flex-col gap-0"
 			>
 				{#each dndItems as stop, i (stop.id)}
-					<div animate:flip={{ duration: 200 }}>
+					<div id={`stop-${stop.id}`} animate:flip={{ duration: 200 }}>
 						{#if i > 0}
 							{@const seg = findSegment(dndItems[i - 1].id, stop.id)}
 							<div class="segment-part">

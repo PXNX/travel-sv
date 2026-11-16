@@ -28,6 +28,19 @@
 		journeys = data.journeys as JourneyWithDerived[];
 	});
 	let isCreating = $state(false);
+	let searchInput: HTMLInputElement | undefined = $state();
+
+	function handleKeydown(event: KeyboardEvent) {
+		const target = event.target as HTMLElement | null;
+		if (
+			event.key === '/' &&
+			!(target instanceof HTMLInputElement) &&
+			!(target instanceof HTMLTextAreaElement)
+		) {
+			event.preventDefault();
+			searchInput?.focus();
+		}
+	}
 	let mounted = $state(false);
 	let search = $state('');
 	type SortKey = 'recent' | 'name' | 'duration';
@@ -80,6 +93,8 @@
 </script>
 
 <svelte:head><title>Travel Planner</title></svelte:head>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <OfflineBanner />
 
@@ -163,6 +178,7 @@
 					>
 						<IconSearch class="h-4 w-4 shrink-0 text-[#a24e2c]" />
 						<input
+							bind:this={searchInput}
 							class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#1b2b3a]/35"
 							type="search"
 							bind:value={search}
