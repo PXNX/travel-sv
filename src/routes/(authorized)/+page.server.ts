@@ -2,57 +2,12 @@ import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { journeys, stops, segments } from '$lib/server/schema';
-import { and, eq, asc } from 'drizzle-orm';
 import { recomputeSegments } from '$lib/server/recomputeSegments';
+import { listActiveJourneys } from '$lib/server/journeys';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const userJourneys = await db
-		.select()
-		.from(journeys)
-		.where(and(eq(journeys.ownerId, locals.user!.id), eq(journeys.isCompleted, false)))
-		.orderBy(journeys.createdAt);
-	const completedJourneys = await db
-		.select({ id: journeys.id })
-		.from(journeys)
-		.where(and(eq(journeys.ownerId, locals.user!.id), eq(journeys.isCompleted, true)));
-
-	const results = await Promise.all(
-		userJourneys.map(async (journey) => {
-			const journeyStops = await db
-				.select()
-				.from(stops)
-				.where(eq(stops.journeyId, journey.id))
-				.orderBy(asc(stops.orderIndex));
-
-			const journeySegments = await db
-				.select()
-				.from(segments)
-				.where(eq(segments.journeyId, journey.id));
-
-			const firstStop = journeyStops[0] ?? null;
-			const lastStop = journeyStops.length > 1 ? journeyStops[journeyStops.length - 1] : null;
-
-			let totalDuration = 0;
-			for (const s of journeyStops) totalDuration += s.stayDurationMinutes ?? 0;
-			for (const s of journeySegments) totalDuration += s.travelDurationMinutes ?? 0;
-
-			const stopCoords = journeyStops.map((s) => ({ lat: s.lat, lon: s.lon }));
-
-			return {
-				...journey,
-				startDatetime: journey.startDatetime?.toISOString() ?? null,
-				createdAt: journey.createdAt.toISOString(),
-				updatedAt: journey.updatedAt.toISOString(),
-				firstStopName: firstStop?.name ?? null,
-				lastStopName: lastStop?.name ?? null,
-				stopCount: journeyStops.length,
-				totalDurationMinutes: totalDuration,
-				stopCoords
-			};
-		})
-	);
-
-	return { journeys: results, completedCount: completedJourneys.length, user: locals.user };
+	const { journeys: list, completedCount } = await listActiveJourneys(locals.user!.id);
+	return { journeys: list, completedCount, user: locals.user };
 };
 
 export const actions = {
@@ -86,11 +41,7 @@ export const actions = {
 
 		const [journey] = await db
 			.insert(journeys)
-			.values({
-				ownerId: locals.user!.id,
-				title: `${fromName} → ${toName}`,
-				startDatetime
-			})
+			.values({ ownerId: locals.user!.id, title: `${fromName} → ${toName}`, startDatetime })
 			.returning();
 
 		const insertedStops = await db
@@ -132,7 +83,6 @@ export const actions = {
 			.insert(journeys)
 			.values({ ownerId: locals.user!.id, title: 'Untitled Journey' })
 			.returning();
-
 		redirect(303, `/journeys/${j.id}`);
 	}
 } satisfies Actions;
