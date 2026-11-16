@@ -1,77 +1,118 @@
 @import 'tailwindcss';
 
+/* One travel theme for every daisyUI component, so no default violet/pink leaks
+   into the paper-and-ink surfaces. */
 @plugin 'daisyui' {
-	themes: light --default;
+	themes: travel --default;
+}
+
+@plugin 'daisyui/theme' {
+	name: 'travel';
+	default: true;
+	prefersdark: false;
+	color-scheme: light;
+
+	--color-base-100: #fffdf7;
+	--color-base-200: #f4eee0;
+	--color-base-300: #e4d8c3;
+	--color-base-content: #172a45;
+
+	--color-primary: #172a45;
+	--color-primary-content: #fffdf7;
+	--color-secondary: #a45e38;
+	--color-secondary-content: #fffdf7;
+	--color-accent: #e6a527;
+	--color-accent-content: #172a45;
+	--color-neutral: #172a45;
+	--color-neutral-content: #fffdf7;
+
+	--color-info: #2e5ea8;
+	--color-info-content: #fffdf7;
+	--color-success: #2f7d58;
+	--color-success-content: #fffdf7;
+	--color-warning: #e6a527;
+	--color-warning-content: #172a45;
+	--color-error: #a83a2b;
+	--color-error-content: #fffdf7;
+
+	--radius-selector: 0rem;
+	--radius-field: 0rem;
+	--radius-box: 0rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
 }
 
 /* ── Keyframes ─────────────────────────────────────────────── */
 
 @keyframes slide-up {
-	from {
-		transform: translateY(100%);
-	}
-
-	to {
-		transform: translateY(0);
-	}
+	from { transform: translateY(100%); }
+	to { transform: translateY(0); }
 }
 
 @keyframes fade-in {
-	from {
-		opacity: 0;
-	}
-
-	to {
-		opacity: 1;
-	}
+	from { opacity: 0; }
+	to { opacity: 1; }
 }
 
 @keyframes fade-in-up {
-	from {
-		opacity: 0;
-		transform: translateY(12px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+	from { opacity: 0; transform: translateY(12px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fade-in-scale {
-	from {
-		opacity: 0;
-		transform: scale(0.95);
-	}
-
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
+	from { opacity: 0; transform: scale(0.95); }
+	to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes pulse-soft {
-	0%,
-	100% {
-		opacity: 1;
-	}
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
 
-	50% {
-		opacity: 0.7;
-	}
+/* Small, deliberate delights: ink drawing itself, a stamp landing, a sparkle. */
+@keyframes draw-line {
+	from { transform: scaleX(0); }
+	to { transform: scaleX(1); }
+}
+
+@keyframes soft-pop {
+	0% { opacity: 0; transform: scale(0.8); }
+	65% { opacity: 1; transform: scale(1.06); }
+	100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes sparkle {
+	0%, 100% { opacity: 0; transform: scale(0.4) rotate(-25deg); }
+	45% { opacity: 1; transform: scale(1.15) rotate(10deg); }
+}
+
+@keyframes sway {
+	0%, 100% { transform: rotate(-3deg); }
+	50% { transform: rotate(3deg); }
+}
+
+@keyframes glide-in {
+	from { opacity: 0; transform: translateX(-8px); }
+	to { opacity: 1; transform: translateX(0); }
 }
 
 @theme {
 	--font-sans: 'DM Sans', 'HPSimplified', system-ui, sans-serif;
 	--font-display: 'DM Serif Display', Georgia, serif;
 
-	/* Registering these as theme animations (rather than plain classes) is what
-	   makes variants such as `sm:animate-fade-in-scale` work. */
 	--animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 	--animate-fade-in: fade-in 0.4s ease-out both;
 	--animate-fade-in-up: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 	--animate-fade-in-scale: fade-in-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 	--animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+	--animate-draw-line: draw-line 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-soft-pop: soft-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-sparkle: sparkle 0.9s ease-in-out 1 both;
+	--animate-sway: sway 3s ease-in-out infinite;
+	--animate-glide-in: glide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 
 	/* One easing for every interactive transition in the app. */
 	--ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
@@ -81,7 +122,6 @@
 	@font-face {
 		font-family: 'HPSimplified';
 		src: url('/fonts/HPSimplified.ttf') format('truetype');
-
 		font-weight: 400;
 		font-style: normal;
 		font-display: swap;
@@ -93,6 +133,7 @@
 		--travel-ink: #172a45;
 		--travel-amber: #e6a527;
 		--travel-rust: #a45e38;
+		--travel-sage: #2f7d58;
 	}
 
 	html,
@@ -102,9 +143,8 @@
 		color: var(--travel-ink);
 	}
 
-	/* Consistent keyboard affordance across buttons, links, inputs and tabs. */
 	:focus-visible {
-		outline: 2px solid var(--color-primary);
+		outline: 2px solid var(--travel-rust);
 		outline-offset: 2px;
 	}
 
@@ -148,6 +188,18 @@
 	background: var(--travel-rust);
 }
 
+.btn-secondary {
+	border-color: var(--travel-rust);
+	background: var(--travel-rust);
+	color: var(--travel-paper);
+}
+
+.btn-accent {
+	border-color: var(--travel-amber);
+	background: var(--travel-amber);
+	color: var(--travel-ink);
+}
+
 .btn-ghost:hover {
 	background: color-mix(in srgb, var(--travel-amber) 12%, transparent);
 }
@@ -172,6 +224,24 @@
 	padding-left: 0.55rem;
 	font-family: var(--font-display);
 	letter-spacing: 0.01em;
+}
+
+.travel-eyebrow {
+	color: var(--travel-rust);
+	font-size: 0.65rem;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.travel-rule {
+	border-color: color-mix(in srgb, var(--travel-ink) 22%, transparent);
+}
+
+/* A thin drawn rule that animates into place — used under headings. */
+.travel-rule-drawn {
+	transform-origin: left center;
+	background: color-mix(in srgb, var(--travel-ink) 30%, transparent);
 }
 
 .travel-error-sheet {
@@ -224,8 +294,7 @@
 	transition: all 0.15s ease;
 }
 
-/* T64 — 44x44px minimum touch targets, but only where the pointer is imprecise;
-   on a mouse-driven screen the compact sizes stay compact. */
+/* T64 — larger touch targets only where the pointer is imprecise. */
 @media (pointer: coarse) {
 	.btn {
 		min-height: 44px;
