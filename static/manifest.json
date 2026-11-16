@@ -1,6 +1,6 @@
 {
-	"theme_color": "#8936FF",
-	"background_color": "#000000",
+	"theme_color": "#172a45",
+	"background_color": "#efe6d5",
 	"icons": [
 		{
 			"purpose": "maskable",
@@ -19,9 +19,9 @@
 	"display": "standalone",
 	"dir": "ltr",
 	"lang": "en",
-	"name": "Travel Tips",
-	"short_name": "Travel Tips",
-	"description": "Search for train stations in Germany. Find sleeping spots, outlets, toilets & station info",
+	"name": "Travel SV",
+	"short_name": "Travel",
+	"description": "A personal travel planner with offline route notes and maps.",
 	"share_target": {
 		"action": "/share-location",
 		"method": "GET",

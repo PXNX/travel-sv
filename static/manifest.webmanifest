@@ -1,31 +1,26 @@
 {
-    "name": "Journey Planner",
-    "short_name": "Journeys",
-    "description": "Plan journeys with stops, routing, elevation data, and offline support",
-    "start_url": "/",
-    "display": "standalone",
-    "orientation": "portrait",
-    "theme_color": "#8936FF",
-    "background_color": "#000000",
-    "dir": "ltr",
-    "lang": "en",
-    "icons": [
-        {
-            "src": "favicon.png",
-            "sizes": "32x32",
-            "type": "image/png"
-        },
-        {
-            "src": "icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any"
-        },
-        {
-            "src": "icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "maskable"
-        }
-    ]
+	"name": "Travel SV",
+	"short_name": "Travel",
+	"description": "A personal travel planner with offline route notes and maps.",
+	"start_url": "/",
+	"display": "standalone",
+	"orientation": "portrait",
+	"background_color": "#efe6d5",
+	"theme_color": "#172a45",
+	"dir": "ltr",
+	"lang": "en",
+	"icons": [
+		{
+			"src": "/icons/travel-sv.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	]
 }

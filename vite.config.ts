@@ -23,7 +23,8 @@ export default defineConfig({
 					background_color: '#efe6d5',
 					theme_color: '#172a45',
 					icons: [
-						{ src: '/icons/travel-sv.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
+						{ src: '/icons/travel-sv.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+						{ src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
 					]
 				},
 				workbox: {
