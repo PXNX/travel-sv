@@ -11,7 +11,7 @@
 	import IconChevronLeft from '~icons/material-symbols/chevron-left-rounded';
 	import IconChevronRight from '~icons/material-symbols/chevron-right-rounded';
 	import IconMap from '~icons/material-symbols/map-outline-rounded';
-	import { Modal, transitColor } from '$lib/components/ui';
+	import { Modal, transitColor } from '$lib/ui';
 
 	interface Props {
 		open: boolean;

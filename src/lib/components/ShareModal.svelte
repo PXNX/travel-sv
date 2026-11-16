@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Modal } from '$lib/components/ui';
+	import { Button, Modal } from '$lib/ui';
 	import IconShare from '~icons/material-symbols/share-outline';
 	import IconCheck from '~icons/material-symbols/check-rounded';
 	import IconLock from '~icons/material-symbols/lock-outline';

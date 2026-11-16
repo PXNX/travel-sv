@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 	import type { JourneyWithDerived } from '$lib/types';
 	import JourneyCard from '$lib/components/JourneyCard.svelte';
-	import { EmptyState, PageHeader, StatTile } from '$lib/components/ui';
+	import { EmptyState, PageHeader, StatTile } from '$lib/ui';
 	import { formatDuration } from '$lib/helpers';
 	import { goto } from '$app/navigation';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';

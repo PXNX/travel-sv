@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Stop } from '$lib/types';
 	import { dragHandle as dragHandleAction } from 'svelte-dnd-action';
-	import { Card, ConfirmDialog, IconButton, MetaItem } from '$lib/components/ui';
+	import { Card, ConfirmDialog, IconButton, MetaItem } from '$lib/ui';
 	import IconClock from '~icons/material-symbols/schedule-outline-rounded';
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
 	import IconDelete from '~icons/material-symbols/delete-outline-rounded';

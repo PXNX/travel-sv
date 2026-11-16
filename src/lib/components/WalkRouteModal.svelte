@@ -8,7 +8,7 @@
 	import IconCar from '~icons/material-symbols/directions-car-outline-rounded';
 	import IconNavigation from '~icons/material-symbols/navigation-rounded';
 	import IconRadar from '~icons/material-symbols/track-changes-rounded';
-	import { Button, IconButton, Modal } from '$lib/components/ui';
+	import { Button, IconButton, Modal } from '$lib/ui';
 
 	interface Props {
 		open: boolean;

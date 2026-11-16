@@ -4,7 +4,7 @@
 	import { computeDerivedArrivalTimes, formatDuration, formatDistance } from '$lib/helpers';
 	import SegmentChip from '$lib/components/SegmentChip.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
-	import { PageHeader } from '$lib/components/ui';
+	import { PageHeader } from '$lib/ui';
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
 	import IconClock from '~icons/material-symbols/schedule-outline-rounded';

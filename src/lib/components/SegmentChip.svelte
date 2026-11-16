@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Segment, SegmentMode } from '$lib/types';
 	import { formatDistance, formatDuration } from '$lib/helpers';
-	import { Button, Segmented, SEGMENT_MODE_STYLES, transitColor } from '$lib/components/ui';
+	import { Button, Segmented, SEGMENT_MODE_STYLES, transitColor } from '$lib/ui';
 	import IconWalk from '~icons/material-symbols/directions-walk-rounded';
 	import IconTrain from '~icons/material-symbols/train-outline-rounded';
 	import IconCar from '~icons/material-symbols/directions-car-outline-rounded';

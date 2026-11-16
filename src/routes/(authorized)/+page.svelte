@@ -4,7 +4,7 @@
 	import type { JourneyWithDerived } from '$lib/types';
 	import JourneyCard from '$lib/components/JourneyCard.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
-	import { Button, EmptyState, PageHeader, StatTile } from '$lib/components/ui';
+	import { Button, EmptyState, PageHeader, StatTile } from '$lib/ui';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';

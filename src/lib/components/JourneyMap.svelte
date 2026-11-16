@@ -2,7 +2,7 @@
 	import { Map, TileLayer, ControlLayers, Polyline, CircleMarker, Marker, DivIcon } from 'sveaflet';
 	import { browser } from '$app/environment';
 	import type { Stop, Segment } from '$lib/types';
-	import { transitColor } from '$lib/components/ui';
+	import { transitColor } from '$lib/ui';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';
 	import IconClose from '~icons/material-symbols/close-rounded';

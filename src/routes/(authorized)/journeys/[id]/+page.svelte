@@ -10,8 +10,8 @@
 	import ShareModal from '$lib/components/ShareModal.svelte';
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
-	import { SaveStatus } from '$lib/components/ui';
+	import Modal from '$lib/ui/Modal.svelte';
+	import { SaveStatus } from '$lib/ui';
 
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';

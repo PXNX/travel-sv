@@ -3,7 +3,7 @@
 	import type { JourneyWithDerived } from '$lib/types';
 	import { formatDuration } from '$lib/helpers';
 	import { browser } from '$app/environment';
-	import { Card, MetaItem } from '$lib/components/ui';
+	import { Card, MetaItem } from '$lib/ui';
 
 	import IconCalendar from '~icons/material-symbols/calendar-today-outline-rounded';
 	import IconPin from '~icons/material-symbols/location-on-outline-rounded';

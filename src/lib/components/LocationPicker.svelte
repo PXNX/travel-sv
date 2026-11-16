@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Map, TileLayer, Marker } from 'sveaflet';
 	import { getCachedNominatimResults, cacheNominatimResults } from '$lib/db/local';
-	import { Button, Modal } from '$lib/components/ui';
+	import { Button, Modal } from '$lib/ui';
 
 	interface Props {
 		open: boolean;
