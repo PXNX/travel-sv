@@ -45,8 +45,10 @@
 		showPicker = false;
 	}
 
+	let swaps = $state(0);
 	function swap() {
 		[from, to] = [to, from];
+		swaps += 1;
 	}
 
 	const ready = $derived(!!from && !!to);
@@ -56,15 +58,7 @@
 	<div
 		class="flex items-center justify-between gap-3 border-b border-[#1b2b3a]/15 bg-[#f4ecdc]/50 px-4 py-3 sm:px-5"
 	>
-		<div>
-			<p class="paper-eyebrow text-[9px]">Plan a journey</p>
-			<h2
-				id="planner-title"
-				class="travel-display text-xl leading-tight text-[#1b2b3a] sm:text-2xl"
-			>
-				Where are you heading?
-			</h2>
-		</div>
+		<h2 id="planner-title" class="paper-eyebrow text-[#1b2b3a]">Plan a journey</h2>
 		<span
 			class="hidden h-10 w-10 shrink-0 items-center justify-center border border-[#a24e2c]/30 bg-[#fffdf7] text-[#a24e2c] sm:flex"
 		>
@@ -108,12 +102,17 @@
 		<div class="flex justify-center sm:pb-2.5">
 			<button
 				type="button"
-				class="flex h-9 w-9 items-center justify-center border border-[#1b2b3a]/25 bg-[#f4ecdc] text-[#a24e2c] transition-colors hover:border-[#c98a1f] hover:bg-[#c98a1f]/15"
+				class="flex h-9 w-9 items-center justify-center border border-[#1b2b3a]/25 bg-[#f4ecdc] text-[#a24e2c] transition-all duration-300 hover:border-[#c98a1f] hover:bg-[#c98a1f]/15"
 				aria-label="Swap start and destination"
 				title="Swap"
 				onclick={swap}
 			>
-				<IconSwap class="h-4 w-4" />
+				<span
+					class="transition-transform duration-500"
+					style={`transform: rotate(${swaps * 180}deg)`}
+				>
+					<IconSwap class="h-4 w-4" />
+				</span>
 			</button>
 		</div>
 
@@ -162,12 +161,6 @@
 			</Button>
 		</div>
 	</form>
-
-	{#if !ready}
-		<p class="border-t border-[#1b2b3a]/10 px-4 py-2 text-[11px] text-[#1b2b3a]/45 sm:px-5">
-			Pick a start and a destination to plan your route.
-		</p>
-	{/if}
 </section>
 
 {#if browser && showPicker}

@@ -3,6 +3,7 @@
 	// renders the same components with sample data so UI work can be reviewed offline.
 	import { dev } from '$app/environment';
 	import type { JourneyWithDerived, Stop, Segment, Journey } from '$lib/types';
+	import AppNav from '$lib/app/AppNav.svelte';
 
 	function showInstallHint() {
 		try {
@@ -266,22 +267,26 @@
 
 	<div class="preview-stage">
 		{#key screen}
-			{#if screen === 'index'}
-				<IndexPage data={indexData as any} />
-			{:else if screen === 'editor'}
-				<EditorPage data={editorData as any} />
-			{:else if screen === 'completed'}
-				<CompletedPage data={completedData as any} />
+			{#if screen === 'index' || screen === 'editor' || screen === 'completed' || screen === 'empty'}
+				<AppNav>
+					{#if screen === 'index'}
+						<IndexPage data={indexData as any} />
+					{:else if screen === 'editor'}
+						<EditorPage data={editorData as any} />
+					{:else if screen === 'completed'}
+						<CompletedPage data={completedData as any} />
+					{:else}
+						<IndexPage
+							data={{
+								journeys: [],
+								completedCount: 0,
+								user: { ...indexData.user, id: 'demo-empty' }
+							} as any}
+						/>
+					{/if}
+				</AppNav>
 			{:else if screen === 'shared'}
 				<SharedPage data={sharedData as any} />
-			{:else if screen === 'empty'}
-				<IndexPage
-					data={{
-						journeys: [],
-						completedCount: 0,
-						user: { ...indexData.user, id: 'demo-empty' }
-					} as any}
-				/>
 			{:else if screen === 'login'}
 				<LoginPage />
 			{:else if screen === 'error'}

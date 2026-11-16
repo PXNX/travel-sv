@@ -97,7 +97,7 @@
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#172a45]"></span>
 				<span class="min-w-0 truncate">{journey.firstStopName ?? 'No stops yet'}</span>
 				<span
-					class="h-px min-w-3 flex-1 bg-[#e6a527] transition-all duration-300 group-hover:min-w-6"
+					class="paper-rule-drawn animate-draw-line h-px min-w-3 flex-1 bg-[#c98a1f] transition-all duration-300 group-hover:min-w-6"
 				></span>
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e6a527]"></span>
 				<span class="min-w-0 truncate">{journey.lastStopName ?? '—'}</span>

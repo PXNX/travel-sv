@@ -88,11 +88,9 @@
 		<!-- masthead -->
 		<div class="animate-glide-in flex flex-wrap items-end justify-between gap-3">
 			<div>
-				<p class="paper-eyebrow">Travel Planner</p>
 				<h1 class="travel-display text-3xl leading-tight text-[#1b2b3a] sm:text-4xl">
-					Good journey starts here.
+					Travel Planner
 				</h1>
-				<p class="mt-1 text-sm text-[#1b2b3a]/60">Choose your stops — we'll work out the way.</p>
 			</div>
 			<div class="flex items-center gap-2">
 				<form method="POST" action="?/create" use:enhance={trackCreate}>
