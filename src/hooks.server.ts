@@ -33,13 +33,26 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 		cause?: unknown;
 		code?: unknown;
 	};
+	const name = String(err?.name ?? 'UnknownError');
+	const code = String(err?.code ?? '');
+	const cause = String(err?.cause ?? '');
 	console.error(`[request ${requestId}] ${event.request.method} ${event.url.pathname} failed`, {
 		status,
-		name: err?.name ?? 'UnknownError',
+		name,
 		message: err?.message ?? String(error),
 		code: err?.code,
 		cause: err?.cause,
 		stack: err?.stack
 	});
-	return { message, requestId };
+
+	// A short, safe category — never expose raw messages or stack traces to the client.
+	const hint = /ECONNREFUSED|ENOTFOUND|postgres|database/i.test(`${name} ${code} ${cause}`)
+		? 'The service could not reach its database.'
+		: status === 404
+			? 'That page does not exist.'
+			: status === 503 || /timeout|unavailable|fetch failed/i.test(name)
+				? 'An upstream service is temporarily unavailable.'
+				: 'An unexpected server error occurred.';
+
+	return { message, requestId, hint };
 };

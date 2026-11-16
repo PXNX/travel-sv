@@ -18,6 +18,8 @@ declare global {
 		}
 		interface Error {
 			requestId?: string;
+			/** Safe, non-sensitive category of the failure for the user-facing error page. */
+			hint?: string;
 		}
 	}
 }
