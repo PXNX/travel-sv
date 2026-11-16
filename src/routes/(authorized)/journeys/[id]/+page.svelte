@@ -22,7 +22,7 @@
 		getLocalJourneyDraft,
 		saveLocalJourneyDraft,
 		type LocalJourneySnapshot
-	} from '$lib/db/local';
+	} from '$lib/offline/local';
 	import { flip } from 'svelte/animate';
 	import IconArrowBack from '~icons/material-symbols/arrow-back-rounded';
 	import IconShare from '~icons/material-symbols/share-outline';

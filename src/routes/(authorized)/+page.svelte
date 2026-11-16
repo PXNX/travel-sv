@@ -8,7 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
-	import { cacheJourneyList, getCachedJourneyList } from '$lib/db/local';
+	import { cacheJourneyList, getCachedJourneyList } from '$lib/offline/local';
 	import { formatDuration } from '$lib/helpers';
 	import IconAdd from '~icons/material-symbols/add-rounded';
 	import IconMap from '~icons/material-symbols/map-outline-rounded';
