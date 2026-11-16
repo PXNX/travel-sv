@@ -50,7 +50,10 @@ function openDB(): Promise<IDBDatabase> {
 async function put(storeName: keyof LocalDB, value: unknown): Promise<void> {
 	const db = await openDB();
 	const tx = db.transaction(storeName, 'readwrite');
-	tx.objectStore(storeName).put(value);
+	// Structured cloning cannot store Svelte's reactive proxies. Serializing here
+	// keeps every caller safe, including cached journeys passed straight from $state.
+	const durable = value === undefined ? null : (JSON.parse(JSON.stringify(value)) as unknown);
+	tx.objectStore(storeName).put(durable);
 	return new Promise((resolve, reject) => {
 		tx.oncomplete = () => resolve();
 		tx.onerror = () => reject(tx.error);
