@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onNavigate } from '$app/navigation';
+	import InstallHint from '$lib/components/InstallHint.svelte';
 
 	let { children } = $props();
 
@@ -16,3 +17,5 @@
 </script>
 
 {@render children()}
+
+<InstallHint />

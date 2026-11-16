@@ -4,6 +4,21 @@
 	import { dev } from '$app/environment';
 	import type { JourneyWithDerived, Stop, Segment, Journey } from '$lib/types';
 
+	function showInstallHint() {
+		try {
+			localStorage.removeItem('travel-install-hint-dismissed');
+		} catch {
+			// ignore
+		}
+		const event = new Event('beforeinstallprompt', { cancelable: true }) as Event & {
+			prompt: () => Promise<void>;
+			userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+		};
+		event.prompt = async () => {};
+		event.userChoice = Promise.resolve({ outcome: 'accepted' as const });
+		window.dispatchEvent(event);
+	}
+
 	import IndexPage from '../(authorized)/+page.svelte';
 	import EditorPage from '../(authorized)/journeys/[id]/+page.svelte';
 	import CompletedPage from '../(authorized)/journeys/completed/+page.svelte';
@@ -132,6 +147,9 @@
 		{#each screens as s}
 			<button class:active={screen === s.id} onclick={() => (screen = s.id)}>{s.label}</button>
 		{/each}
+		<button class="ml-auto border-[#e6a527] text-[#e6a527]" onclick={showInstallHint}>
+			Install hint
+		</button>
 	</nav>
 
 	<div class="preview-stage">
