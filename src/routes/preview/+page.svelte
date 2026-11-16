@@ -26,8 +26,19 @@
 	import SharedPage from '../(public)/j/[shareToken]/+page.svelte';
 	import LoginPage from '../(public)/auth/login/+page.svelte';
 	import ErrorPage from '../+error.svelte';
+	import AppErrorPage from '../(authorized)/+error.svelte';
+	import PublicErrorPage from '../(public)/+error.svelte';
 
-	type Screen = 'index' | 'editor' | 'completed' | 'shared' | 'login' | 'empty' | 'error';
+	type Screen =
+		| 'index'
+		| 'editor'
+		| 'completed'
+		| 'shared'
+		| 'empty'
+		| 'login'
+		| 'error'
+		| 'error-app'
+		| 'error-public';
 	let screen = $state<Screen>('index');
 
 	const now = new Date();
@@ -248,7 +259,9 @@
 		{ id: 'shared', label: 'Shared' },
 		{ id: 'empty', label: 'Empty state' },
 		{ id: 'login', label: 'Login' },
-		{ id: 'error', label: 'Error' }
+		{ id: 'error', label: 'Error' },
+		{ id: 'error-app', label: 'App error' },
+		{ id: 'error-public', label: 'Public error' }
 	];
 </script>
 
@@ -291,6 +304,17 @@
 				<LoginPage />
 			{:else if screen === 'error'}
 				<ErrorPage status={404} data={{ requestId: 'd3m0-4b71-9f2a' }} />
+			{:else if screen === 'error-app'}
+				<AppErrorPage
+					status={500}
+					error={{
+						message: 'Database unavailable',
+						hint: 'The service could not reach its database.'
+					}}
+					data={{ requestId: '5a17-9c02-8e4b' }}
+				/>
+			{:else if screen === 'error-public'}
+				<PublicErrorPage status={404} data={{ requestId: 'b7e1-3d90-2f6a' }} />
 			{/if}
 		{/key}
 	</div>
