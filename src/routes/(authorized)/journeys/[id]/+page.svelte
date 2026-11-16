@@ -2,7 +2,7 @@
 	// Papier & Tinte: journey editor as a layered route sheet with ink rules and amber wayfinding.
 	import type { PageData } from './$types';
 	import type { Stop, Segment, SegmentMode } from '$lib/types';
-	import { computeDerivedArrivalTimes } from '$lib/helpers';
+	import { computeDerivedArrivalTimes, formatDuration, formatDistance } from '$lib/helpers';
 	import { deserialize } from '$app/forms';
 	import { browser } from '$app/environment';
 	import StopCard from '$lib/components/StopCard.svelte';
@@ -11,6 +11,7 @@
 	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
 	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import { SaveStatus } from '$lib/components/ui';
 
 	import { dragHandleZone, type TransformDraggedElementFunction } from 'svelte-dnd-action';
 	import { onMount } from 'svelte';
@@ -102,6 +103,9 @@
 		return stop ? [stop.lat, stop.lon] : undefined;
 	});
 
+	let celebrating = $state(false);
+	let celebrateTimer: ReturnType<typeof setTimeout>;
+
 	let showRecomputeConfirm = $state(false);
 	let isRecomputing = $state(false);
 	let recomputeTimer: ReturnType<typeof setTimeout>;
@@ -156,6 +160,13 @@
 			startDatetime ? new Date(startDatetime) : null
 		)
 	);
+
+	const overview = $derived.by(() => {
+		const travel = journeySegments.reduce((sum, s) => sum + (s.travelDurationMinutes ?? 0), 0);
+		const stays = journeyStops.reduce((sum, s) => sum + (s.stayDurationMinutes ?? 0), 0);
+		const distance = journeySegments.reduce((sum, s) => sum + (s.distanceM ?? 0), 0);
+		return { travel, stays, distance, total: travel + stays };
+	});
 
 	function findSegment(fromId: number, toId: number): Segment | undefined {
 		return journeySegments.find((s) => s.fromStopId === fromId && s.toStopId === toId);
@@ -375,6 +386,19 @@
 		await saveLocally();
 	}
 
+	async function moveStop(stopId: number, direction: -1 | 1) {
+		if (isReadOnly) return;
+		const ordered = [...dndItems];
+		const from = ordered.findIndex((s) => s.id === stopId);
+		const to = from + direction;
+		if (from < 0 || to < 0 || to >= ordered.length) return;
+		[ordered[from], ordered[to]] = [ordered[to], ordered[from]];
+		dndItems = ordered.map((stop, i) => ({ ...stop, orderIndex: i }));
+		journeyStops = dndItems.map((stop) => ({ ...stop }));
+		rebuildLocalSegments(journeyStops);
+		await saveLocally();
+	}
+
 	function editStopLocation(stop: Stop) {
 		locationPickerStop = stop;
 		showLocationPicker = true;
@@ -445,6 +469,9 @@
 		if (isReadOnly) return;
 		journey = { ...journey, isCompleted: true };
 		await saveLocally(true);
+		celebrating = true;
+		clearTimeout(celebrateTimer);
+		celebrateTimer = setTimeout(() => (celebrating = false), 2600);
 	}
 
 	async function uploadLocalChanges() {
@@ -513,39 +540,41 @@
 {:else}
 	<div class="travel-page" style="view-transition-name: journey-{journey.id}">
 		<header
-			class="flex flex-wrap items-center gap-2 border-b border-[#172a45]/45 bg-[#fffdf7]/94 px-4 py-3 backdrop-blur-lg"
+			class="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-[#172a45]/45 bg-[#fffdf7]/95 px-4 py-3 backdrop-blur-lg"
 		>
-			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')}>
+			<button class="btn btn-ghost btn-sm" onclick={() => goto('/')} aria-label="Back to journeys">
 				<IconArrowBack class="h-5 w-5" />
 			</button>
-			<div class="flex-1">
+			<div class="min-w-0 flex-1 border-l-2 border-[#e6a527] pl-2.5">
+				<p class="travel-eyebrow text-[9px]">Journey editor</p>
 				{#if editingTitle && !isReadOnly}
 					<input
-						class="input input-bordered input-sm w-full max-w-xs"
+						class="input input-bordered input-sm w-full max-w-xs border-[#172a45]/30"
 						bind:value={titleInput}
 						onblur={saveTitle}
 						onkeydown={(e) => e.key === 'Enter' && saveTitle()}
 					/>
 				{:else if isReadOnly}
-					<p class="travel-display text-xl text-[#172a45]">{journey.title}</p>
+					<p class="travel-display truncate text-lg leading-tight text-[#172a45] sm:text-xl">{journey.title}</p>
 				{:else}
 					<button
-						class="travel-display text-xl text-[#172a45] hover:underline"
+						class="travel-display block max-w-full truncate text-left text-lg leading-tight text-[#172a45] hover:text-[#a45e38] sm:text-xl"
 						onclick={() => (editingTitle = true)}>{journey.title}</button
 					>
 				{/if}
 			</div>
 			<input
 				type="datetime-local"
-				class="input input-bordered input-sm"
+				class="input input-bordered input-sm border-[#172a45]/30"
 				value={startDatetime ? startDatetime.slice(0, 16) : ''}
 				onchange={updateStartDatetime}
 				disabled={isReadOnly}
+				aria-label="Journey start"
 			/>
 			<button
 				class="btn btn-sm gap-1.5 {journey.isCompleted
-					? 'border-[#008d4f] bg-[#008d4f] text-white'
-					: 'btn-ghost border border-[#172a45]/25'}"
+					? 'border-[#2f7d58] bg-[#2f7d58] text-white'
+					: 'btn-ghost border border-[#172a45]/25'} {celebrating ? 'animate-soft-pop' : ''}"
 				onclick={toggleJourneyComplete}
 				aria-pressed={journey.isCompleted}
 				disabled={isReadOnly}
@@ -558,6 +587,7 @@
 				onclick={() => (showShareModal = true)}
 				disabled={isReadOnly}
 				title={isReadOnly ? 'Completed journeys are view only' : 'Share journey'}
+				aria-label="Share journey"
 			>
 				<IconShare class="h-5 w-5" />
 			</button>
@@ -569,28 +599,27 @@
 			>
 				<IconTune class="h-5 w-5" />
 			</button>
-			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode}>
+			<button class="btn btn-ghost btn-sm" onclick={toggleMapMode} aria-label="Open map">
 				<IconMap class="h-5 w-5" />
 			</button>
-			{#if saveStatus === 'saving'}<span class="text-base-content/50 text-xs">Saving…</span>
-			{:else if saveStatus === 'saved'}<span class="text-success text-xs">Saved ✓</span>{/if}
+			<SaveStatus status={saveStatus} />
 		</header>
 
 		<main class="mx-auto max-w-2xl p-4 sm:p-5">
 			{#if isReadOnly}
 				<div
-					class="mb-4 flex items-start gap-3 border border-[#008d4f]/30 bg-[#008d4f]/8 px-3 py-3 text-sm text-[#075e36]"
+					class="mb-4 flex items-start gap-3 border border-[#2f7d58]/35 border-l-4 border-l-[#2f7d58] bg-[#f1f6f1] px-3 py-3 text-sm text-[#245e44]"
 				>
 					<IconCheckCircle class="mt-0.5 h-5 w-5 shrink-0" />
 					<div>
-						<strong>Completed journey</strong>
-						<p class="mt-0.5 text-xs text-[#075e36]/80">
+						<strong class="travel-display text-base">Completed journey</strong>
+						<p class="mt-0.5 text-xs text-[#245e44]/80">
 							This trip is preserved as a view-only record.
 						</p>
 					</div>
 				</div>
 			{:else if syncState !== 'synced'}
-				<div class="mb-4 border border-[#174a7e]/25 bg-[#f4f7fa] px-3 py-3 text-sm text-[#172a45]">
+				<div class="mb-4 border border-[#172a45]/25 border-l-4 border-l-[#e6a527] bg-[#f4eee0] px-3 py-3 text-sm text-[#172a45]">
 					<div class="flex flex-wrap items-center justify-between gap-3">
 						<div>
 							<strong
@@ -618,14 +647,14 @@
 							>
 						</div>
 					</div>
-					{#if syncError}<p class="mt-2 border-t border-[#174a7e]/15 pt-2 text-xs text-[#a45e38]">
+					{#if syncError}<p class="mt-2 border-t border-[#172a45]/15 pt-2 text-xs text-[#a45e38]">
 							{syncError}
 						</p>{/if}
 				</div>
 			{/if}
 			{#if transitProviderError}
 				<div
-					class="mb-4 flex items-start justify-between gap-3 rounded-lg border border-[#a45e38]/35 bg-[#a45e38]/10 px-3 py-2.5 text-sm text-[#713a22]"
+					class="mb-4 flex items-start justify-between gap-3 border border-[#a45e38]/35 bg-[#a45e38]/10 px-3 py-2.5 text-sm text-[#713a22]"
 				>
 					<p>{transitProviderError}</p>
 					<button
@@ -635,10 +664,31 @@
 					>
 				</div>
 			{/if}
-			{#if dndItems.length === 0}
-				<div class="flex flex-col items-center gap-4 py-12 text-center">
-					<IconPin class="text-base-content/30 h-10 w-10" />
-					<p class="text-base-content/60">Add your first stop to get started.</p>
+			{#if dndItems.length > 0}
+				<section class="animate-fade-in-up mb-4 border border-[#172a45]/35 border-t-4 border-t-[#e6a527] bg-[#fffdf7] px-4 py-3">
+					<div class="flex items-baseline justify-between gap-3">
+						<p class="travel-eyebrow text-[9px]">Route overview</p>
+						<p class="travel-folio text-xs text-[#a45e38]">{formatDuration(overview.total)} end to end</p>
+					</div>
+					<div class="mt-2 flex items-center gap-2">
+						<span class="h-2 w-2 shrink-0 rounded-full bg-[#172a45]"></span>
+						<span class="travel-display min-w-0 truncate text-base text-[#172a45]">{dndItems[0].name}</span>
+						<span class="h-px min-w-3 flex-1 bg-[#e6a527]"></span>
+						<span class="h-2 w-2 shrink-0 rounded-full bg-[#e6a527]"></span>
+						<span class="travel-display min-w-0 truncate text-base text-[#172a45]">{dndItems[dndItems.length - 1].name}</span>
+					</div>
+					<div class="travel-eyebrow mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-[#172a45]/55">
+						<span>{dndItems.length} {dndItems.length === 1 ? 'stop' : 'stops'}</span>
+						<span>{formatDuration(overview.travel)} travelling</span>
+						<span>{formatDuration(overview.stays)} staying</span>
+						{#if overview.distance > 0}<span>{formatDistance(overview.distance)}</span>{/if}
+					</div>
+				</section>
+			{:else}
+				<div class="flex flex-col items-center gap-3 border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 py-12 text-center">
+					<IconPin class="text-[#a45e38]/60 h-10 w-10" />
+					<p class="travel-display text-lg text-[#172a45]">A blank itinerary</p>
+					<p class="text-xs text-[#172a45]/55">Add your first stop to begin plotting the route.</p>
 				</div>
 			{/if}
 
@@ -647,7 +697,7 @@
 					items: dndItems,
 					flipDurationMs: 200,
 					dragDisabled: isReadOnly,
-					dropTargetStyle: { outline: '2px dashed oklch(var(--p))', borderRadius: '12px' },
+					dropTargetStyle: { outline: '2px dashed #a45e38', borderRadius: '0' },
 					transformDraggedElement
 				}}
 				onconsider={handleDndConsider}
@@ -683,11 +733,14 @@
 
 						<StopCard
 							{stop}
+							index={i}
+							total={dndItems.length}
 							arrivalTime={arrivalTimes[i] ?? null}
 							readonly={isReadOnly}
 							onupdate={isReadOnly ? undefined : updateStop}
 							ondelete={isReadOnly ? undefined : deleteStop}
 							onpicklocation={isReadOnly ? undefined : editStopLocation}
+							onmove={isReadOnly ? undefined : (direction) => moveStop(stop.id, direction)}
 						/>
 					</div>
 				{/each}
@@ -699,6 +752,16 @@
 					</button>
 				</div>{/if}
 		</main>
+	</div>
+{/if}
+
+{#if celebrating}
+	<div
+		class="animate-soft-pop pointer-events-none fixed bottom-6 left-1/2 z-[2600] -translate-x-1/2 border border-[#172a45]/45 border-l-4 border-l-[#e6a527] bg-[#fffdf7] px-4 py-2.5 shadow-[6px_7px_0_rgba(23,42,69,0.18)]"
+		role="status"
+	>
+		<span class="text-[#e6a527] animate-sparkle mr-1.5 text-base">✦</span>
+		<span class="travel-display text-base text-[#172a45]">Journey complete — nicely done.</span>
 	</div>
 {/if}
 

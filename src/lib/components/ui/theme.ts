@@ -50,7 +50,7 @@ export const SEGMENT_MODE_COLORS: Record<string, string> = {
 /** Tailwind classes used to tint segment chips so a mode reads the same everywhere. */
 export const SEGMENT_MODE_STYLES: Record<SegmentMode, { border: string; bg: string; dot: string }> =
 	{
-		walk: { border: 'border-green-500/40', bg: 'bg-green-500/10', dot: 'bg-green-500' },
-		transit: { border: 'border-blue-500/40', bg: 'bg-blue-500/10', dot: 'bg-blue-500' },
-		drive: { border: 'border-amber-500/40', bg: 'bg-amber-500/10', dot: 'bg-amber-500' }
+		walk: { border: 'border-[#2f7d58]/35', bg: 'bg-[#f1f6f1]', dot: 'bg-[#2f7d58]' },
+		transit: { border: 'border-[#2e5ea8]/35', bg: 'bg-[#eef3f9]', dot: 'bg-[#2e5ea8]' },
+		drive: { border: 'border-[#b0781b]/40', bg: 'bg-[#faf3e6]', dot: 'bg-[#b0781b]' }
 	};
