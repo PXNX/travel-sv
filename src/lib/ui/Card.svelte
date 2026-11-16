@@ -1,11 +1,9 @@
 <script lang="ts">
-	// Papier & Tinte: flat paper panels with ink borders, not elevated generic cards.
 	import type { Snippet } from 'svelte';
 
-	type Padding = 'none' | 'sm' | 'md';
+	type Padding = 'none' | 'sm' | 'md' | 'lg';
 
 	interface Props {
-		/** Renders as a button/link with hover + press feedback. */
 		interactive?: boolean;
 		href?: string;
 		padding?: Padding;
@@ -27,13 +25,18 @@
 		...rest
 	}: Props = $props();
 
-	const PADDING: Record<Padding, string> = { none: '', sm: 'p-3', md: 'p-4' };
+	const PADDING: Record<Padding, string> = {
+		none: '',
+		sm: 'p-3',
+		md: 'p-4',
+		lg: 'p-5 sm:p-6'
+	};
 
 	const cls = $derived(
 		[
-			'card overflow-hidden rounded-none border border-[#172a45]/35 bg-[#fffdf7] shadow-none',
+			'card overflow-hidden rounded-lg border border-[#1b2b3a]/25 bg-[#fffdf7] shadow-none',
 			interactive || href
-				? 'w-full cursor-pointer text-left hover:-translate-y-0.5 hover:border-[#e6a527] hover:shadow-[4px_5px_0_rgba(23,42,69,0.12)] active:scale-[0.98]'
+				? 'w-full cursor-pointer text-left hover:-translate-y-0.5 hover:border-[#c98a1f] hover:shadow-[4px_5px_0_rgba(27,43,58,0.12)] active:scale-[0.99]'
 				: '',
 			PADDING[padding],
 			klass

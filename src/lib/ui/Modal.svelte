@@ -83,13 +83,13 @@
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 flex justify-center bg-[#172a45]/70 backdrop-blur-[2px] {LAYER[
+		class="animate-fade-in fixed inset-0 flex justify-center bg-[#1b2b3a]/70 backdrop-blur-[2px] {LAYER[
 			layer
-		]} animate-fade-in {sheet ? 'items-end sm:items-center sm:p-4' : 'items-center p-4'}"
+		]} {sheet ? 'items-end sm:items-center sm:p-4' : 'items-center p-4'}"
 		onclick={handleBackdropClick}
 	>
 		<div
-			class="relative flex max-h-[92dvh] w-full flex-col overflow-hidden border border-t-4 border-[#172a45]/60 border-t-[#e6a527] bg-[#fffdf7] shadow-[10px_12px_0_rgba(23,42,69,0.25)] outline-none sm:max-h-[85dvh] {SIZE[
+			class="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-t-4 border-[#1b2b3a]/50 border-t-[#c98a1f] bg-[#fffdf7] shadow-[10px_12px_0_rgba(27,43,58,0.18)] outline-none sm:max-h-[88dvh] sm:rounded-lg {SIZE[
 				size
 			]} {sheet ? 'animate-slide-up sm:animate-fade-in-scale' : 'animate-fade-in-scale'}"
 			role="dialog"
@@ -101,20 +101,23 @@
 		>
 			{#if title}
 				<header
-					class="flex shrink-0 items-start justify-between gap-3 border-b border-[#172a45]/20 px-5 py-3.5"
+					class="flex shrink-0 items-start justify-between gap-3 border-b border-[#1b2b3a]/15 px-5 py-3.5"
 				>
 					<div class="min-w-0">
 						<h2
 							id={titleId}
-							class="travel-display flex items-center gap-1.5 text-lg leading-tight text-[#172a45]"
+							class="travel-display flex items-center gap-2 text-lg leading-tight text-[#1b2b3a]"
 						>
 							{#if Icon}
-								<Icon class="size-5 shrink-0 text-[#a45e38]" />
+								<span
+									class="flex h-8 w-8 items-center justify-center border border-[#1b2b3a]/20 bg-[#f4ecdc] text-[#a24e2c]"
+									><Icon class="size-4" /></span
+								>
 							{/if}
 							{title}
 						</h2>
 						{#if subtitle}
-							<div class="mt-0.5 text-xs text-[#172a45]/55">{@render subtitle()}</div>
+							<div class="mt-0.5 text-xs text-[#1b2b3a]/55">{@render subtitle()}</div>
 						{/if}
 					</div>
 					{#if dismissible}
@@ -134,7 +137,7 @@
 			</div>
 
 			{#if footer}
-				<footer class="shrink-0 border-t border-[#172a45]/20 px-5 py-3">
+				<footer class="shrink-0 border-t border-[#1b2b3a]/15 bg-[#f4ecdc]/40 px-5 py-3">
 					{@render footer()}
 				</footer>
 			{/if}

@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
-/* One travel theme for every daisyUI component, so no default violet/pink leaks
-   into the paper-and-ink surfaces. */
+/* Travel Planner — a paper-map interface: warm chart paper, ink rules,
+   route colours and folded-sheet panels. One theme keeps every primitive in sync. */
 @plugin 'daisyui' {
 	themes: travel --default;
 }
@@ -13,31 +13,31 @@
 	color-scheme: light;
 
 	--color-base-100: #fffdf7;
-	--color-base-200: #f4eee0;
-	--color-base-300: #e4d8c3;
-	--color-base-content: #172a45;
+	--color-base-200: #f4ecdc;
+	--color-base-300: #e4d7bf;
+	--color-base-content: #1b2b3a;
 
-	--color-primary: #172a45;
+	--color-primary: #1b2b3a;
 	--color-primary-content: #fffdf7;
-	--color-secondary: #a45e38;
+	--color-secondary: #a24e2c;
 	--color-secondary-content: #fffdf7;
-	--color-accent: #e6a527;
-	--color-accent-content: #172a45;
-	--color-neutral: #172a45;
+	--color-accent: #c98a1f;
+	--color-accent-content: #1b2b3a;
+	--color-neutral: #1b2b3a;
 	--color-neutral-content: #fffdf7;
 
 	--color-info: #2e5ea8;
 	--color-info-content: #fffdf7;
 	--color-success: #2f7d58;
 	--color-success-content: #fffdf7;
-	--color-warning: #e6a527;
-	--color-warning-content: #172a45;
-	--color-error: #a83a2b;
+	--color-warning: #c98a1f;
+	--color-warning-content: #1b2b3a;
+	--color-error: #b23b2e;
 	--color-error-content: #fffdf7;
 
-	--radius-selector: 0rem;
-	--radius-field: 0rem;
-	--radius-box: 0rem;
+	--radius-selector: 0.25rem;
+	--radius-field: 0.375rem;
+	--radius-box: 0.75rem;
 	--size-selector: 0.25rem;
 	--size-field: 0.25rem;
 	--border: 1px;
@@ -45,7 +45,7 @@
 	--noise: 0;
 }
 
-/* ── Keyframes ─────────────────────────────────────────────── */
+/* ── Motion: small, deliberate delights ─────────────────── */
 
 @keyframes slide-up {
 	from {
@@ -68,7 +68,7 @@
 @keyframes fade-in-up {
 	from {
 		opacity: 0;
-		transform: translateY(12px);
+		transform: translateY(10px);
 	}
 	to {
 		opacity: 1;
@@ -79,7 +79,7 @@
 @keyframes fade-in-scale {
 	from {
 		opacity: 0;
-		transform: scale(0.95);
+		transform: scale(0.96);
 	}
 	to {
 		opacity: 1;
@@ -93,11 +93,10 @@
 		opacity: 1;
 	}
 	50% {
-		opacity: 0.7;
+		opacity: 0.65;
 	}
 }
 
-/* Small, deliberate delights: ink drawing itself, a stamp landing, a sparkle. */
 @keyframes draw-line {
 	from {
 		transform: scaleX(0);
@@ -110,11 +109,11 @@
 @keyframes soft-pop {
 	0% {
 		opacity: 0;
-		transform: scale(0.8);
+		transform: scale(0.85);
 	}
 	65% {
 		opacity: 1;
-		transform: scale(1.06);
+		transform: scale(1.05);
 	}
 	100% {
 		opacity: 1;
@@ -130,17 +129,28 @@
 	}
 	45% {
 		opacity: 1;
-		transform: scale(1.15) rotate(10deg);
+		transform: scale(1.2) rotate(12deg);
 	}
 }
 
-@keyframes sway {
+@keyframes unfold {
+	from {
+		opacity: 0;
+		transform: perspective(900px) rotateX(-7deg) translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: perspective(900px) rotateX(0) translateY(0);
+	}
+}
+
+@keyframes float {
 	0%,
 	100% {
-		transform: rotate(-3deg);
+		transform: translateY(0);
 	}
 	50% {
-		transform: rotate(3deg);
+		transform: translateY(-4px);
 	}
 }
 
@@ -159,18 +169,18 @@
 	--font-sans: 'DM Sans', 'HPSimplified', system-ui, sans-serif;
 	--font-display: 'DM Serif Display', Georgia, serif;
 
-	--animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-	--animate-fade-in: fade-in 0.4s ease-out both;
-	--animate-fade-in-up: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-	--animate-fade-in-scale: fade-in-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-	--animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+	--animate-slide-up: slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+	--animate-fade-in: fade-in 0.3s ease-out both;
+	--animate-fade-in-up: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-fade-in-scale: fade-in-scale 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
 	--animate-draw-line: draw-line 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 	--animate-soft-pop: soft-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 	--animate-sparkle: sparkle 0.9s ease-in-out 1 both;
-	--animate-sway: sway 3s ease-in-out infinite;
-	--animate-glide-in: glide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-unfold: unfold 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+	--animate-float: float 4s ease-in-out infinite;
+	--animate-glide-in: glide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 
-	/* One easing for every interactive transition in the app. */
 	--ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -184,23 +194,24 @@
 	}
 
 	:root {
-		--travel-paper: #fffdf7;
-		--travel-wash: #efe6d5;
-		--travel-ink: #172a45;
-		--travel-amber: #e6a527;
-		--travel-rust: #a45e38;
-		--travel-sage: #2f7d58;
+		--paper: #fffdf7;
+		--wash: #f0e8d8;
+		--ink: #1b2b3a;
+		--rust: #a24e2c;
+		--signal: #b23b2e;
+		--amber: #c98a1f;
+		--line: rgb(27 43 58 / 0.18);
 	}
 
 	html,
 	body {
 		min-height: 100%;
-		background: var(--travel-wash);
-		color: var(--travel-ink);
+		background: var(--wash);
+		color: var(--ink);
 	}
 
 	:focus-visible {
-		outline: 2px solid var(--travel-rust);
+		outline: 2px solid var(--rust);
 		outline-offset: 2px;
 	}
 
@@ -210,8 +221,37 @@
 	}
 }
 
-/* ── Shared motion ─────────────────────────────────────────────
-   Unlayered so these win over daisyUI's component layer. */
+/* ── Paper-map primitives (unlayered to win over daisyUI) ─ */
+
+.btn {
+	transition: all 0.18s var(--ease-smooth);
+	border-radius: 0.375rem;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	box-shadow: none;
+}
+
+.btn:active {
+	transform: scale(0.97);
+}
+
+.btn-primary {
+	border-color: var(--ink);
+	background: var(--ink);
+	color: var(--paper);
+}
+
+.btn-primary:hover {
+	border-color: var(--rust);
+	background: var(--rust);
+}
+
+.btn-ghost:hover {
+	background: rgb(201 138 31 / 0.12);
+	color: var(--ink);
+}
 
 .card {
 	transition:
@@ -220,186 +260,104 @@
 		border-color 0.2s var(--ease-smooth);
 }
 
-.btn {
-	transition: all 0.15s var(--ease-smooth);
-	border-radius: 0;
-	font-size: 0.72rem;
-	font-weight: 700;
-	letter-spacing: 0.075em;
+/* Chart paper: warm wash, faint coordinate grid and a soft contour blob. */
+.travel-page {
+	min-height: 100dvh;
+	background-color: var(--wash);
+	background-image:
+		radial-gradient(ellipse at 8% 0%, rgb(201 138 31 / 0.1), transparent 45%),
+		radial-gradient(ellipse at 92% 8%, rgb(162 78 44 / 0.08), transparent 40%),
+		linear-gradient(rgb(27 43 58 / 0.035) 1px, transparent 1px),
+		linear-gradient(90deg, rgb(27 43 58 / 0.035) 1px, transparent 1px);
+	background-size:
+		auto,
+		auto,
+		28px 28px,
+		28px 28px;
+}
+
+.paper-sheet {
+	border: 1px solid var(--line);
+	border-radius: 0.65rem;
+	background: var(--paper);
+	box-shadow: 0 4px 16px rgb(27 43 58 / 0.07);
+}
+
+.paper-eyebrow {
+	color: var(--rust);
+	font-size: 0.66rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 
-.btn:active {
-	transform: scale(0.97);
-}
-
-.btn-primary {
-	border-color: var(--travel-ink);
-	background: var(--travel-ink);
-	color: var(--travel-paper);
-}
-
-.btn-primary:hover {
-	border-color: var(--travel-rust);
-	background: var(--travel-rust);
-}
-
-.btn-secondary {
-	border-color: var(--travel-rust);
-	background: var(--travel-rust);
-	color: var(--travel-paper);
-}
-
-.btn-accent {
-	border-color: var(--travel-amber);
-	background: var(--travel-amber);
-	color: var(--travel-ink);
-}
-
-.btn-ghost:hover {
-	background: color-mix(in srgb, var(--travel-amber) 12%, transparent);
-}
-
-.travel-page {
-	min-height: 100dvh;
-	background-color: var(--travel-wash);
-	background-image:
-		linear-gradient(rgba(23, 42, 69, 0.025) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(23, 42, 69, 0.025) 1px, transparent 1px);
-	background-size: 28px 28px;
+.paper-rule-drawn {
+	transform-origin: left center;
+	background: linear-gradient(90deg, var(--amber), transparent);
 }
 
 .travel-display {
 	font-family: var(--font-display);
 	font-weight: 400;
-	letter-spacing: -0.035em;
+	letter-spacing: -0.025em;
 }
 
 .travel-folio {
-	border-left: 2px solid var(--travel-amber);
-	padding-left: 0.55rem;
-	font-family: var(--font-display);
-	letter-spacing: 0.01em;
-}
-
-.travel-eyebrow {
-	color: var(--travel-rust);
-	font-size: 0.65rem;
-	font-weight: 700;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-}
-
-.travel-rule {
-	border-color: color-mix(in srgb, var(--travel-ink) 22%, transparent);
-}
-
-/* A thin drawn rule that animates into place — used under headings. */
-.travel-rule-drawn {
-	transform-origin: left center;
-	background: color-mix(in srgb, var(--travel-ink) 30%, transparent);
+	border-left: 3px solid var(--amber);
+	padding-left: 0.6rem;
 }
 
 .travel-error-sheet {
 	position: relative;
 	overflow: hidden;
-	border: 1px solid color-mix(in srgb, var(--travel-ink) 42%, transparent);
-	border-top: 3px double var(--travel-ink);
-	background: var(--travel-paper);
-	padding: clamp(1.5rem, 7vw, 3.25rem);
-	box-shadow: 8px 9px 0 color-mix(in srgb, var(--travel-ink) 9%, transparent);
+	border: 1px solid var(--line);
+	border-top: 4px solid var(--ink);
+	border-radius: 0.75rem;
+	background: var(--paper);
+	padding: clamp(1.75rem, 7vw, 3.25rem);
+	box-shadow: 8px 10px 0 rgb(27 43 58 / 0.1);
 }
 
-.travel-error-sheet::before,
-.travel-error-sheet::after {
-	position: absolute;
-	width: 1rem;
-	height: 1rem;
-	border: 2px solid var(--travel-amber);
-	content: '';
-}
-
-.travel-error-sheet::before {
-	top: 0.65rem;
-	left: 0.65rem;
-	border-right: 0;
-	border-bottom: 0;
-}
-.travel-error-sheet::after {
-	right: 0.65rem;
-	bottom: 0.65rem;
-	border-top: 0;
-	border-left: 0;
-}
-
-.travel-error-folio {
-	display: flex;
-	justify-content: space-between;
-	gap: 1rem;
-	border-bottom: 1px solid color-mix(in srgb, var(--travel-ink) 22%, transparent);
-	padding-bottom: 0.6rem;
-	color: var(--travel-rust);
-	font-size: 0.64rem;
-	font-weight: 700;
+.travel-error-kicker {
+	margin: 1rem 0 0;
+	color: var(--rust);
+	font-size: 0.7rem;
+	font-weight: 800;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 
-.travel-error-mark {
-	position: relative;
-	width: 2.3rem;
-	height: 1.45rem;
-	margin-top: clamp(2rem, 8vw, 4rem);
-}
-.travel-error-mark i,
-.travel-error-mark b {
-	position: absolute;
-	top: 0;
-	width: 1.35rem;
-	height: 1.35rem;
-	border: 2px solid var(--travel-ink);
-	border-radius: 50%;
-}
-.travel-error-mark i {
-	left: 0;
-}
-.travel-error-mark b {
-	right: 0;
-	border-color: var(--travel-amber);
-}
-.travel-error-kicker {
-	margin: 1rem 0 0;
-	color: var(--travel-rust);
-	font-size: 0.68rem;
-	font-weight: 700;
-	letter-spacing: 0.11em;
-	text-transform: uppercase;
-}
 .travel-error-sheet h1 {
-	margin: 0.3rem 0 0;
-	color: var(--travel-ink);
-	font-size: clamp(2.3rem, 11vw, 4.4rem);
-	line-height: 0.94;
+	margin: 0.4rem 0 0;
+	color: var(--ink);
+	font-family: var(--font-display);
+	font-size: clamp(2.4rem, 11vw, 4.4rem);
+	font-weight: 400;
+	letter-spacing: -0.035em;
+	line-height: 0.98;
 }
+
 .travel-error-copy {
 	max-width: 35rem;
 	margin: 1.25rem 0 0;
-	color: color-mix(in srgb, var(--travel-ink) 72%, transparent);
+	color: color-mix(in srgb, var(--ink) 72%, transparent);
 	font-size: 1rem;
 	line-height: 1.6;
 }
+
 .travel-error-request {
 	margin: 1.5rem 0 0;
-	color: var(--travel-rust);
-	font-size: 0.71rem;
+	color: var(--rust);
+	font-size: 0.72rem;
 	font-weight: 700;
 	letter-spacing: 0.07em;
 	text-transform: uppercase;
 }
+
 .travel-error-request code {
-	color: var(--travel-ink);
+	color: var(--ink);
 	font-family: var(--font-sans);
-	font-size: 0.76rem;
+	font-size: 0.78rem;
 	letter-spacing: 0;
 	text-transform: none;
 }
@@ -408,7 +366,6 @@
 	transition: all 0.15s ease;
 }
 
-/* T64 — larger touch targets only where the pointer is imprecise. */
 @media (pointer: coarse) {
 	.btn {
 		min-height: 44px;

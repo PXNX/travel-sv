@@ -36,11 +36,9 @@
 		...rest
 	}: Props = $props();
 
-	// Elevation is baked into the variant so a primary action never looks
-	// slightly different from one screen to the next.
 	const VARIANT: Record<Variant, string> = {
-		primary: 'btn-primary hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(23,42,69,0.18)]',
-		secondary: 'btn-secondary hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(164,94,56,0.18)]',
+		primary: 'btn-primary hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(27,43,58,0.16)]',
+		secondary: 'btn-secondary',
 		ghost: 'btn-ghost',
 		error: 'btn-error',
 		neutral: 'btn-neutral',
