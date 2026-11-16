@@ -1,12 +1,13 @@
-# Travel SV — Journey Planner
+# Travel Planner
 
-A local-first travel planner built with SvelteKit. Plan a route of stops, attach
-walking, driving or public-transport segments, view it all on an interactive map,
-and keep working offline. Journeys can be published as read-only links and
-imported by other travellers.
+A local-first travel planner built with SvelteKit. Plan a trip by choosing a
+start and a destination, let the app work out the transit connection, then
+refine stops and travel modes in the itinerary editor. Journeys can be published
+as read-only links and imported by other travellers.
 
-The interface uses a warm "paper and ink" design system: printed route slips,
-folio numbers, ink rules and restrained amber wayfinding.
+The interface feels like a **paper map**: warm chart paper, ink rules, route
+colours and folded-sheet panels. Motion is deliberately small — drawn route
+lines, soft pops, a sparkle when a trip is completed.
 
 ## Quick start
 
@@ -17,9 +18,9 @@ bun install
 bun run dev
 ```
 
-The dev server listens on port 3021 by default (`vite.config.ts`). The database
-and Google OAuth credentials are required for the authenticated screens — put
-them in a local `.env` (git-ignored):
+The dev server listens on port 3021 by default (`vite.config.ts`). The
+authenticated screens need Postgres and Google OAuth credentials — put them in
+a local `.env` (git-ignored):
 
 ```text
 DATABASE_URL=postgresql://...
@@ -31,42 +32,57 @@ GOOGLE_REDIRECT_URI=http://localhost:3021/auth/callback/google
 The Postgres schema lives in `drizzle/` and can be applied with the scripts in
 `scripts/`.
 
+## What you can do
+
+- **Plan first** — pick From and To on the home screen (search or map), set a
+  departure time and press _Plan journey_. The server creates the trip and
+  computes a transit connection for you.
+- **Refine the itinerary** — reorder stops by drag or the arrow buttons, switch
+  each leg between walk / transit / drive, edit stay times and notes, and jump
+  between stops from the compact timeline at the top.
+- **See everything** — the _Routes_ tab plots all planned journeys on one map;
+  the _Done_ tab archives completed trips.
+- **Share and export** — publish a read-only link, or download the journey as
+  JSON from the editor.
+- **Work offline** — local drafts and cached maps keep the editor usable
+  without a connection, with an explicit upload when you are back online.
+
 ## Codebase layout
 
 Code is grouped by feature under `src/lib/`. Route files in `src/routes/` stay
 thin — they load data and hand off to those components.
 
-| Path                                     | Responsibility                                                                                    |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/lib/ui/`                            | Design system: buttons, cards, modals, headers, tokens (`theme.ts`), overlay handling             |
-| `src/lib/journeys/`                      | Journey domain UI: route cards, stop cards, segment chips, share and transit detail dialogs       |
-| `src/lib/maps/`                          | Leaflet-based map components (`JourneyMap`, `MiniMap`, `LocationPicker`), loaded client-side only |
-| `src/lib/app/`                           | App-shell pieces: install prompt, offline and cookie banners                                      |
-| `src/lib/offline/`                       | IndexedDB caching, local journey drafts, local-storage helpers                                    |
-| `src/lib/server/`                        | Server-only code: Postgres schema and queries, auth, segment computation                          |
-| `src/lib/types.ts`, `src/lib/helpers.ts` | Shared domain types and pure helpers (durations, distances, arrival times)                        |
-| `src/routes/(authorized)/`               | Sign-in-required screens: journey register, editor, completed archive                             |
-| `src/routes/(public)/`                   | Login and shared-journey pages                                                                    |
-| `src/routes/preview/`                    | Dev-only visual harness for every screen                                                          |
-| `static/`                                | Icons, web manifest, font, PWA assets                                                             |
+| Path                                     | Responsibility                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| `src/lib/ui/`                            | Design system: buttons, cards, modals, headers, tokens (`theme.ts`), overlay handling |
+| `src/lib/journeys/`                      | Planner, route/stop/segment cards, share and transit dialogs                          |
+| `src/lib/maps/`                          | Leaflet components — single-route map, location picker, all-routes map; browser-only  |
+| `src/lib/app/`                           | Shell navigation, install prompt, offline and cookie banners                          |
+| `src/lib/offline/`                       | IndexedDB caching, local journey drafts, local-storage helpers                        |
+| `src/lib/server/`                        | Postgres schema and queries, shared journey queries, auth, segment computation        |
+| `src/lib/types.ts`, `src/lib/helpers.ts` | Shared domain types and pure helpers                                                  |
+| `src/routes/(authorized)/`               | Planner home, editor, route overview, completed archive                               |
+| `src/routes/(public)/`                   | Login and shared-journey pages                                                        |
+| `src/routes/preview/`                    | Dev-only visual harness for every screen                                              |
+| `static/`                                | Icons, web manifest, font, PWA assets                                                 |
 
 Conventions:
 
 - Keep pure logic in `.ts` files with a Vitest test; keep reactive state in
-  `.svelte.ts` files so the pure modules stay testable.
+  `.svelte.ts` files so pure modules stay testable.
 - Import shared UI from `$lib/ui`, journey components from `$lib/journeys/...`
-  and storage from `$lib/offline/local` — not from the old flat `components/`
-  path.
+  and storage from `$lib/offline/local`.
 - Leaflet must only load in the browser; map components use dynamic imports and
   are never rendered during SSR.
-- Everything runs on the device; no cloud LLM or TTS calls are made.
 
 ## Working on the UI
 
 The real screens need OAuth and Postgres. To review them without either, run
-`bun run dev` and open `/preview`. It renders the register, editor, completed
+`bun run dev` and open `/preview`. It renders the planner, editor, completed
 archive, shared view, login, empty state and error page with sample data, and
 its "Install hint" button simulates the browser install prompt.
+
+Handy shortcut: press `/` on the planner home to focus the journey search.
 
 ## Quality checks
 
