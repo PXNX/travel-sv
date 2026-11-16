@@ -32,9 +32,9 @@
 	}: Props = $props();
 
 	const BUBBLE: Record<Tone, string> = {
-		error: 'bg-error/15 text-error',
-		primary: 'bg-primary/15 text-primary',
-		warning: 'bg-warning/15 text-warning'
+		error: 'bg-[#a83a2b]/12 text-[#a83a2b]',
+		primary: 'bg-[#e6a527]/18 text-[#172a45]',
+		warning: 'bg-[#e6a527]/20 text-[#b0781b]'
 	};
 	const CONFIRM_VARIANT = { error: 'error', primary: 'primary', warning: 'primary' } as const;
 
@@ -47,11 +47,11 @@
 <Modal bind:open {title} size="xs" layer="top" sheet={false} onclose={oncancel} ariaLabel={title}>
 	<div class="flex gap-3.5">
 		{#if Icon}
-			<div class="flex size-10 shrink-0 items-center justify-center rounded-full {BUBBLE[tone]}">
+			<div class="flex size-10 shrink-0 items-center justify-center border {BUBBLE[tone]}">
 				<Icon class="size-5" />
 			</div>
 		{/if}
-		<div class="text-base-content/60 min-w-0 pt-0.5 text-sm leading-relaxed">
+		<div class="min-w-0 pt-0.5 text-sm leading-relaxed text-[#172a45]/70">
 			{@render children?.()}
 		</div>
 	</div>

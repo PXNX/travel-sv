@@ -39,12 +39,12 @@
 	// Elevation is baked into the variant so a primary action never looks
 	// slightly different from one screen to the next.
 	const VARIANT: Record<Variant, string> = {
-		primary: 'btn-primary shadow-sm shadow-primary/25 hover:shadow-md hover:shadow-primary/30',
-		secondary: 'btn-secondary shadow-sm shadow-secondary/25',
+		primary: 'btn-primary hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(23,42,69,0.18)]',
+		secondary: 'btn-secondary hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(164,94,56,0.18)]',
 		ghost: 'btn-ghost',
-		error: 'btn-error shadow-sm shadow-error/25',
+		error: 'btn-error',
 		neutral: 'btn-neutral',
-		outline: 'btn-outline'
+		outline: 'btn-outline hover:-translate-y-px'
 	};
 	const SIZE: Record<Size, string> = { xs: 'btn-xs', sm: 'btn-sm', md: '', lg: 'btn-lg' };
 	const ICON_SIZE: Record<Size, string> = {
@@ -68,7 +68,6 @@
 </script>
 
 {#snippet content()}
-	<!-- The spinner replaces the icon rather than the label, so the button keeps its width. -->
 	{#if loading}
 		<span class="loading loading-spinner {SPINNER[size]}"></span>
 	{:else if Icon}

@@ -25,7 +25,7 @@
 		label,
 		variant = 'ghost',
 		size = 'sm',
-		circle = true,
+		circle = false,
 		loading = false,
 		disabled = false,
 		href,
@@ -36,7 +36,7 @@
 	}: Props = $props();
 
 	const VARIANT: Record<Variant, string> = {
-		primary: 'btn-primary shadow-sm shadow-primary/25',
+		primary: 'btn-primary',
 		ghost: 'btn-ghost',
 		error: 'btn-error',
 		neutral: 'btn-neutral'

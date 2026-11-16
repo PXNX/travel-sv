@@ -10,9 +10,9 @@
 	let { icon: Icon, class: klass = '', children }: Props = $props();
 </script>
 
-<span class="text-base-content/60 flex items-center gap-1 text-xs {klass}">
+<span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#172a45]/60 {klass}">
 	{#if Icon}
-		<Icon class="size-3.5 shrink-0" />
+		<Icon class="size-3.5 shrink-0 text-[#a45e38]" />
 	{/if}
 	{@render children()}
 </span>

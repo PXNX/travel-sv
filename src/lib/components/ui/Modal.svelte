@@ -5,24 +5,16 @@
 	import { focusTrap, isTopOverlay, registerOverlay, unregisterOverlay } from './overlay';
 
 	type Size = 'xs' | 'sm' | 'md' | 'lg' | 'full';
-	/**
-	 * Stacking tiers. Leaflet reserves everything up to ~1000, and a detail modal
-	 * can be opened from another modal, so the tiers are kept far apart.
-	 */
 	type Layer = 'base' | 'raised' | 'top';
 
 	interface Props {
 		open: boolean;
 		title?: string;
-		/** Optional glyph shown next to the title. */
 		icon?: Component<{ class?: string }>;
 		size?: Size;
 		layer?: Layer;
-		/** Full-width bottom sheet on phones, centred dialog from `sm` up. */
 		sheet?: boolean;
-		/** Pad the body. Turn off for edge-to-edge content such as maps. */
 		padded?: boolean;
-		/** Allow dismissing via backdrop click / Escape. */
 		dismissible?: boolean;
 		ariaLabel?: string;
 		onclose?: () => void;
@@ -82,8 +74,6 @@
 	}
 
 	function handleBackdropClick(event: MouseEvent) {
-		// Only a click on the backdrop itself dismisses; clicks inside the panel bubble
-		// through here but have a different target.
 		if (dismissible && event.target === event.currentTarget) close();
 	}
 </script>
@@ -93,17 +83,17 @@
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 flex justify-center bg-black/60 backdrop-blur-[2px] {LAYER[
+		class="fixed inset-0 flex justify-center bg-[#172a45]/70 backdrop-blur-[2px] {LAYER[
 			layer
-		]} animate-fade-in {sheet ? 'items-end sm:items-center' : 'items-center p-4'}"
+		]} animate-fade-in {sheet ? 'items-end sm:items-center sm:p-4' : 'items-center p-4'}"
 		onclick={handleBackdropClick}
 	>
 		<div
-			class="bg-base-100 relative flex max-h-[92dvh] w-full flex-col overflow-hidden shadow-2xl outline-none sm:max-h-[85dvh] {SIZE[
+			class="relative flex max-h-[92dvh] w-full flex-col overflow-hidden border border-[#172a45]/60 border-t-4 border-t-[#e6a527] bg-[#fffdf7] shadow-[10px_12px_0_rgba(23,42,69,0.25)] outline-none sm:max-h-[85dvh] {SIZE[
 				size
 			]} {sheet
-				? 'animate-slide-up rounded-t-2xl sm:animate-fade-in-scale sm:rounded-2xl'
-				: 'animate-fade-in-scale rounded-2xl'}"
+				? 'animate-slide-up sm:animate-fade-in-scale'
+				: 'animate-fade-in-scale'}"
 			role="dialog"
 			aria-modal="true"
 			aria-label={title ? undefined : ariaLabel}
@@ -112,18 +102,16 @@
 			use:focusTrap
 		>
 			{#if title}
-				<header
-					class="border-base-300 flex shrink-0 items-start justify-between gap-3 border-b px-5 py-3.5"
-				>
+				<header class="flex shrink-0 items-start justify-between gap-3 border-b border-[#172a45]/20 px-5 py-3.5">
 					<div class="min-w-0">
-						<h2 id={titleId} class="flex items-center gap-1.5 text-base leading-tight font-bold">
+						<h2 id={titleId} class="travel-display flex items-center gap-1.5 text-lg leading-tight text-[#172a45]">
 							{#if Icon}
-								<Icon class="size-5 shrink-0" />
+								<Icon class="size-5 shrink-0 text-[#a45e38]" />
 							{/if}
 							{title}
 						</h2>
 						{#if subtitle}
-							<div class="text-base-content/50 mt-0.5 text-xs">{@render subtitle()}</div>
+							<div class="mt-0.5 text-xs text-[#172a45]/55">{@render subtitle()}</div>
 						{/if}
 					</div>
 					{#if dismissible}
@@ -137,7 +125,7 @@
 			</div>
 
 			{#if footer}
-				<footer class="border-base-300 shrink-0 border-t px-5 py-3">
+				<footer class="shrink-0 border-t border-[#172a45]/20 px-5 py-3">
 					{@render footer()}
 				</footer>
 			{/if}

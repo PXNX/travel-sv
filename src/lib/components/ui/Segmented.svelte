@@ -19,7 +19,7 @@
 </script>
 
 <div
-	class="bg-base-100/60 flex gap-0.5 self-start rounded-lg p-0.5"
+	class="inline-flex gap-px border border-[#172a45]/30 bg-[#efe6d5] p-px"
 	role="radiogroup"
 	aria-label={ariaLabel}
 >
@@ -30,11 +30,9 @@
 			type="button"
 			role="radio"
 			aria-checked={selected}
-			class="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-all"
-			class:bg-primary={selected}
-			class:text-primary-content={selected}
-			class:shadow-sm={selected}
-			class:hover:bg-base-300={!selected}
+			class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold transition-all duration-200 {selected
+				? 'animate-soft-pop bg-[#172a45] text-[#fffdf7]'
+				: 'text-[#172a45]/60 hover:bg-[#e6a527]/15 hover:text-[#172a45]'}"
 			{disabled}
 			title={option.label}
 			onclick={() => onchange?.(option.value)}
