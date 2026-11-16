@@ -7,14 +7,16 @@
 **Goal**: Create a full day itinerary in Munich
 
 **Steps**:
+
 1. Navigate to "Browse OpenStreetMap Places"
 2. Select "Munich" from city options
 3. Search for "Marienplatz" → Add
-4. Search for "Hofbräuhaus" → Add  
+4. Search for "Hofbräuhaus" → Add
 5. Search for "Englischer Garten" → Add
 6. Search for "BMW Museum" → Add
 
 **Result**: 4 locations added in ~2 minutes with:
+
 - Accurate coordinates
 - Auto-detected categories
 - Estimated durations
@@ -31,6 +33,7 @@
 **Goal**: Add a specific restaurant you found
 
 **Steps**:
+
 1. Click map to open "Add New Location"
 2. Type "Zum Franziskaner München" in OSM search
 3. Select from autocomplete
@@ -51,6 +54,7 @@
 **Goal**: Plan a museum day in Berlin
 
 **Browse Method**:
+
 1. Go to Browse page
 2. Select "Berlin"
 3. Set category filter to "Museum & Culture"
@@ -63,12 +67,14 @@
 6. Click each marker, add to collection
 
 **Alternative Method** (Using Add Page):
+
 1. Go to Add New Location
 2. Search "Pergamon Museum"
 3. Select → Auto-fills → Save
 4. Repeat for other museums
 
 **Result**: Complete museum route with:
+
 - All major museums
 - Auto-detected 2-hour durations
 - Clustered on map
@@ -81,6 +87,7 @@
 **Goal**: Discover interesting places in Salzburg
 
 **Steps**:
+
 1. Browse page → Select "Salzburg"
 2. Try different searches:
    - "attractions" → Hohensalzburg Fortress, Mozart's Birthplace
@@ -97,15 +104,17 @@
 ## Category Detection Examples
 
 ### Food & Dining
+
 ```
 Search: "Hofbräuhaus München"
-OSM Type: "restaurant" 
+OSM Type: "restaurant"
 → Detected: Food & Dining
 → Duration: 90 minutes
 → Description: "A restaurant in Munich, Bavaria, Germany."
 ```
 
 ### Museum & Culture
+
 ```
 Search: "Deutsches Museum"
 OSM Type: "museum"
@@ -115,6 +124,7 @@ OSM Type: "museum"
 ```
 
 ### Nature & Outdoors
+
 ```
 Search: "Englischer Garten"
 OSM Type: "park"
@@ -124,6 +134,7 @@ OSM Type: "park"
 ```
 
 ### Leisure
+
 ```
 Search: "Neuschwanstein Castle"
 OSM Type: "castle"
@@ -137,6 +148,7 @@ OSM Type: "castle"
 ## Search Pattern Examples
 
 ### Specific Place
+
 ```
 Input: "Brandenburg Gate"
 Results:
@@ -149,6 +161,7 @@ Auto-fills: Title, coordinates, address, category (Leisure)
 ```
 
 ### General Category Near City
+
 ```
 Input: "restaurants near Innsbruck"
 Results (proximity sorted):
@@ -163,6 +176,7 @@ Durations: 60-90 minutes
 ```
 
 ### POI Type Search
+
 ```
 Input: "museums Vienna"
 Results:
@@ -176,6 +190,7 @@ All detected as: Museum & Culture
 ```
 
 ### Landmark Search
+
 ```
 Input: "Matterhorn"
 Results:
@@ -193,19 +208,24 @@ Each with appropriate category and duration
 ### Building a Complete Itinerary
 
 **Morning** (Browse → "cafes Munich"):
+
 - ✓ Café Frischhut (30 min)
 - ✓ Café Luitpold (30 min)
 
 **Late Morning** (Search → "museums Munich"):
+
 - ✓ Deutsches Museum (120 min)
 
 **Lunch** (Search → "restaurants Marienplatz"):
+
 - ✓ Ratskeller München (90 min)
 
 **Afternoon** (Browse → "parks Munich"):
+
 - ✓ Englischer Garten (120 min)
 
 **Evening** (Search → "beer halls Munich"):
+
 - ✓ Hofbräuhaus (90 min)
 
 **Total**: 6 locations, 8 hours, added in 5 minutes
@@ -215,6 +235,7 @@ Each with appropriate category and duration
 ### Multi-City Trip Planning
 
 **Vienna Day 1**:
+
 ```
 Browse → Vienna → "attractions"
 → Stephansdom, Hofburg, Belvedere
@@ -223,6 +244,7 @@ Add all three (2 minutes)
 ```
 
 **Vienna Day 2**:
+
 ```
 Browse → Vienna → "museums"
 → Kunsthistorisches, Naturhistorisches
@@ -231,6 +253,7 @@ Add both (1 minute)
 ```
 
 **Salzburg Day 3**:
+
 ```
 Browse → Salzburg → "Mozart"
 → Mozart's Birthplace, Mozart Residence
@@ -245,18 +268,20 @@ Add both (1 minute)
 ## Editing OSM-Sourced Locations
 
 ### Personalizing Descriptions
+
 ```
 Original (auto-generated):
-"A restaurant in Munich, Bavaria, Germany. 
+"A restaurant in Munich, Bavaria, Germany.
 Feel free to add more details about your experience here!"
 
 Edit to:
-"Traditional Bavarian beer hall with great atmosphere! 
-Try their Schweinebraten. Gets crowded after 7pm. 
+"Traditional Bavarian beer hall with great atmosphere!
+Try their Schweinebraten. Gets crowded after 7pm.
 Reservations recommended on weekends."
 ```
 
 ### Adjusting Durations
+
 ```
 Auto-detected: 90 minutes
 Your experience: Spent 120 minutes
@@ -265,6 +290,7 @@ Your experience: Spent 120 minutes
 ```
 
 ### Correcting Categories
+
 ```
 Auto-detected: Leisure (for historic castle)
 Your preference: Museum & Culture (focuses on tours)
@@ -273,6 +299,7 @@ Your preference: Museum & Culture (focuses on tours)
 ```
 
 ### Adding Extra Info
+
 ```
 Auto-filled:
 - Title: "Café Central"
@@ -289,6 +316,7 @@ Add:
 ## Troubleshooting Examples
 
 ### Problem: No Results Found
+
 ```
 Search: "Octoberfest"
 Results: None
@@ -300,6 +328,7 @@ Results: ✓ Theresienwiese found
 ```
 
 ### Problem: Wrong Category Detected
+
 ```
 Search: "Residenz München"
 Auto-detected: Leisure
@@ -311,6 +340,7 @@ Solution:
 ```
 
 ### Problem: Too Many Results
+
 ```
 Search: "restaurant"
 Results: 20+ generic restaurants
@@ -322,6 +352,7 @@ Solution:
 ```
 
 ### Problem: Coordinates Slightly Off
+
 ```
 OSM location: Slightly different from actual entrance
 
@@ -336,6 +367,7 @@ Solution:
 ## Best Practices
 
 ### 1. Start Specific, Get Broader
+
 ```
 ✓ Good: "Hofbräuhaus München" → Exact place
 ✓ Good: "restaurants Munich" → Multiple options
@@ -343,6 +375,7 @@ Solution:
 ```
 
 ### 2. Use City Names
+
 ```
 ✓ "Stephansdom Vienna"
 ✓ "parks Berlin"
@@ -350,6 +383,7 @@ Solution:
 ```
 
 ### 3. Review Auto-Filled Data
+
 ```
 Always check:
 ├─ Description (add personal notes)
@@ -359,6 +393,7 @@ Always check:
 ```
 
 ### 4. Combine Methods
+
 ```
 Browse page: Explore and discover
 Add page: Quick add known places
@@ -366,6 +401,7 @@ Manual entry: For custom/private locations
 ```
 
 ### 5. Leverage Filters
+
 ```
 Planning food tour → Set category to "Food"
 Museum day → Set category to "Museums"
@@ -376,13 +412,13 @@ Outdoor day → Set category to "Nature"
 
 ## Time Savings Comparison
 
-| Task | Manual Entry | OSM Method | Time Saved |
-|------|--------------|------------|------------|
-| 1 Restaurant | 3-5 min | 30 sec | 83-90% |
-| 1 Museum | 3-5 min | 30 sec | 83-90% |
-| Day Trip (6 places) | 18-30 min | 3-5 min | 75-83% |
-| Weekend Trip (12 places) | 36-60 min | 6-10 min | 75-83% |
-| Week Trip (30 places) | 90-150 min | 15-25 min | 75-83% |
+| Task                     | Manual Entry | OSM Method | Time Saved |
+| ------------------------ | ------------ | ---------- | ---------- |
+| 1 Restaurant             | 3-5 min      | 30 sec     | 83-90%     |
+| 1 Museum                 | 3-5 min      | 30 sec     | 83-90%     |
+| Day Trip (6 places)      | 18-30 min    | 3-5 min    | 75-83%     |
+| Weekend Trip (12 places) | 36-60 min    | 6-10 min   | 75-83%     |
+| Week Trip (30 places)    | 90-150 min   | 15-25 min  | 75-83%     |
 
 ---
 

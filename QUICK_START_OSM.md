@@ -7,13 +7,15 @@ Your travel planner now lets you **search and add places from OpenStreetMap** in
 ## 🚀 Two Ways to Add Locations
 
 ### Method 1: Quick Add from Any Page
+
 1. Click the **"Browse OpenStreetMap Places"** button in the sidebar
 2. Search for a place (e.g., "Hofbräuhaus München")
-3. Click **"Add to My Locations"** 
+3. Click **"Add to My Locations"**
 4. Customize details if needed
 5. Save!
 
 ### Method 2: Search While Creating
+
 1. Click on the map or go to **Add New Location**
 2. Use the **OSM search box** at the top
 3. Select a place from autocomplete
@@ -23,6 +25,7 @@ Your travel planner now lets you **search and add places from OpenStreetMap** in
 ## 💡 What Gets Auto-Filled?
 
 When you select a place from OSM, the system automatically fills:
+
 - ✅ **Title** - The place name
 - ✅ **Description** - Generated from OSM data
 - ✅ **Category** - Detected from place type
@@ -35,12 +38,14 @@ When you select a place from OSM, the system automatically fills:
 ## 🔍 Search Examples
 
 ### Specific Places
+
 - "Brandenburg Gate Berlin"
 - "Hofbräuhaus München"
 - "Stephansdom Vienna"
 - "Lake Zurich"
 
 ### General Categories
+
 - "restaurants near Munich"
 - "museums in Berlin"
 - "parks Vienna"
@@ -50,33 +55,35 @@ When you select a place from OSM, the system automatically fills:
 
 The system automatically assigns categories:
 
-| OSM Type | Your Category |
-|----------|---------------|
-| Restaurant, Cafe, Bar | **Food & Dining** |
-| Museum, Gallery, Theatre | **Museum & Culture** |
-| Park, Garden, Beach | **Nature & Outdoors** |
-| Hotel, Monument, Zoo | **Leisure** |
+| OSM Type                 | Your Category         |
+| ------------------------ | --------------------- |
+| Restaurant, Cafe, Bar    | **Food & Dining**     |
+| Museum, Gallery, Theatre | **Museum & Culture**  |
+| Park, Garden, Beach      | **Nature & Outdoors** |
+| Hotel, Monument, Zoo     | **Leisure**           |
 
 ## ⏱️ Smart Duration Estimates
 
-| Place Type | Estimated Duration |
-|------------|-------------------|
-| Cafe, Viewpoint | 30 minutes |
-| Restaurant, Bar | 60-90 minutes |
-| Museum, Zoo | 2 hours |
-| Hotel | 8 hours |
+| Place Type      | Estimated Duration |
+| --------------- | ------------------ |
+| Cafe, Viewpoint | 30 minutes         |
+| Restaurant, Bar | 60-90 minutes      |
+| Museum, Zoo     | 2 hours            |
+| Hotel           | 8 hours            |
 
 ## 📍 Supported Regions
 
 Searches are limited to German-speaking countries:
+
 - 🇩🇪 Germany
 - 🇦🇹 Austria
-- 🇨🇭 Switzerland  
+- 🇨🇭 Switzerland
 - 🇱🇮 Liechtenstein
 
 ## 🎨 User Interface Features
 
 ### Browse Page Features
+
 - **Map View**: See all results on an interactive map
 - **City Switcher**: Quick jump between Berlin, Munich, Vienna, etc.
 - **Category Filter**: Focus on specific types of places
@@ -84,6 +91,7 @@ Searches are limited to German-speaking countries:
 - **One-Click Add**: Add any place to your collection
 
 ### Add Location Page Features
+
 - **OSM Search Box**: Prominent at the top
 - **Auto-Fill Indicator**: Shows which fields came from OSM
 - **Edit Freedom**: Change any field before saving
@@ -92,12 +100,14 @@ Searches are limited to German-speaking countries:
 ## 🛠️ Tips & Tricks
 
 ### Best Practices
+
 1. **Be Specific**: "Englischer Garten Munich" works better than just "park"
 2. **Use City Names**: Add the city for better results
 3. **Check Details**: Always review auto-filled data before saving
 4. **Edit Descriptions**: Personalize the generated descriptions with your own notes
 
 ### Troubleshooting
+
 - **No Results?** → Try a different search term or check spelling
 - **Wrong Category?** → Simply change it in the dropdown
 - **Wrong Duration?** → Adjust the minutes field
@@ -105,12 +115,12 @@ Searches are limited to German-speaking countries:
 
 ## 🌟 Benefits
 
-| Before | After |
-|--------|-------|
+| Before                                       | After                             |
+| -------------------------------------------- | --------------------------------- |
 | Find place → Copy coordinates → Manual entry | Search → Click → Auto-fill → Save |
-| 5-10 minutes per location | 30 seconds per location |
-| Risk of typos | Verified OSM data |
-| Manual categorization | Auto-detected categories |
+| 5-10 minutes per location                    | 30 seconds per location           |
+| Risk of typos                                | Verified OSM data                 |
+| Manual categorization                        | Auto-detected categories          |
 
 ## 📖 More Information
 

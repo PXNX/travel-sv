@@ -25,6 +25,7 @@ Perfect for sharing with anyone, even if they don't have an account.
    - Share directly to apps like WhatsApp, Email, etc.
 
 **What recipients can do:**
+
 - View the complete trip itinerary
 - See all locations, timings, and transport details
 - Import the trip to their own planner (feature coming soon)
@@ -67,13 +68,15 @@ Best for collaborative planning with friends who have accounts.
 ## Understanding Trip Types
 
 ### Local Trips (Browser Storage)
+
 - **Icon:** String ID (e.g., "abc-123-def")
 - **Storage:** Saved in your browser's localStorage
 - **Sharing:** Link sharing only
 - **Pros:** Works offline, no account needed
 - **Cons:** Only on this device and browser
 
-### Account Trips (Server Storage)  
+### Account Trips (Server Storage)
+
 - **Icon:** Numeric ID (e.g., 42)
 - **Storage:** Saved to your account
 - **Sharing:** Both link and user sharing
@@ -87,6 +90,7 @@ Best for collaborative planning with friends who have accounts.
 ## Tips for Effective Sharing
 
 ### Creating Share-Worthy Trips
+
 1. **Add descriptive names**
    - Good: "Weekend in Paris - Museums & Cafés"
    - Not ideal: "Trip 1"
@@ -104,11 +108,13 @@ Best for collaborative planning with friends who have accounts.
 ### Sharing Best Practices
 
 **For Link Sharing:**
+
 - Include context in your message: "Check out my Berlin trip plan!"
 - Mention the trip duration and highlights
 - Let people know if it's a draft or finalized
 
 **For User Sharing:**
+
 - Use "View only" for sharing your plans
 - Use "Can edit" when planning together
 - Remove access when planning is complete
@@ -118,18 +124,21 @@ Best for collaborative planning with friends who have accounts.
 ## Privacy & Security
 
 ### What's Included in Shared Links
+
 - Trip name and description
 - All locations with addresses and coordinates
 - Transport information and timing
 - Custom durations and notes
 
 ### What's NOT Included
+
 - Your account information
 - Other trips you've created
 - Personal data or preferences
 - Edit history
 
 ### Security Notes
+
 - Shared links are encoded but not encrypted
 - Anyone with the link can view the trip
 - User sharing requires authentication
@@ -141,21 +150,25 @@ Best for collaborative planning with friends who have accounts.
 ## Troubleshooting
 
 ### "This trip is stored locally in your browser"
+
 - This means you can only use link sharing
 - To enable user sharing, trips need server storage
 - Feature is being implemented
 
 ### "User not found with that email address"
+
 - The person must have an account
 - Check that the email is spelled correctly
 - Ask them to sign up first
 
 ### Link doesn't work
+
 - Ensure the entire URL was copied
 - Try opening in an incognito/private window
 - Check if the trip still exists
 
 ### Can't see shared trips
+
 - Check your account's trip list
 - Look for trips marked "Shared by [Name]"
 - Ask the sender to verify the email address
@@ -165,6 +178,7 @@ Best for collaborative planning with friends who have accounts.
 ## Examples
 
 ### Example 1: Planning a Group Trip
+
 ```
 Scenario: Planning a Barcelona trip with 3 friends
 
@@ -178,6 +192,7 @@ Scenario: Planning a Barcelona trip with 3 friends
 ```
 
 ### Example 2: Sharing Your Past Trip
+
 ```
 Scenario: Someone asked for your Japan trip recommendations
 
@@ -189,6 +204,7 @@ Scenario: Someone asked for your Japan trip recommendations
 ```
 
 ### Example 3: Family Vacation Planning
+
 ```
 Scenario: Planning a Disney trip with family
 
@@ -205,6 +221,7 @@ Scenario: Planning a Disney trip with family
 ## Keyboard Shortcuts
 
 When the share modal is open:
+
 - `Esc` - Close the modal
 - `Tab` - Navigate between fields
 - `Ctrl/Cmd + C` - Copy link (when selected)
@@ -215,6 +232,7 @@ When the share modal is open:
 ## Feature Roadmap
 
 ### Coming Soon
+
 - [ ] Import trips from shared links
 - [ ] Server-side trip storage sync
 - [ ] Real-time collaborative editing
@@ -224,6 +242,7 @@ When the share modal is open:
 - [ ] Share analytics (view count)
 
 ### Future Ideas
+
 - [ ] Template trips for inspiration
 - [ ] Trip comments and suggestions
 - [ ] Version history

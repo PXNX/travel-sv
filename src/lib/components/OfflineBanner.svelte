@@ -9,8 +9,14 @@
 		isOffline = !navigator.onLine;
 		show = isOffline;
 
-		const goOffline = () => { isOffline = true; requestAnimationFrame(() => show = true); };
-		const goOnline = () => { show = false; setTimeout(() => isOffline = false, 300); };
+		const goOffline = () => {
+			isOffline = true;
+			requestAnimationFrame(() => (show = true));
+		};
+		const goOnline = () => {
+			show = false;
+			setTimeout(() => (isOffline = false), 300);
+		};
 
 		window.addEventListener('offline', goOffline);
 		window.addEventListener('online', goOnline);

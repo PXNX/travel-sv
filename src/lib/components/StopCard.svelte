@@ -43,10 +43,18 @@
 	let notes = $state('');
 	let confirmingDelete = $state(false);
 
-	$effect.pre(() => { nameInput = stop.name; });
-	$effect.pre(() => { stayHours = Math.floor((stop.stayDurationMinutes ?? 0) / 60); });
-	$effect.pre(() => { stayMinutes = (stop.stayDurationMinutes ?? 0) % 60; });
-	$effect.pre(() => { notes = stop.notes ?? ''; });
+	$effect.pre(() => {
+		nameInput = stop.name;
+	});
+	$effect.pre(() => {
+		stayHours = Math.floor((stop.stayDurationMinutes ?? 0) / 60);
+	});
+	$effect.pre(() => {
+		stayMinutes = (stop.stayDurationMinutes ?? 0) % 60;
+	});
+	$effect.pre(() => {
+		notes = stop.notes ?? '';
+	});
 
 	function saveName() {
 		editingName = false;
@@ -85,7 +93,9 @@
 <div class="flex gap-2.5">
 	<!-- timetable number -->
 	<div class="flex w-8 shrink-0 flex-col items-center pt-2.5">
-		<span class="travel-display animate-soft-pop flex h-8 w-8 items-center justify-center border border-[#172a45]/45 bg-[#fffdf7] text-base text-[#172a45]">
+		<span
+			class="travel-display animate-soft-pop flex h-8 w-8 items-center justify-center border border-[#172a45]/45 bg-[#fffdf7] text-base text-[#172a45]"
+		>
 			{index + 1}
 		</span>
 		{#if index < total - 1}
@@ -99,7 +109,7 @@
 				{#if dragHandle && !readonly}
 					<span
 						use:dragHandleAction
-						class="text-[#172a45]/35 cursor-grab touch-none select-none"
+						class="cursor-grab touch-none text-[#172a45]/35 select-none"
 						aria-label="Drag to reorder"
 					>
 						<IconDrag class="size-5" />
@@ -163,12 +173,14 @@
 				{/if}
 			</div>
 
-			<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[#172a45]/12 pt-2">
+			<div
+				class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-[#172a45]/12 pt-2"
+			>
 				<svelte:element
 					this={readonly ? 'div' : 'button'}
 					type={readonly ? undefined : 'button'}
 					role={readonly ? undefined : 'button'}
-					class="text-[#172a45]/55 inline-flex items-center gap-1 text-[11px] {readonly
+					class="inline-flex items-center gap-1 text-[11px] text-[#172a45]/55 {readonly
 						? ''
 						: 'hover:text-[#a45e38]'}"
 					onclick={readonly ? undefined : () => onpicklocation?.(stop)}
@@ -209,11 +221,15 @@
 
 			{#if readonly}
 				{#if stop.notes}
-					<p class="mt-2 border-l-2 border-[#e6a527] pl-2 text-[11px] leading-relaxed text-[#172a45]/65">{stop.notes}</p>
+					<p
+						class="mt-2 border-l-2 border-[#e6a527] pl-2 text-[11px] leading-relaxed text-[#172a45]/65"
+					>
+						{stop.notes}
+					</p>
 				{/if}
 			{:else}
 				<textarea
-					class="textarea textarea-xs mt-2 w-full border-[#172a45]/20 pl-2 text-[11px] resize-y"
+					class="textarea textarea-xs mt-2 w-full resize-y border-[#172a45]/20 pl-2 text-[11px]"
 					style="min-height: 2.25rem; padding-top: 0.35rem; padding-bottom: 0.35rem"
 					placeholder="Notes for this stop…"
 					aria-label="Notes"

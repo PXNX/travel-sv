@@ -578,6 +578,7 @@ Unmount (or stay mounted, hidden)
 ## Summary
 
 This architecture provides:
+
 - ✅ **Clear separation of concerns** (UI vs Service vs API)
 - ✅ **Reactive data flow** (automatic updates via $effect)
 - ✅ **Resilient error handling** (fallbacks at multiple levels)
@@ -585,6 +586,7 @@ This architecture provides:
 - ✅ **User-centric design** (automatic, progressive, smart defaults)
 
 The system is designed to be:
+
 - **Maintainable**: Clear structure, single responsibility
 - **Testable**: Service layer can be unit tested
 - **Extensible**: Easy to add new features or transport providers

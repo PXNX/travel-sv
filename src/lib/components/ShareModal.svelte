@@ -66,7 +66,9 @@
 </script>
 
 <Modal bind:open title="Share Journey" size="sm" {onclose}>
-	<label class="flex cursor-pointer items-center justify-between gap-4 border border-[#172a45]/25 bg-[#f4eee0] px-4 py-3">
+	<label
+		class="flex cursor-pointer items-center justify-between gap-4 border border-[#172a45]/25 bg-[#f4eee0] px-4 py-3"
+	>
 		<div class="flex flex-col">
 			<span class="text-sm font-semibold text-[#172a45]">Public</span>
 			<span class="text-[11px] text-[#172a45]/45">Anyone with the link can view</span>
@@ -85,12 +87,7 @@
 			<div class="text-xs break-all text-[#172a45]/70 select-all">{shareUrl}</div>
 		</div>
 
-		<Button
-			class="mt-4"
-			block
-			icon={shared ? IconCheck : IconShare}
-			onclick={shareLink}
-		>
+		<Button class="mt-4" block icon={shared ? IconCheck : IconShare} onclick={shareLink}>
 			{#if shared}
 				{canNativeShare ? 'Shared!' : 'Copied!'}
 			{:else}
@@ -99,7 +96,7 @@
 		</Button>
 	{:else if !isPublic}
 		<div class="flex flex-col items-center gap-2 py-6 text-center">
-			<IconLock class="text-[#a45e38]/50 size-8" />
+			<IconLock class="size-8 text-[#a45e38]/50" />
 			<p class="text-sm text-[#172a45]/55">Toggle public to generate a share link.</p>
 		</div>
 	{/if}

@@ -79,7 +79,11 @@
 	});
 
 	const stats = $derived([
-		{ value: journeys.length, label: journeys.length === 1 ? 'Journey' : 'Journeys', tone: 'primary' as const },
+		{
+			value: journeys.length,
+			label: journeys.length === 1 ? 'Journey' : 'Journeys',
+			tone: 'primary' as const
+		},
 		{ value: totalStops, label: totalStops === 1 ? 'Stop' : 'Stops', tone: 'secondary' as const },
 		{
 			value: totalDuration > 0 ? formatDuration(totalDuration) : '—',
@@ -111,13 +115,16 @@
 		{#if data.completedCount > 0}
 			<a
 				href="/journeys/completed"
-				class="group animate-glide-in mb-4 flex items-center justify-between border border-[#172a45]/25 border-l-4 border-l-[#2f7d58] bg-[#fffdf7] px-3 py-2.5 text-sm font-semibold text-[#172a45] transition-all hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(23,42,69,0.12)]"
+				class="group animate-glide-in mb-4 flex items-center justify-between border border-l-4 border-[#172a45]/25 border-l-[#2f7d58] bg-[#fffdf7] px-3 py-2.5 text-sm font-semibold text-[#172a45] transition-all hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(23,42,69,0.12)]"
 			>
 				<span class="flex items-center gap-2">
-					<IconCheckCircle class="text-[#2f7d58] h-5 w-5" />Completed trips
+					<IconCheckCircle class="h-5 w-5 text-[#2f7d58]" />Completed trips
 				</span>
-				<span class="text-xs font-medium text-[#a45e38] transition-transform group-hover:translate-x-0.5">
-					{data.completedCount} {data.completedCount === 1 ? 'trip' : 'trips'} →
+				<span
+					class="text-xs font-medium text-[#a45e38] transition-transform group-hover:translate-x-0.5"
+				>
+					{data.completedCount}
+					{data.completedCount === 1 ? 'trip' : 'trips'} →
 				</span>
 			</a>
 		{/if}
@@ -144,8 +151,10 @@
 
 			<!-- register tools -->
 			<div class="mb-3 flex flex-wrap items-center gap-2">
-				<label class="flex min-w-[180px] flex-1 items-center gap-2 border border-[#172a45]/25 bg-[#fffdf7] px-3 py-2 focus-within:border-[#a45e38]">
-					<IconSearch class="text-[#a45e38] h-4 w-4 shrink-0" />
+				<label
+					class="flex min-w-[180px] flex-1 items-center gap-2 border border-[#172a45]/25 bg-[#fffdf7] px-3 py-2 focus-within:border-[#a45e38]"
+				>
+					<IconSearch class="h-4 w-4 shrink-0 text-[#a45e38]" />
 					<input
 						class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#172a45]/35"
 						type="search"
@@ -154,13 +163,23 @@
 						aria-label="Search journeys"
 					/>
 					{#if search}
-						<button class="text-[#172a45]/40 hover:text-[#a45e38]" aria-label="Clear search" onclick={() => (search = '')}>
+						<button
+							class="text-[#172a45]/40 hover:text-[#a45e38]"
+							aria-label="Clear search"
+							onclick={() => (search = '')}
+						>
 							<IconClose class="h-4 w-4" />
 						</button>
 					{/if}
 				</label>
-				<span class="flex items-center gap-1 text-[#a45e38]"><IconArrowDownward class="h-4 w-4" /></span>
-				<div class="flex gap-px border border-[#172a45]/30 bg-[#efe6d5] p-px" role="radiogroup" aria-label="Sort journeys">
+				<span class="flex items-center gap-1 text-[#a45e38]"
+					><IconArrowDownward class="h-4 w-4" /></span
+				>
+				<div
+					class="flex gap-px border border-[#172a45]/30 bg-[#efe6d5] p-px"
+					role="radiogroup"
+					aria-label="Sort journeys"
+				>
 					{#each sortOptions as option}
 						<button
 							type="button"
@@ -189,10 +208,14 @@
 					{/each}
 				</div>
 			{:else}
-				<div class="border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 px-4 py-10 text-center">
+				<div
+					class="border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 px-4 py-10 text-center"
+				>
 					<p class="travel-display text-lg text-[#172a45]">No matches in the register</p>
 					<p class="mt-1 text-xs text-[#a45e38]">Try another name or place, or clear the search.</p>
-					<button class="btn btn-ghost btn-sm mt-3" onclick={() => (search = '')}>Clear search</button>
+					<button class="btn btn-ghost btn-sm mt-3" onclick={() => (search = '')}
+						>Clear search</button
+					>
 				</div>
 			{/if}
 		{/if}

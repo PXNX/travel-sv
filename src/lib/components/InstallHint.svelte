@@ -74,10 +74,16 @@
 		class="install-hint animate-slide-up fixed right-0 bottom-0 left-0 z-[2500] mx-auto max-w-md p-3 sm:right-4 sm:bottom-4 sm:left-auto sm:p-0"
 		aria-label="Install the app"
 	>
-		<div class="flex items-center gap-3 border border-[#172a45]/45 border-l-4 border-l-[#e6a527] bg-[#fffdf7] px-3.5 py-3 shadow-[6px_7px_0_rgba(23,42,69,0.14)]">
-			<span class="relative flex h-10 w-10 shrink-0 items-center justify-center border border-[#172a45]/25 bg-[#f4eee0]">
-				<IconInstall class="text-[#172a45] h-5 w-5 animate-sway" />
-				<span class="text-[#e6a527] absolute -top-1 -right-1 animate-sparkle text-base leading-none">✦</span>
+		<div
+			class="flex items-center gap-3 border border-l-4 border-[#172a45]/45 border-l-[#e6a527] bg-[#fffdf7] px-3.5 py-3 shadow-[6px_7px_0_rgba(23,42,69,0.14)]"
+		>
+			<span
+				class="relative flex h-10 w-10 shrink-0 items-center justify-center border border-[#172a45]/25 bg-[#f4eee0]"
+			>
+				<IconInstall class="animate-sway h-5 w-5 text-[#172a45]" />
+				<span class="animate-sparkle absolute -top-1 -right-1 text-base leading-none text-[#e6a527]"
+					>✦</span
+				>
 			</span>
 
 			<div class="min-w-0 flex-1">
@@ -89,7 +95,7 @@
 
 			<button class="btn btn-primary btn-sm shrink-0" onclick={install}>Install</button>
 			<button
-				class="text-[#172a45]/45 hover:text-[#a45e38] -mr-1 shrink-0 p-1"
+				class="-mr-1 shrink-0 p-1 text-[#172a45]/45 hover:text-[#a45e38]"
 				aria-label="Dismiss install hint"
 				onclick={dismiss}
 			>

@@ -16,6 +16,7 @@
 ## ✅ Features Implemented
 
 ### Core Functionality
+
 - [x] OSM category detection (50+ place types)
 - [x] Automatic duration estimation
 - [x] Description generation
@@ -23,6 +24,7 @@
 - [x] Address parsing
 
 ### User Interface
+
 - [x] Search autocomplete on "Add Location" page
 - [x] Auto-fill form fields from OSM data
 - [x] Browse & Add locations page with map
@@ -31,6 +33,7 @@
 - [x] Edit capability for all auto-filled fields
 
 ### Search Features
+
 - [x] Place search (restaurants, museums, etc.)
 - [x] Location search (cities, addresses)
 - [x] Category filtering
@@ -41,12 +44,14 @@
 ## ✅ Integration Points
 
 ### Uses Existing Services
+
 - [x] `src/lib/services/searchService.ts` - OSM Nominatim API
 - [x] `src/lib/components/SearchAutocomplete.svelte` - Search UI
 - [x] Leaflet maps (sveaflet)
 - [x] Category system from `src/lib/types/index.ts`
 
 ### Respects Existing Features
+
 - [x] Manual location entry still works
 - [x] All existing location fields supported
 - [x] Country restrictions maintained (DE, AT, CH, LI)
@@ -56,12 +61,14 @@
 ## ✅ Smart Mapping Rules
 
 ### Category Detection
+
 - [x] Food: restaurants, cafes, bars, pubs, fast_food
 - [x] Museum: museums, galleries, theatres, libraries, historic
 - [x] Nature: parks, gardens, beaches, viewpoints, nature_reserves
 - [x] Leisure: hotels, attractions, monuments, zoos, theme_parks
 
 ### Duration Estimation
+
 - [x] 30 min: cafes, fast_food, viewpoints, monuments
 - [x] 60 min: bars, pubs, playgrounds
 - [x] 90 min: restaurants, galleries, castles, gardens
@@ -71,6 +78,7 @@
 ## ✅ User Experience
 
 ### Workflows Supported
+
 - [x] Quick add from browse page
 - [x] Search while creating new location
 - [x] Manual entry fallback
@@ -78,6 +86,7 @@
 - [x] Multiple locations in one session
 
 ### Visual Feedback
+
 - [x] Auto-filled fields marked
 - [x] OSM source indicator
 - [x] Category color coding on map
@@ -87,12 +96,14 @@
 ## ✅ Documentation
 
 ### User Documentation
+
 - [x] Quick start guide
 - [x] Search examples
 - [x] Tips and tricks
 - [x] Troubleshooting
 
 ### Technical Documentation
+
 - [x] Architecture overview
 - [x] Feature descriptions
 - [x] API integration details
@@ -101,6 +112,7 @@
 ## 🧪 Testing Checklist (For You)
 
 ### Basic Functionality
+
 - [ ] OSM search returns results
 - [ ] Selecting a place auto-fills form
 - [ ] Can edit auto-filled fields
@@ -110,18 +122,21 @@
 - [ ] Navigation button works in sidebar
 
 ### Category Detection
+
 - [ ] Restaurants → Food & Dining
 - [ ] Museums → Museum & Culture
 - [ ] Parks → Nature & Outdoors
 - [ ] Hotels → Leisure
 
 ### Edge Cases
+
 - [ ] No search results handling
 - [ ] Invalid coordinates handling
 - [ ] Can still create locations manually
 - [ ] Empty fields handled gracefully
 
 ### User Flow
+
 - [ ] Search → Select → Edit → Save works
 - [ ] Browse → Click → Add → Customize works
 - [ ] Can switch between manual and OSM entry
@@ -130,6 +145,7 @@
 ## 📝 Optional Enhancements (Future)
 
 Future improvements you might consider:
+
 - [ ] Add place photos from Wikimedia
 - [ ] Import opening hours from OSM
 - [ ] Show place ratings
@@ -142,6 +158,7 @@ Future improvements you might consider:
 ## 🚀 Deployment Notes
 
 ### Before Deploying
+
 1. Test OSM search in development
 2. Verify all navigation links work
 3. Check mobile responsiveness
@@ -149,6 +166,7 @@ Future improvements you might consider:
 5. Verify category detection accuracy
 
 ### After Deploying
+
 1. Monitor OSM API rate limits
 2. Check for any console errors
 3. Gather user feedback
@@ -157,6 +175,7 @@ Future improvements you might consider:
 ## 📊 Success Metrics
 
 Track these to measure adoption:
+
 - Number of locations added via OSM
 - vs. manually created locations
 - Most popular search terms

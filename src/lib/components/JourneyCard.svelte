@@ -43,14 +43,23 @@
 >
 	<div class="flex">
 		<!-- folio index -->
-		<div class="hidden w-9 shrink-0 flex-col items-center justify-between border-r border-[#172a45]/15 bg-[#f4eee0] py-3 sm:flex">
-			<span class="travel-display text-lg text-[#172a45]/35">{String(index + 1).padStart(2, '0')}</span>
+		<div
+			class="hidden w-9 shrink-0 flex-col items-center justify-between border-r border-[#172a45]/15 bg-[#f4eee0] py-3 sm:flex"
+		>
+			<span class="travel-display text-lg text-[#172a45]/35"
+				>{String(index + 1).padStart(2, '0')}</span
+			>
 			<span class="h-8 w-px bg-[#e6a527]"></span>
-			<span class="text-[9px] font-bold tracking-widest text-[#a45e38] rotate-180" style="writing-mode: vertical-rl">ROUTE</span>
+			<span
+				class="rotate-180 text-[9px] font-bold tracking-widest text-[#a45e38]"
+				style="writing-mode: vertical-rl">ROUTE</span
+			>
 		</div>
 
 		{#if browser && hasCoords}
-			<div class="relative w-24 shrink-0 overflow-hidden border-r border-[#172a45]/20 bg-[#e7ddca] sm:w-32">
+			<div
+				class="relative w-24 shrink-0 overflow-hidden border-r border-[#172a45]/20 bg-[#e7ddca] sm:w-32"
+			>
 				{#await import('./MiniMap.svelte') then { default: MiniMap }}
 					<MiniMap coords={journey.stopCoords!} class="h-full w-full" />
 				{/await}
@@ -62,16 +71,23 @@
 			<div class="flex items-start justify-between gap-2">
 				<div class="min-w-0">
 					<p class="travel-eyebrow text-[9px]">{startDateFormatted}</p>
-					<h2 class="travel-display truncate text-xl leading-tight text-[#172a45]">{journey.title}</h2>
+					<h2 class="travel-display truncate text-xl leading-tight text-[#172a45]">
+						{journey.title}
+					</h2>
 				</div>
 				<div class="flex shrink-0 items-center gap-1">
 					{#if journey.isPublic}
-						<span class="inline-flex items-center gap-0.5 border border-[#2f7d58]/40 bg-[#2f7d58]/8 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#2f7d58] uppercase">
+						<span
+							class="inline-flex items-center gap-0.5 border border-[#2f7d58]/40 bg-[#2f7d58]/8 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#2f7d58] uppercase"
+						>
 							<IconLink class="size-2.5" /> Public
 						</span>
 					{/if}
 					{#if completed}
-						<span class="border border-[#172a45]/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#172a45]/60 uppercase">Done</span>
+						<span
+							class="border border-[#172a45]/25 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#172a45]/60 uppercase"
+							>Done</span
+						>
 					{/if}
 				</div>
 			</div>
@@ -80,14 +96,18 @@
 			<div class="flex items-center gap-2 text-[12px] text-[#a45e38]">
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#172a45]"></span>
 				<span class="min-w-0 truncate">{journey.firstStopName ?? 'No stops yet'}</span>
-				<span class="h-px min-w-3 flex-1 bg-[#e6a527] transition-all duration-300 group-hover:min-w-6"></span>
+				<span
+					class="h-px min-w-3 flex-1 bg-[#e6a527] transition-all duration-300 group-hover:min-w-6"
+				></span>
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e6a527]"></span>
 				<span class="min-w-0 truncate">{journey.lastStopName ?? '—'}</span>
 			</div>
 
 			<div class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
 				{#if journey.stopCount > 0}
-					<MetaItem icon={IconPin}>{journey.stopCount} {journey.stopCount === 1 ? 'stop' : 'stops'}</MetaItem>
+					<MetaItem icon={IconPin}
+						>{journey.stopCount} {journey.stopCount === 1 ? 'stop' : 'stops'}</MetaItem
+					>
 				{/if}
 				{#if journey.totalDurationMinutes > 0}
 					<MetaItem icon={IconClock}>{formatDuration(journey.totalDurationMinutes)}</MetaItem>
@@ -96,7 +116,9 @@
 			</div>
 		</div>
 
-		<div class="flex items-center pr-3 text-[#172a45]/30 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#a45e38]">
+		<div
+			class="flex items-center pr-3 text-[#172a45]/30 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[#a45e38]"
+		>
 			<IconChevronRight class="size-5" />
 		</div>
 	</div>

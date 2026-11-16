@@ -6,34 +6,34 @@ dotenv.config();
 const sql = postgres(process.env.DATABASE_URL!);
 
 async function run() {
-    console.log('Applying schema...');
+	console.log('Applying schema...');
 
-    // Check if users table exists and has old schema
-    const existingCols = await sql`
+	// Check if users table exists and has old schema
+	const existingCols = await sql`
 		SELECT column_name FROM information_schema.columns 
 		WHERE table_name = 'users' AND table_schema = 'public'
 	`;
-    const colNames = existingCols.map((r: any) => r.column_name);
+	const colNames = existingCols.map((r: any) => r.column_name);
 
-    if (colNames.includes('name') && !colNames.includes('display_name')) {
-        console.log('Migrating existing users table...');
-        // Rename old columns, add new ones
-        await sql`ALTER TABLE "users" RENAME COLUMN "name" TO "display_name"`;
-        await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider" text NOT NULL DEFAULT 'google'`;
-        await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider_id" text NOT NULL DEFAULT ''`;
-        await sql`UPDATE "users" SET "provider_id" = "id" WHERE "provider_id" = ''`;
-        await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text`;
-        // Copy picture to avatar_url if picture column exists
-        if (colNames.includes('picture')) {
-            await sql`UPDATE "users" SET "avatar_url" = "picture" WHERE "avatar_url" IS NULL AND "picture" IS NOT NULL`;
-            await sql`ALTER TABLE "users" DROP COLUMN IF EXISTS "picture"`;
-        }
-        // Drop old columns
-        await sql`ALTER TABLE "users" DROP COLUMN IF EXISTS "is_admin"`;
-        console.log('Users table migrated.');
-    } else if (!colNames.length) {
-        console.log('Creating users table...');
-        await sql`
+	if (colNames.includes('name') && !colNames.includes('display_name')) {
+		console.log('Migrating existing users table...');
+		// Rename old columns, add new ones
+		await sql`ALTER TABLE "users" RENAME COLUMN "name" TO "display_name"`;
+		await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider" text NOT NULL DEFAULT 'google'`;
+		await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "provider_id" text NOT NULL DEFAULT ''`;
+		await sql`UPDATE "users" SET "provider_id" = "id" WHERE "provider_id" = ''`;
+		await sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" text`;
+		// Copy picture to avatar_url if picture column exists
+		if (colNames.includes('picture')) {
+			await sql`UPDATE "users" SET "avatar_url" = "picture" WHERE "avatar_url" IS NULL AND "picture" IS NOT NULL`;
+			await sql`ALTER TABLE "users" DROP COLUMN IF EXISTS "picture"`;
+		}
+		// Drop old columns
+		await sql`ALTER TABLE "users" DROP COLUMN IF EXISTS "is_admin"`;
+		console.log('Users table migrated.');
+	} else if (!colNames.length) {
+		console.log('Creating users table...');
+		await sql`
 			CREATE TABLE "users" (
 				"id" text PRIMARY KEY NOT NULL,
 				"provider" text NOT NULL,
@@ -43,22 +43,22 @@ async function run() {
 				"avatar_url" text
 			)
 		`;
-    } else {
-        console.log('Users table already has correct schema.');
-    }
+	} else {
+		console.log('Users table already has correct schema.');
+	}
 
-    // Sessions
-    await sql`
+	// Sessions
+	await sql`
 		CREATE TABLE IF NOT EXISTS "sessions" (
 			"id" text PRIMARY KEY NOT NULL,
 			"user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
 			"expires_at" timestamp with time zone NOT NULL
 		)
 	`;
-    console.log('Sessions table ready.');
+	console.log('Sessions table ready.');
 
-    // Journeys
-    await sql`
+	// Journeys
+	await sql`
 		CREATE TABLE IF NOT EXISTS "journeys" (
 			"id" serial PRIMARY KEY NOT NULL,
 			"owner_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
@@ -79,8 +79,8 @@ async function run() {
 	await sql`ALTER TABLE "journeys" ADD COLUMN IF NOT EXISTS "is_completed" boolean NOT NULL DEFAULT false`;
 	console.log('Journeys table ready.');
 
-    // Stops
-    await sql`
+	// Stops
+	await sql`
 		CREATE TABLE IF NOT EXISTS "stops" (
 			"id" serial PRIMARY KEY NOT NULL,
 			"journey_id" integer NOT NULL REFERENCES "journeys"("id") ON DELETE CASCADE,
@@ -92,10 +92,10 @@ async function run() {
 			"notes" text
 		)
 	`;
-    console.log('Stops table ready.');
+	console.log('Stops table ready.');
 
-    // Segments
-    await sql`
+	// Segments
+	await sql`
 		CREATE TABLE IF NOT EXISTS "segments" (
 			"id" serial PRIMARY KEY NOT NULL,
 			"journey_id" integer NOT NULL REFERENCES "journeys"("id") ON DELETE CASCADE,
@@ -108,21 +108,21 @@ async function run() {
 			"mode" text NOT NULL DEFAULT 'walk'
 		)
 	`;
-    console.log('Segments table ready.');
+	console.log('Segments table ready.');
 
-    // Indexes
-    await sql`CREATE INDEX IF NOT EXISTS "idx_sessions_user_id" ON "sessions"("user_id")`;
-    await sql`CREATE INDEX IF NOT EXISTS "idx_journeys_owner_id" ON "journeys"("owner_id")`;
-    await sql`CREATE INDEX IF NOT EXISTS "idx_journeys_share_token" ON "journeys"("share_token")`;
-    await sql`CREATE INDEX IF NOT EXISTS "idx_stops_journey_id" ON "stops"("journey_id")`;
-    await sql`CREATE INDEX IF NOT EXISTS "idx_segments_journey_id" ON "segments"("journey_id")`;
-    console.log('Indexes created.');
+	// Indexes
+	await sql`CREATE INDEX IF NOT EXISTS "idx_sessions_user_id" ON "sessions"("user_id")`;
+	await sql`CREATE INDEX IF NOT EXISTS "idx_journeys_owner_id" ON "journeys"("owner_id")`;
+	await sql`CREATE INDEX IF NOT EXISTS "idx_journeys_share_token" ON "journeys"("share_token")`;
+	await sql`CREATE INDEX IF NOT EXISTS "idx_stops_journey_id" ON "stops"("journey_id")`;
+	await sql`CREATE INDEX IF NOT EXISTS "idx_segments_journey_id" ON "segments"("journey_id")`;
+	console.log('Indexes created.');
 
-    console.log('Schema applied successfully!');
-    await sql.end();
+	console.log('Schema applied successfully!');
+	await sql.end();
 }
 
 run().catch((e) => {
-    console.error('Failed:', e);
-    process.exit(1);
+	console.error('Failed:', e);
+	process.exit(1);
 });

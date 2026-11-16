@@ -5,13 +5,13 @@ Quick reference for developers using the search functionality.
 ## Import
 
 ```typescript
-import { 
-  searchLocations, 
-  searchPlaces, 
-  reverseGeocode,
-  createDebouncedSearch,
-  type SearchResult,
-  type PlaceCategory
+import {
+	searchLocations,
+	searchPlaces,
+	reverseGeocode,
+	createDebouncedSearch,
+	type SearchResult,
+	type PlaceCategory
 } from '$lib/services/searchService';
 
 import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
@@ -23,32 +23,32 @@ import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
 
 ```typescript
 interface SearchResult {
-  id: string;              // Unique OSM identifier
-  name: string;            // Short name
-  displayName: string;     // Full display name with address
-  latitude: number;        // Latitude (-90 to 90)
-  longitude: number;       // Longitude (-180 to 180)
-  type: string;            // OSM type (city, restaurant, etc.)
-  category?: string;       // OSM class (tourism, amenity, etc.)
-  address?: string;        // Formatted address
-  city?: string;           // City name
-  state?: string;          // State/region
-  country?: string;        // Country name
-  countryCode?: string;    // ISO 3166-1 alpha-2 code
-  importance?: number;     // OSM importance (0-1)
+	id: string; // Unique OSM identifier
+	name: string; // Short name
+	displayName: string; // Full display name with address
+	latitude: number; // Latitude (-90 to 90)
+	longitude: number; // Longitude (-180 to 180)
+	type: string; // OSM type (city, restaurant, etc.)
+	category?: string; // OSM class (tourism, amenity, etc.)
+	address?: string; // Formatted address
+	city?: string; // City name
+	state?: string; // State/region
+	country?: string; // Country name
+	countryCode?: string; // ISO 3166-1 alpha-2 code
+	importance?: number; // OSM importance (0-1)
 }
 ```
 
 ### PlaceCategory
 
 ```typescript
-type PlaceCategory = 
-  | 'food'       // Restaurants, cafes, bars
-  | 'museum'     // Museums, galleries, culture
-  | 'leisure'    // Hotels, entertainment
-  | 'nature'     // Parks, gardens, outdoor
-  | 'shopping'   // Shops, markets
-  | 'attraction' // Tourist attractions
+type PlaceCategory =
+	| 'food' // Restaurants, cafes, bars
+	| 'museum' // Museums, galleries, culture
+	| 'leisure' // Hotels, entertainment
+	| 'nature' // Parks, gardens, outdoor
+	| 'shopping' // Shops, markets
+	| 'attraction'; // Tourist attractions
 ```
 
 ## API Functions
@@ -59,13 +59,13 @@ Search for geographic locations (cities, addresses, regions).
 
 ```typescript
 async function searchLocations(
-  query: string,
-  options?: {
-    limit?: number;                              // Max results (default: 10)
-    viewbox?: [number, number, number, number];  // [minLon, minLat, maxLon, maxLat]
-    bounded?: boolean;                           // Restrict to viewbox (default: false)
-  }
-): Promise<SearchResult[]>
+	query: string,
+	options?: {
+		limit?: number; // Max results (default: 10)
+		viewbox?: [number, number, number, number]; // [minLon, minLat, maxLon, maxLat]
+		bounded?: boolean; // Restrict to viewbox (default: false)
+	}
+): Promise<SearchResult[]>;
 ```
 
 **Examples:**
@@ -79,8 +79,8 @@ const results = await searchLocations('Munich', { limit: 5 });
 
 // With viewbox (Bavaria region)
 const results = await searchLocations('Munich', {
-  viewbox: [10.8, 47.2, 13.8, 49.0],
-  bounded: true
+	viewbox: [10.8, 47.2, 13.8, 49.0],
+	bounded: true
 });
 ```
 
@@ -90,15 +90,15 @@ Search for points of interest (restaurants, museums, etc.).
 
 ```typescript
 async function searchPlaces(
-  query: string,
-  options?: {
-    limit?: number;                              // Max results (default: 10)
-    viewbox?: [number, number, number, number];  // [minLon, minLat, maxLon, maxLat]
-    bounded?: boolean;                           // Restrict to viewbox
-    category?: PlaceCategory;                    // Filter by category
-    near?: { lat: number; lon: number };         // Proximity-based sorting
-  }
-): Promise<SearchResult[]>
+	query: string,
+	options?: {
+		limit?: number; // Max results (default: 10)
+		viewbox?: [number, number, number, number]; // [minLon, minLat, maxLon, maxLat]
+		bounded?: boolean; // Restrict to viewbox
+		category?: PlaceCategory; // Filter by category
+		near?: { lat: number; lon: number }; // Proximity-based sorting
+	}
+): Promise<SearchResult[]>;
 ```
 
 **Examples:**
@@ -108,21 +108,21 @@ async function searchPlaces(
 const results = await searchPlaces('restaurant');
 
 // With category filter
-const results = await searchPlaces('museum', { 
-  category: 'museum' 
+const results = await searchPlaces('museum', {
+	category: 'museum'
 });
 
 // With proximity sorting
 const results = await searchPlaces('hotel', {
-  near: { lat: 48.1351, lon: 11.5820 },  // Munich
-  limit: 10
+	near: { lat: 48.1351, lon: 11.582 }, // Munich
+	limit: 10
 });
 
 // Combined filters
 const results = await searchPlaces('restaurant', {
-  category: 'food',
-  near: { lat: 52.5200, lon: 13.4050 },  // Berlin
-  limit: 20
+	category: 'food',
+	near: { lat: 52.52, lon: 13.405 }, // Berlin
+	limit: 20
 });
 ```
 
@@ -132,23 +132,23 @@ Convert coordinates to location information.
 
 ```typescript
 async function reverseGeocode(
-  lat: number,      // Latitude
-  lon: number,      // Longitude
-  zoom?: number     // Detail level: 3=country, 10=city, 18=building (default: 18)
-): Promise<SearchResult | null>
+	lat: number, // Latitude
+	lon: number, // Longitude
+	zoom?: number // Detail level: 3=country, 10=city, 18=building (default: 18)
+): Promise<SearchResult | null>;
 ```
 
 **Examples:**
 
 ```typescript
 // Get detailed location
-const result = await reverseGeocode(52.5200, 13.4050);
+const result = await reverseGeocode(52.52, 13.405);
 
 // Get city-level info
-const result = await reverseGeocode(52.5200, 13.4050, 10);
+const result = await reverseGeocode(52.52, 13.405, 10);
 
 // Get country-level info
-const result = await reverseGeocode(52.5200, 13.4050, 3);
+const result = await reverseGeocode(52.52, 13.405, 3);
 ```
 
 ### createDebouncedSearch()
@@ -157,9 +157,9 @@ Create a debounced version of a search function for autocomplete.
 
 ```typescript
 function createDebouncedSearch<T extends any[]>(
-  searchFn: (...args: T) => Promise<SearchResult[]>,
-  delay?: number  // Delay in ms (default: 300)
-): (...args: T) => Promise<SearchResult[]>
+	searchFn: (...args: T) => Promise<SearchResult[]>,
+	delay?: number // Delay in ms (default: 300)
+): (...args: T) => Promise<SearchResult[]>;
 ```
 
 **Example:**
@@ -177,16 +177,16 @@ const results = await debouncedSearch('Berlin');
 
 ```typescript
 interface Props {
-  placeholder?: string;                    // Input placeholder
-  searchType?: 'location' | 'place';      // Search type
-  category?: PlaceCategory;                // Filter category
-  limit?: number;                          // Max results
-  onselect?: (result: SearchResult) => void;  // Selection callback
-  onclear?: () => void;                    // Clear callback
-  autofocus?: boolean;                     // Auto-focus input
-  compact?: boolean;                       // Compact styling
-  showClearButton?: boolean;               // Show clear button
-  nearCoords?: { lat: number; lon: number }; // Proximity search
+	placeholder?: string; // Input placeholder
+	searchType?: 'location' | 'place'; // Search type
+	category?: PlaceCategory; // Filter category
+	limit?: number; // Max results
+	onselect?: (result: SearchResult) => void; // Selection callback
+	onclear?: () => void; // Clear callback
+	autofocus?: boolean; // Auto-focus input
+	compact?: boolean; // Compact styling
+	showClearButton?: boolean; // Show clear button
+	nearCoords?: { lat: number; lon: number }; // Proximity search
 }
 ```
 
@@ -196,11 +196,11 @@ interface Props {
 
 ```svelte
 <SearchAutocomplete
-  searchType="location"
-  placeholder="Search cities..."
-  onselect={(result) => {
-    console.log('Selected:', result);
-  }}
+	searchType="location"
+	placeholder="Search cities..."
+	onselect={(result) => {
+		console.log('Selected:', result);
+	}}
 />
 ```
 
@@ -208,13 +208,13 @@ interface Props {
 
 ```svelte
 <SearchAutocomplete
-  searchType="place"
-  category="food"
-  placeholder="Find restaurants..."
-  limit={15}
-  onselect={(result) => {
-    handleRestaurantSelect(result);
-  }}
+	searchType="place"
+	category="food"
+	placeholder="Find restaurants..."
+	limit={15}
+	onselect={(result) => {
+		handleRestaurantSelect(result);
+	}}
 />
 ```
 
@@ -222,43 +222,38 @@ interface Props {
 
 ```svelte
 <script>
-  const userLocation = { lat: 48.1351, lon: 11.5820 };
+	const userLocation = { lat: 48.1351, lon: 11.582 };
 </script>
 
 <SearchAutocomplete
-  searchType="place"
-  category="museum"
-  nearCoords={userLocation}
-  placeholder="Museums near you..."
-  onselect={(result) => {
-    navigateToMuseum(result);
-  }}
+	searchType="place"
+	category="museum"
+	nearCoords={userLocation}
+	placeholder="Museums near you..."
+	onselect={(result) => {
+		navigateToMuseum(result);
+	}}
 />
 ```
 
 **Compact Mode:**
 
 ```svelte
-<SearchAutocomplete
-  searchType="location"
-  compact={true}
-  limit={5}
-  onselect={handleSelect}
-/>
+<SearchAutocomplete searchType="location" compact={true} limit={5} onselect={handleSelect} />
 ```
 
 **With Clear Callback:**
 
 ```svelte
 <SearchAutocomplete
-  searchType="place"
-  onselect={(result) => {
-    selectedPlace = result;
-  }}
-  onclear={() => {
-    selectedPlace = null;
-  }}
-  showClearButton={true}
+	searchType="place"
+	onselect={(result) => {
+		selectedPlace = result;
+	}}
+	onclear={() => {
+		selectedPlace = null;
+	}}
+	showClearButton={true}
 />
 ```
 
@@ -266,12 +261,12 @@ interface Props {
 
 When search results are open:
 
-| Key | Action |
-|-----|--------|
-| `↓` | Navigate down |
-| `↑` | Navigate up |
-| `Enter` | Select highlighted result |
-| `Escape` | Close results |
+| Key      | Action                    |
+| -------- | ------------------------- |
+| `↓`      | Navigate down             |
+| `↑`      | Navigate up               |
+| `Enter`  | Select highlighted result |
+| `Escape` | Close results             |
 
 ## Best Practices
 
@@ -284,9 +279,9 @@ const debouncedLocationSearch = createDebouncedSearch(searchLocations, 300);
 let query = $state('');
 
 $effect(() => {
-  if (query.length >= 2) {
-    results = await debouncedLocationSearch(query);
-  }
+	if (query.length >= 2) {
+		results = await debouncedLocationSearch(query);
+	}
 });
 ```
 
@@ -294,13 +289,13 @@ $effect(() => {
 
 ```typescript
 try {
-  const results = await searchLocations(query);
-  if (results.length === 0) {
-    showMessage('No results found');
-  }
+	const results = await searchLocations(query);
+	if (results.length === 0) {
+		showMessage('No results found');
+	}
 } catch (error) {
-  console.error('Search error:', error);
-  showMessage('Search failed. Please try again.');
+	console.error('Search error:', error);
+	showMessage('Search failed. Please try again.');
 }
 ```
 
@@ -310,12 +305,12 @@ try {
 let isSearching = $state(false);
 
 async function performSearch(query: string) {
-  isSearching = true;
-  try {
-    return await searchLocations(query);
-  } finally {
-    isSearching = false;
-  }
+	isSearching = true;
+	try {
+		return await searchLocations(query);
+	} finally {
+		isSearching = false;
+	}
 }
 ```
 
@@ -333,11 +328,11 @@ const results = await searchLocations(query, { limit: 50 });
 
 ```typescript
 // If you have user's location
-const userLocation = { lat: 48.1351, lon: 11.5820 };
+const userLocation = { lat: 48.1351, lon: 11.582 };
 
 const nearbyPlaces = await searchPlaces('restaurant', {
-  near: userLocation,
-  limit: 20
+	near: userLocation,
+	limit: 20
 });
 ```
 
@@ -347,44 +342,44 @@ const nearbyPlaces = await searchPlaces('restaurant', {
 
 ```svelte
 <script>
-  import { searchLocations, createDebouncedSearch } from '$lib/services/searchService';
-  
-  let query = $state('');
-  let results = $state([]);
-  let isSearching = $state(false);
-  
-  const debouncedSearch = createDebouncedSearch(searchLocations, 300);
-  
-  $effect(() => {
-    if (query.length >= 2) {
-      performSearch();
-    } else {
-      results = [];
-    }
-  });
-  
-  async function performSearch() {
-    isSearching = true;
-    try {
-      results = await debouncedSearch(query);
-    } catch (error) {
-      console.error(error);
-      results = [];
-    } finally {
-      isSearching = false;
-    }
-  }
+	import { searchLocations, createDebouncedSearch } from '$lib/services/searchService';
+
+	let query = $state('');
+	let results = $state([]);
+	let isSearching = $state(false);
+
+	const debouncedSearch = createDebouncedSearch(searchLocations, 300);
+
+	$effect(() => {
+		if (query.length >= 2) {
+			performSearch();
+		} else {
+			results = [];
+		}
+	});
+
+	async function performSearch() {
+		isSearching = true;
+		try {
+			results = await debouncedSearch(query);
+		} catch (error) {
+			console.error(error);
+			results = [];
+		} finally {
+			isSearching = false;
+		}
+	}
 </script>
 
 <input bind:value={query} placeholder="Search..." />
 {#if isSearching}
-  <span>Searching...</span>
+	<span>Searching...</span>
 {:else if results.length > 0}
-  <ul>
-    {#each results as result}
-      <li>{result.name}</li>
-    {/each}
-  </ul>
+	<ul>
+		{#each results as result}
+			<li>{result.name}</li>
+		{/each}
+	</ul>
 {/if}
 ```
 
@@ -392,25 +387,25 @@ const nearbyPlaces = await searchPlaces('restaurant', {
 
 ```svelte
 <script>
-  import { searchLocations } from '$lib/services/searchService';
-  import type { SearchResult } from '$lib/services/searchService';
-  
-  let map: L.Map;
-  
-  async function handleSearch(query: string) {
-    const results = await searchLocations(query, { limit: 1 });
-    if (results.length > 0) {
-      zoomToLocation(results[0]);
-    }
-  }
-  
-  function zoomToLocation(location: SearchResult) {
-    map.setView([location.latitude, location.longitude], 13);
-    L.marker([location.latitude, location.longitude])
-      .addTo(map)
-      .bindPopup(location.name)
-      .openPopup();
-  }
+	import { searchLocations } from '$lib/services/searchService';
+	import type { SearchResult } from '$lib/services/searchService';
+
+	let map: L.Map;
+
+	async function handleSearch(query: string) {
+		const results = await searchLocations(query, { limit: 1 });
+		if (results.length > 0) {
+			zoomToLocation(results[0]);
+		}
+	}
+
+	function zoomToLocation(location: SearchResult) {
+		map.setView([location.latitude, location.longitude], 13);
+		L.marker([location.latitude, location.longitude])
+			.addTo(map)
+			.bindPopup(location.name)
+			.openPopup();
+	}
 </script>
 ```
 
@@ -418,26 +413,26 @@ const nearbyPlaces = await searchPlaces('restaurant', {
 
 ```svelte
 <script>
-  import { searchPlaces, type PlaceCategory } from '$lib/services/searchService';
-  
-  let category = $state<PlaceCategory>('food');
-  let query = $state('');
-  let results = $state([]);
-  
-  async function search() {
-    if (query.length >= 2) {
-      results = await searchPlaces(query, { 
-        category,
-        limit: 20 
-      });
-    }
-  }
+	import { searchPlaces, type PlaceCategory } from '$lib/services/searchService';
+
+	let category = $state<PlaceCategory>('food');
+	let query = $state('');
+	let results = $state([]);
+
+	async function search() {
+		if (query.length >= 2) {
+			results = await searchPlaces(query, {
+				category,
+				limit: 20
+			});
+		}
+	}
 </script>
 
 <select bind:value={category}>
-  <option value="food">Restaurants</option>
-  <option value="museum">Museums</option>
-  <option value="nature">Parks</option>
+	<option value="food">Restaurants</option>
+	<option value="museum">Museums</option>
+	<option value="nature">Parks</option>
 </select>
 
 <input bind:value={query} onkeyup={search} />
@@ -454,8 +449,8 @@ The service automatically handles rate limiting:
 ```typescript
 // These will be automatically throttled
 await searchLocations('Berlin');
-await searchLocations('Munich');  // Will wait ~1 second
-await searchLocations('Vienna');  // Will wait ~1 second
+await searchLocations('Munich'); // Will wait ~1 second
+await searchLocations('Vienna'); // Will wait ~1 second
 ```
 
 ## Error Handling
@@ -464,18 +459,18 @@ Possible error scenarios:
 
 ```typescript
 try {
-  const results = await searchLocations(query);
+	const results = await searchLocations(query);
 } catch (error) {
-  if (error.message.includes('API error')) {
-    // Nominatim API error (503, 429, etc.)
-    console.error('API temporarily unavailable');
-  } else if (error.message.includes('Network')) {
-    // Network connectivity issue
-    console.error('Check your internet connection');
-  } else {
-    // Other errors
-    console.error('Unexpected error:', error);
-  }
+	if (error.message.includes('API error')) {
+		// Nominatim API error (503, 429, etc.)
+		console.error('API temporarily unavailable');
+	} else if (error.message.includes('Network')) {
+		// Network connectivity issue
+		console.error('Check your internet connection');
+	} else {
+		// Other errors
+		console.error('Unexpected error:', error);
+	}
 }
 ```
 
@@ -488,17 +483,17 @@ import { describe, it, expect } from 'vitest';
 import { searchLocations } from '$lib/services/searchService';
 
 describe('Search functionality', () => {
-  it('should find Berlin', async () => {
-    const results = await searchLocations('Berlin');
-    expect(results.length).toBeGreaterThan(0);
-    expect(results[0].name).toContain('Berlin');
-  });
-  
-  it('should respect country filter', async () => {
-    const results = await searchLocations('Paris');
-    // Paris, France should not be in results
-    expect(results.every(r => r.countryCode !== 'fr')).toBe(true);
-  });
+	it('should find Berlin', async () => {
+		const results = await searchLocations('Berlin');
+		expect(results.length).toBeGreaterThan(0);
+		expect(results[0].name).toContain('Berlin');
+	});
+
+	it('should respect country filter', async () => {
+		const results = await searchLocations('Paris');
+		// Paris, France should not be in results
+		expect(results.every((r) => r.countryCode !== 'fr')).toBe(true);
+	});
 });
 ```
 
@@ -508,10 +503,10 @@ describe('Search functionality', () => {
 
 ```typescript
 // ❌ Query too short
-await searchLocations('B');  // Returns []
+await searchLocations('B'); // Returns []
 
 // ✅ Query length >= 2
-await searchLocations('Berlin');  // Returns results
+await searchLocations('Berlin'); // Returns results
 ```
 
 ### Wrong Country Results
@@ -519,7 +514,7 @@ await searchLocations('Berlin');  // Returns results
 ```typescript
 // Verify country codes
 const results = await searchLocations('London');
-console.log(results.map(r => r.countryCode)); 
+console.log(results.map((r) => r.countryCode));
 // Should only show ['de', 'at', 'ch', 'li']
 ```
 

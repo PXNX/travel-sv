@@ -7,6 +7,7 @@ This document summarizes the implementation of the dual search functionality (Lo
 ## 📁 Files Created
 
 ### Core Service
+
 - **`src/lib/services/searchService.ts`** (380+ lines)
   - Main search service with OSM Nominatim integration
   - Functions: `searchLocations()`, `searchPlaces()`, `reverseGeocode()`
@@ -15,6 +16,7 @@ This document summarizes the implementation of the dual search functionality (Lo
   - Debounced search helper
 
 ### UI Component
+
 - **`src/lib/components/SearchAutocomplete.svelte`** (250+ lines)
   - Reusable autocomplete search component
   - Supports both location and place search
@@ -23,18 +25,22 @@ This document summarizes the implementation of the dual search functionality (Lo
   - Accessibility features
 
 ### Documentation
+
 - **`docs/SEARCH_FEATURE.md`** - Comprehensive feature guide
 - **`docs/SEARCH_API_REFERENCE.md`** - Quick API reference for developers
 - **`docs/SEARCH_IMPLEMENTATION_SUMMARY.md`** - This file
 
 ### Demo & Tests
+
 - **`src/routes/(authorized)/search-demo/+page.svelte`** - Interactive demo page
 - **`src/lib/services/searchService.test.ts`** - Test suite
 
 ## 📝 Files Modified
 
 ### `src/lib/components/Sidebar.svelte`
+
 **Changes:**
+
 - Added import for `SearchAutocomplete` component
 - Added import for `SearchResult` type
 - Added state variables: `showPlaceSearch`, `mapCenterForSearch`
@@ -45,33 +51,36 @@ This document summarizes the implementation of the dual search functionality (Lo
   - Conditional rendering based on search type
 
 **Before:**
+
 ```svelte
 <div class="join mb-3 w-full">
-  <input type="text" placeholder="Search location..." />
-  <button onclick={searchLocation}>Search</button>
+	<input type="text" placeholder="Search location..." />
+	<button onclick={searchLocation}>Search</button>
 </div>
 <!-- Manual results dropdown -->
 ```
 
 **After:**
+
 ```svelte
 <!-- Toggle between search types -->
 <div class="mb-2 flex items-center gap-2">
-  <button onclick={() => (showPlaceSearch = false)}>Locations</button>
-  <button onclick={() => (showPlaceSearch = true)}>Places</button>
+	<button onclick={() => (showPlaceSearch = false)}>Locations</button>
+	<button onclick={() => (showPlaceSearch = true)}>Places</button>
 </div>
 
 <!-- Dynamic search component -->
 {#if showPlaceSearch}
-  <SearchAutocomplete searchType="place" ... />
+	<SearchAutocomplete searchType="place" ... />
 {:else}
-  <SearchAutocomplete searchType="location" ... />
+	<SearchAutocomplete searchType="location" ... />
 {/if}
 ```
 
 ## 🎯 Features Implemented
 
 ### 1. Location Search
+
 - ✅ Search cities, towns, villages
 - ✅ Search addresses and postcodes
 - ✅ Search administrative regions
@@ -80,6 +89,7 @@ This document summarizes the implementation of the dual search functionality (Lo
 - ✅ Real-time autocomplete
 
 ### 2. Place Search (POI)
+
 - ✅ Search restaurants, cafes, bars
 - ✅ Search museums, galleries, theaters
 - ✅ Search hotels, attractions, entertainment
@@ -89,6 +99,7 @@ This document summarizes the implementation of the dual search functionality (Lo
 - ✅ Real-time autocomplete
 
 ### 3. Technical Features
+
 - ✅ Rate limiting (1 req/sec max)
 - ✅ Debouncing (300ms delay)
 - ✅ Error handling
@@ -101,6 +112,7 @@ This document summarizes the implementation of the dual search functionality (Lo
 ## 🌍 Country Coverage
 
 Search is **restricted to**:
+
 - 🇩🇪 **Germany** (de)
 - 🇦🇹 **Austria** (at)
 - 🇨🇭 **Switzerland** (ch)
@@ -143,14 +155,14 @@ Searches for locations in other countries (e.g., France, UK, Italy) will return 
 
 ## 📊 Search Types Comparison
 
-| Feature | Location Search | Place Search |
-|---------|----------------|--------------|
-| **Purpose** | Geographic locations | Points of interest |
-| **Examples** | Cities, addresses | Restaurants, museums |
-| **OSM Types** | settlement, administrative | tourism, amenity, leisure |
-| **Filtering** | By country only | By country + category |
-| **Proximity Sort** | ❌ | ✅ |
-| **Best For** | Navigation, trip planning | Finding specific places |
+| Feature            | Location Search            | Place Search              |
+| ------------------ | -------------------------- | ------------------------- |
+| **Purpose**        | Geographic locations       | Points of interest        |
+| **Examples**       | Cities, addresses          | Restaurants, museums      |
+| **OSM Types**      | settlement, administrative | tourism, amenity, leisure |
+| **Filtering**      | By country only            | By country + category     |
+| **Proximity Sort** | ❌                         | ✅                        |
+| **Best For**       | Navigation, trip planning  | Finding specific places   |
 
 ## 🎨 UI/UX Flow
 
@@ -168,32 +180,35 @@ Searches for locations in other countries (e.g., France, UK, Italy) will return 
 ## 🚀 Usage Examples
 
 ### Basic Location Search
+
 ```svelte
 <SearchAutocomplete
-  searchType="location"
-  placeholder="Search cities..."
-  onselect={(result) => {
-    // Zoom map to location
-    mapCenter = [result.latitude, result.longitude];
-  }}
+	searchType="location"
+	placeholder="Search cities..."
+	onselect={(result) => {
+		// Zoom map to location
+		mapCenter = [result.latitude, result.longitude];
+	}}
 />
 ```
 
 ### Place Search with Category
+
 ```svelte
 <SearchAutocomplete
-  searchType="place"
-  category="food"
-  nearCoords={{ lat: 48.1351, lon: 11.5820 }}
-  placeholder="Find restaurants nearby..."
-  onselect={(result) => {
-    // Add to trip
-    addLocationToTrip(result);
-  }}
+	searchType="place"
+	category="food"
+	nearCoords={{ lat: 48.1351, lon: 11.582 }}
+	placeholder="Find restaurants nearby..."
+	onselect={(result) => {
+		// Add to trip
+		addLocationToTrip(result);
+	}}
 />
 ```
 
 ### Programmatic Search
+
 ```typescript
 import { searchLocations, searchPlaces } from '$lib/services/searchService';
 
@@ -202,15 +217,16 @@ const cities = await searchLocations('Berlin', { limit: 5 });
 
 // Search for restaurants near Munich
 const restaurants = await searchPlaces('restaurant', {
-  category: 'food',
-  near: { lat: 48.1351, lon: 11.5820 },
-  limit: 10
+	category: 'food',
+	near: { lat: 48.1351, lon: 11.582 },
+	limit: 10
 });
 ```
 
 ## 🧪 Testing
 
 Run tests with:
+
 ```bash
 npm test src/lib/services/searchService.test.ts
 ```
@@ -218,6 +234,7 @@ npm test src/lib/services/searchService.test.ts
 **Note:** Tests make real API calls, so run sparingly to respect Nominatim usage policy.
 
 Test coverage:
+
 - ✅ Location search (various cities)
 - ✅ Place search (various categories)
 - ✅ Reverse geocoding
@@ -229,6 +246,7 @@ Test coverage:
 ## 📱 Demo Page
 
 Visit `/search-demo` to see an interactive demo with:
+
 - Side-by-side comparison of both search types
 - Category selection for place search
 - Proximity search near different cities
@@ -238,21 +256,25 @@ Visit `/search-demo` to see an interactive demo with:
 ## ⚙️ Configuration
 
 ### Rate Limiting
+
 ```typescript
 const MIN_REQUEST_INTERVAL = 1000; // 1 second
 ```
 
 ### Debounce Delay
+
 ```typescript
 const debouncedSearch = createDebouncedSearch(searchFn, 300); // 300ms
 ```
 
 ### Country Codes
+
 ```typescript
 const SEARCH_COUNTRIES = ['de', 'at', 'ch', 'li'];
 ```
 
 ### API Base URL
+
 ```typescript
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 ```
@@ -283,6 +305,7 @@ const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 ## 🔮 Future Enhancements
 
 Potential improvements:
+
 - [ ] Local caching with IndexedDB
 - [ ] Save recent/favorite searches
 - [ ] Multi-language support
@@ -330,6 +353,7 @@ When extending search functionality:
 ## 📞 Support
 
 For issues or questions:
+
 - Check documentation in `docs/` folder
 - Review test cases for examples
 - Check browser console for errors

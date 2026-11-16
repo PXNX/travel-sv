@@ -39,35 +39,115 @@
 	};
 
 	const stops: Stop[] = [
-		{ id: 1, journeyId: 1, name: 'Berlin Hbf', lat: 52.5251, lon: 13.3694, orderIndex: 0, stayDurationMinutes: 0, notes: 'Start early — coffee at the station.' },
-		{ id: 2, journeyId: 1, name: 'Hamburg Central', lat: 53.5528, lon: 10.0067, orderIndex: 1, stayDurationMinutes: 90, notes: 'Lunch near the harbour.' },
-		{ id: 3, journeyId: 1, name: 'Lüneburg', lat: 53.2489, lon: 10.4136, orderIndex: 2, stayDurationMinutes: 120, notes: 'Old town & salt works.' },
-		{ id: 4, journeyId: 1, name: 'Hannover Hbf', lat: 52.3766, lon: 9.7411, orderIndex: 3, stayDurationMinutes: 60, notes: null }
+		{
+			id: 1,
+			journeyId: 1,
+			name: 'Berlin Hbf',
+			lat: 52.5251,
+			lon: 13.3694,
+			orderIndex: 0,
+			stayDurationMinutes: 0,
+			notes: 'Start early — coffee at the station.'
+		},
+		{
+			id: 2,
+			journeyId: 1,
+			name: 'Hamburg Central',
+			lat: 53.5528,
+			lon: 10.0067,
+			orderIndex: 1,
+			stayDurationMinutes: 90,
+			notes: 'Lunch near the harbour.'
+		},
+		{
+			id: 3,
+			journeyId: 1,
+			name: 'Lüneburg',
+			lat: 53.2489,
+			lon: 10.4136,
+			orderIndex: 2,
+			stayDurationMinutes: 120,
+			notes: 'Old town & salt works.'
+		},
+		{
+			id: 4,
+			journeyId: 1,
+			name: 'Hannover Hbf',
+			lat: 52.3766,
+			lon: 9.7411,
+			orderIndex: 3,
+			stayDurationMinutes: 60,
+			notes: null
+		}
 	];
 
 	const segments: Segment[] = [
 		{
-			id: 1, journeyId: 1, fromStopId: 1, toStopId: 2, mode: 'transit',
-			travelDurationMinutes: 106, distanceM: 286000, transfers: 0,
+			id: 1,
+			journeyId: 1,
+			fromStopId: 1,
+			toStopId: 2,
+			mode: 'transit',
+			travelDurationMinutes: 106,
+			distanceM: 286000,
+			transfers: 0,
 			transitSummary: 'ICE 704 · Berlin Hbf → Hamburg Hbf',
 			transitLegs: [
 				{ type: 'walking', durationMinutes: 6, distanceM: 420 },
-				{ type: 'transport', lineName: 'ICE 704', product: 'ICE', direction: 'Hamburg Hbf', departure: at(0, 8, 6), arrival: at(0, 9, 52), departureStation: 'Berlin Hbf', arrivalStation: 'Hamburg Hbf', departureStationId: '8011160', arrivalStationId: '8002549', durationMinutes: 106, platform: '7' }
+				{
+					type: 'transport',
+					lineName: 'ICE 704',
+					product: 'ICE',
+					direction: 'Hamburg Hbf',
+					departure: at(0, 8, 6),
+					arrival: at(0, 9, 52),
+					departureStation: 'Berlin Hbf',
+					arrivalStation: 'Hamburg Hbf',
+					departureStationId: '8011160',
+					arrivalStationId: '8002549',
+					durationMinutes: 106,
+					platform: '7'
+				}
 			]
 		},
 		{
-			id: 2, journeyId: 1, fromStopId: 2, toStopId: 3, mode: 'transit',
-			travelDurationMinutes: 42, distanceM: 56000, transfers: 1,
+			id: 2,
+			journeyId: 1,
+			fromStopId: 2,
+			toStopId: 3,
+			mode: 'transit',
+			travelDurationMinutes: 42,
+			distanceM: 56000,
+			transfers: 1,
 			transitSummary: 'RE 3 → RB 31 · Hamburg → Lüneburg',
 			transitLegs: [
-				{ type: 'transport', lineName: 'RE 3', product: 'RE', direction: 'Lüneburg', durationMinutes: 28 },
+				{
+					type: 'transport',
+					lineName: 'RE 3',
+					product: 'RE',
+					direction: 'Lüneburg',
+					durationMinutes: 28
+				},
 				{ type: 'walking', durationMinutes: 7, distanceM: 180 },
-				{ type: 'transport', lineName: 'RB 31', product: 'RB', direction: 'Lüneburg', durationMinutes: 14 }
+				{
+					type: 'transport',
+					lineName: 'RB 31',
+					product: 'RB',
+					direction: 'Lüneburg',
+					durationMinutes: 14
+				}
 			]
 		},
 		{
-			id: 3, journeyId: 1, fromStopId: 3, toStopId: 4, mode: 'drive',
-			travelDurationMinutes: 55, distanceM: 76000, elevationUpM: 120, elevationDownM: 95
+			id: 3,
+			journeyId: 1,
+			fromStopId: 3,
+			toStopId: 4,
+			mode: 'drive',
+			travelDurationMinutes: 55,
+			distanceM: 76000,
+			elevationUpM: 120,
+			elevationDownM: 95
 		}
 	];
 
@@ -98,19 +178,37 @@
 	const moreJourneys: JourneyWithDerived[] = [
 		journeyWithDerived,
 		{
-			...baseJourney, id: 2, title: 'Rhine Valley by Rail', isPublic: false,
-			startDatetime: at(12, 9, 30), firstStopName: 'Köln Hbf', lastStopName: 'Mainz Hbf',
-			stopCount: 6, totalDurationMinutes: 512,
+			...baseJourney,
+			id: 2,
+			title: 'Rhine Valley by Rail',
+			isPublic: false,
+			startDatetime: at(12, 9, 30),
+			firstStopName: 'Köln Hbf',
+			lastStopName: 'Mainz Hbf',
+			stopCount: 6,
+			totalDurationMinutes: 512,
 			stopCoords: [
-				{ lat: 50.943, lon: 6.958 }, { lat: 50.075, lon: 7.599 },
-				{ lat: 50.114, lon: 7.587 }, { lat: 50.005, lon: 8.261 }
+				{ lat: 50.943, lon: 6.958 },
+				{ lat: 50.075, lon: 7.599 },
+				{ lat: 50.114, lon: 7.587 },
+				{ lat: 50.005, lon: 8.261 }
 			]
 		},
 		{
-			...baseJourney, id: 3, title: 'Alpinepass / Dolomites', isPublic: false,
-			startDatetime: null, firstStopName: 'München Hbf', lastStopName: 'Bolzano',
-			stopCount: 3, totalDurationMinutes: 0,
-			stopCoords: [{ lat: 48.14, lon: 11.558 }, { lat: 47.05, lon: 11.4 }, { lat: 46.5, lon: 11.35 }]
+			...baseJourney,
+			id: 3,
+			title: 'Alpinepass / Dolomites',
+			isPublic: false,
+			startDatetime: null,
+			firstStopName: 'München Hbf',
+			lastStopName: 'Bolzano',
+			stopCount: 3,
+			totalDurationMinutes: 0,
+			stopCoords: [
+				{ lat: 48.14, lon: 11.558 },
+				{ lat: 47.05, lon: 11.4 },
+				{ lat: 46.5, lon: 11.35 }
+			]
 		}
 	];
 
@@ -122,8 +220,22 @@
 	const editorData = { journey: baseJourney, stops, segments, user: indexData.user };
 	const completedData = {
 		journeys: [
-			{ ...journeyWithDerived, id: 9, title: 'Paris Spring Break', isCompleted: true, firstStopName: 'Karlsruhe', lastStopName: 'Paris Gare du Nord' },
-			{ ...journeyWithDerived, id: 10, title: 'Odense & Copenhagen', isCompleted: true, firstStopName: 'Hamburg Hbf', lastStopName: 'København H' }
+			{
+				...journeyWithDerived,
+				id: 9,
+				title: 'Paris Spring Break',
+				isCompleted: true,
+				firstStopName: 'Karlsruhe',
+				lastStopName: 'Paris Gare du Nord'
+			},
+			{
+				...journeyWithDerived,
+				id: 10,
+				title: 'Odense & Copenhagen',
+				isCompleted: true,
+				firstStopName: 'Hamburg Hbf',
+				lastStopName: 'København H'
+			}
 		]
 	};
 	const sharedData = { journey: { ...baseJourney, ownerName: 'Alex Reisender' }, stops, segments };

@@ -53,9 +53,17 @@
 	);
 
 	const facts = $derived([
-		{ icon: IconClock, value: startTime && endTime ? `${fmtTime(startTime)} – ${fmtTime(endTime)}` : 'Times not set' },
-		{ icon: IconTimer, value: totalDurationMin != null ? formatDuration(totalDurationMin) : 'Duration open' },
-		...(totalWalkDistanceM > 0 ? [{ icon: IconWalk, value: formatDistance(totalWalkDistanceM) }] : [])
+		{
+			icon: IconClock,
+			value: startTime && endTime ? `${fmtTime(startTime)} – ${fmtTime(endTime)}` : 'Times not set'
+		},
+		{
+			icon: IconTimer,
+			value: totalDurationMin != null ? formatDuration(totalDurationMin) : 'Duration open'
+		},
+		...(totalWalkDistanceM > 0
+			? [{ icon: IconWalk, value: formatDistance(totalWalkDistanceM) }]
+			: [])
 	]);
 
 	function fmtTime(date: Date): string {
@@ -127,7 +135,11 @@
 	<PageHeader title={journey.title} subtitle={`Shared by ${journey.ownerName ?? 'a traveller'}`}>
 		{#snippet actions()}
 			<div class="flex items-center gap-1">
-				<button class="btn btn-ghost btn-sm" onclick={copyLink} aria-label="Copy link to this journey">
+				<button
+					class="btn btn-ghost btn-sm"
+					onclick={copyLink}
+					aria-label="Copy link to this journey"
+				>
 					{#if copied}
 						<IconCheck class="h-4 w-4 text-[#2f7d58]" />
 					{:else}
@@ -165,11 +177,19 @@
 		{/if}
 
 		{#if sortedStops.length > 0 || (startTime && endTime && totalDurationMin != null)}
-			<section class="animate-fade-in-up mb-5 border border-[#172a45]/35 border-t-4 border-t-[#e6a527] bg-[#fffdf7]">
+			<section
+				class="animate-fade-in-up mb-5 border border-t-4 border-[#172a45]/35 border-t-[#e6a527] bg-[#fffdf7]"
+			>
 				{#if browser && sortedStops.length > 0}
-					<div class="pointer-events-none h-40 select-none border-b border-[#172a45]/20" aria-hidden="true">
+					<div
+						class="pointer-events-none h-40 border-b border-[#172a45]/20 select-none"
+						aria-hidden="true"
+					>
 						{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
-							<MiniMap coords={sortedStops.map((s) => ({ lat: s.lat, lon: s.lon }))} class="h-full w-full" />
+							<MiniMap
+								coords={sortedStops.map((s) => ({ lat: s.lat, lon: s.lon }))}
+								class="h-full w-full"
+							/>
 						{/await}
 					</div>
 				{/if}
@@ -178,7 +198,7 @@
 					<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3">
 						{#each facts as fact (fact.value)}
 							<span class="inline-flex items-center gap-1.5 text-xs font-medium text-[#172a45]/65">
-								<fact.icon class="text-[#a45e38] h-4 w-4 shrink-0" />
+								<fact.icon class="h-4 w-4 shrink-0 text-[#a45e38]" />
 								{fact.value}
 							</span>
 						{/each}
@@ -191,7 +211,9 @@
 			{#each sortedStops as stop, i (stop.id)}
 				<div class="flex gap-2.5">
 					<div class="flex w-8 shrink-0 flex-col items-center pt-2">
-						<span class="travel-display animate-soft-pop flex h-8 w-8 items-center justify-center border border-[#172a45]/45 bg-[#fffdf7] text-base text-[#172a45]">
+						<span
+							class="travel-display animate-soft-pop flex h-8 w-8 items-center justify-center border border-[#172a45]/45 bg-[#fffdf7] text-base text-[#172a45]"
+						>
 							{i + 1}
 						</span>
 						{#if i < sortedStops.length - 1}<span class="w-px flex-1 bg-[#e6a527]/60"></span>{/if}
@@ -202,15 +224,24 @@
 							<h2 class="travel-display truncate text-[17px] text-[#172a45]">{stop.name}</h2>
 							{#if arrivalTimes[i]}
 								<span class="travel-eyebrow shrink-0 text-[9px]">
-									{arrivalTimes[i]?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+									{arrivalTimes[i]?.toLocaleTimeString('en-US', {
+										hour: '2-digit',
+										minute: '2-digit'
+									})}
 								</span>
 							{/if}
 						</div>
 						{#if stop.stayDurationMinutes}
-							<p class="mt-1 text-[11px] text-[#172a45]/55">Stay · {formatDuration(stop.stayDurationMinutes)}</p>
+							<p class="mt-1 text-[11px] text-[#172a45]/55">
+								Stay · {formatDuration(stop.stayDurationMinutes)}
+							</p>
 						{/if}
 						{#if stop.notes}
-							<p class="mt-1 border-l-2 border-[#e6a527] pl-2 text-[11px] leading-relaxed text-[#172a45]/65">{stop.notes}</p>
+							<p
+								class="mt-1 border-l-2 border-[#e6a527] pl-2 text-[11px] leading-relaxed text-[#172a45]/65"
+							>
+								{stop.notes}
+							</p>
 						{/if}
 					</div>
 				</div>
@@ -218,7 +249,9 @@
 				{#if i > 0}
 					{@const seg = findSegment(sortedStops[i - 1].id, stop.id)}
 					{#if seg}
-						<div class="ml-10"><SegmentChip segment={seg} readonly onclickdetail={openSegmentDetail} /></div>
+						<div class="ml-10">
+							<SegmentChip segment={seg} readonly onclickdetail={openSegmentDetail} />
+						</div>
 					{/if}
 				{/if}
 			{/each}

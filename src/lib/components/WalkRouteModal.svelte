@@ -68,7 +68,12 @@
 		let minDist = Infinity;
 		let nearestIdx = 0;
 		for (let i = 0; i < coords.length; i++) {
-			const d = haversineDistance(currentPosition.lat, currentPosition.lon, coords[i][0], coords[i][1]);
+			const d = haversineDistance(
+				currentPosition.lat,
+				currentPosition.lon,
+				coords[i][0],
+				coords[i][1]
+			);
 			if (d < minDist) {
 				minDist = d;
 				nearestIdx = i;
@@ -76,7 +81,12 @@
 		}
 		let remaining = 0;
 		for (let i = nearestIdx; i < coords.length - 1; i++) {
-			remaining += haversineDistance(coords[i][0], coords[i][1], coords[i + 1][0], coords[i + 1][1]);
+			remaining += haversineDistance(
+				coords[i][0],
+				coords[i][1],
+				coords[i + 1][0],
+				coords[i + 1][1]
+			);
 		}
 		return Math.round(remaining);
 	});
@@ -149,7 +159,6 @@
 			navigator.geolocation.clearWatch(watchId);
 		}
 	});
-
 </script>
 
 {#if browser && segment && geometry?.length}
@@ -171,70 +180,70 @@
 		{/snippet}
 
 		<div class="h-[55dvh] w-full sm:h-96">
-					<Map options={mapOptions} bind:instance={mapInstance}>
-						<TileLayer
-							url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
-							options={{ maxZoom: 19 }}
-						/>
+			<Map options={mapOptions} bind:instance={mapInstance}>
+				<TileLayer
+					url={'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+					options={{ maxZoom: 19 }}
+				/>
 
-						{#if coords.length >= 2}
-							<Polyline
-								latLngs={coords}
-								options={{
-									color: lineColor,
-									weight: 5,
-									opacity: 0.85,
-									lineCap: 'round',
-									lineJoin: 'round'
-								}}
-							/>
-						{/if}
+				{#if coords.length >= 2}
+					<Polyline
+						latLngs={coords}
+						options={{
+							color: lineColor,
+							weight: 5,
+							opacity: 0.85,
+							lineCap: 'round',
+							lineJoin: 'round'
+						}}
+					/>
+				{/if}
 
-						{#if first}
-							<CircleMarker
-								latLng={first}
-								options={{
-									radius: 8,
-									color: '#fff',
-									fillColor: '#22c55e',
-									fillOpacity: 1,
-									weight: 2
-								}}
-							>
-								<Tooltip>{fromName}</Tooltip>
-							</CircleMarker>
-						{/if}
+				{#if first}
+					<CircleMarker
+						latLng={first}
+						options={{
+							radius: 8,
+							color: '#fff',
+							fillColor: '#22c55e',
+							fillOpacity: 1,
+							weight: 2
+						}}
+					>
+						<Tooltip>{fromName}</Tooltip>
+					</CircleMarker>
+				{/if}
 
-						{#if last}
-							<CircleMarker
-								latLng={last}
-								options={{
-									radius: 8,
-									color: '#fff',
-									fillColor: '#ef4444',
-									fillOpacity: 1,
-									weight: 2
-								}}
-							>
-								<Tooltip>{toName}</Tooltip>
-							</CircleMarker>
-						{/if}
+				{#if last}
+					<CircleMarker
+						latLng={last}
+						options={{
+							radius: 8,
+							color: '#fff',
+							fillColor: '#ef4444',
+							fillOpacity: 1,
+							weight: 2
+						}}
+					>
+						<Tooltip>{toName}</Tooltip>
+					</CircleMarker>
+				{/if}
 
-						{#if currentPosition}
-							<CircleMarker
-								latLng={[currentPosition.lat, currentPosition.lon]}
-								options={{
-									radius: 9,
-									color: '#3b82f6',
-									fillColor: '#3b82f6',
-									fillOpacity: 0.35,
-									weight: 3
-								}}
-							>
-								<Tooltip>You</Tooltip>
-							</CircleMarker>
-						{/if}
-					</Map>
+				{#if currentPosition}
+					<CircleMarker
+						latLng={[currentPosition.lat, currentPosition.lon]}
+						options={{
+							radius: 9,
+							color: '#3b82f6',
+							fillColor: '#3b82f6',
+							fillOpacity: 0.35,
+							weight: 3
+						}}
+					>
+						<Tooltip>You</Tooltip>
+					</CircleMarker>
+				{/if}
+			</Map>
 		</div>
 
 		{#snippet footer()}

@@ -11,24 +11,27 @@ This document describes the improvements made to time formatting, station select
 **File:** `src/lib/utils/calculations.ts`
 
 **Before:**
+
 ```typescript
 if (minutes < 60) {
-    return `${minutes} min`;
+	return `${minutes} min`;
 }
 // ...
 return `${hours}h ${mins}m`;
 ```
 
 **After:**
+
 ```typescript
 if (minutes < 60) {
-    return `${minutes}min`;
+	return `${minutes}min`;
 }
 // ...
 return `${hours}h ${mins}min`;
 ```
 
 **Impact:**
+
 - 30 minutes: `30min` (instead of `30 min`)
 - 90 minutes: `1h 30min` (instead of `1h 30m`)
 - 120 minutes: `2h` (unchanged)
@@ -40,19 +43,22 @@ This provides consistent formatting across the application.
 ### 2. Show Only Closest 5 Stations
 
 **Files:**
+
 - `src/lib/services/stationService.ts`
 - `src/lib/components/TransportEditor.svelte`
 
 **Changes:**
+
 1. Changed default `maxResults` parameter from 8 to 5 in `findNearbyStations()`
 2. Limited station display in TransportEditor to show only 5 closest stations
 
 **Before:**
+
 ```typescript
 export async function findNearbyStations(
-    coords: [number, number],
-    maxResults = 8
-): Promise<Station[]>
+	coords: [number, number],
+	maxResults = 8
+): Promise<Station[]>;
 ```
 
 ```svelte
@@ -60,11 +66,12 @@ export async function findNearbyStations(
 ```
 
 **After:**
+
 ```typescript
 export async function findNearbyStations(
-    coords: [number, number],
-    maxResults = 5
-): Promise<Station[]>
+	coords: [number, number],
+	maxResults = 5
+): Promise<Station[]>;
 ```
 
 ```svelte
@@ -72,6 +79,7 @@ export async function findNearbyStations(
 ```
 
 **Impact:**
+
 - Reduces clutter in station selection UI
 - Shows only the most relevant nearby stations
 - Improves performance by fetching fewer results
@@ -89,7 +97,7 @@ Added comprehensive documentation explaining the proper time planning:
 ```typescript
 /**
  * TripTimeline Component
- * 
+ *
  * Properly calculates timeline with cumulative time tracking:
  * Example: Start at 8:00 at Location 1
  * - Stay 1h at Location 1 (8:00 - 9:00)
@@ -97,7 +105,7 @@ Added comprehensive documentation explaining the proper time planning:
  * - Arrive at Location 2 at 9:30
  * - Stay 45min at Location 2 (9:30 - 10:15)
  * - Public transport search should start at 10:15
- * 
+ *
  * The transport duration includes:
  * - Walking time from location to station
  * - Waiting time at station
@@ -115,7 +123,7 @@ Enhanced `calculateSuggestedDepartureTime()` function with better documentation 
 ```typescript
 /**
  * Calculate suggested departure time for public transport search
- * 
+ *
  * This properly accumulates time based on the trip timeline:
  * Example:
  * - Start at 8:00 at Location 1
@@ -123,16 +131,17 @@ Enhanced `calculateSuggestedDepartureTime()` function with better documentation 
  * - Walk 30min to Location 2 → arrival at 9:30
  * - Stay 45min at Location 2 → departure at 10:15
  * - Now searching for public transport departing at 10:15+
- * 
+ *
  * The transport duration includes:
  * - Walking time from location to station
  * - Train/bus travel time
  * - Walking time from station to next location
  */
-function calculateSuggestedDepartureTime(stopIndex: number): Date | undefined
+function calculateSuggestedDepartureTime(stopIndex: number): Date | undefined;
 ```
 
 **Key improvements:**
+
 - Default start time set to 9:00 AM if no start date specified
 - Cumulative time calculation includes all stay durations and transport times
 - Proper logging for debugging timeline calculations
@@ -146,7 +155,7 @@ Added documentation explaining how the suggested departure time is used:
 ```typescript
 /**
  * Search for connections between selected stations
- * 
+ *
  * The suggestedDepartureTime is calculated based on the timeline:
  * - It accounts for all previous locations and their stay times
  * - It includes travel time to reach the current departure station
@@ -164,15 +173,15 @@ Added important documentation about what's included in API responses:
 ```typescript
 /**
  * Search for connections between stations
- * 
+ *
  * IMPORTANT: The connection duration from the API includes:
  * - Travel time on the train/bus
  * - Transfer/waiting times at intermediate stations
- * 
+ *
  * When planning trips, you should ALSO add:
  * - Walking time from departure location to the departure station
  * - Walking time from arrival station to the final destination
- * 
+ *
  * These walking times are NOT included in the API response and must be
  * calculated separately (e.g., using getDistanceInMeters and assuming 5 km/h walking speed).
  */
@@ -190,28 +199,25 @@ Added utility functions for time and distance calculations:
 /**
  * Add minutes to a time string (HH:MM format)
  */
-export function addMinutesToTime(timeString: string, minutesToAdd: number): string
+export function addMinutesToTime(timeString: string, minutesToAdd: number): string;
 
 /**
  * Calculate walking time based on distance (assuming 5 km/h walking speed)
  */
-export function calculateWalkingTimeFromDistance(distanceKm: number): number
+export function calculateWalkingTimeFromDistance(distanceKm: number): number;
 
 /**
  * Calculate distance between two coordinates using Haversine formula
  */
-export function calculateDistance(
-    lat1: number, lon1: number, 
-    lat2: number, lon2: number
-): number
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number;
 
 /**
  * Calculate walking time between two coordinates
  */
 export function calculateWalkingTimeBetweenCoords(
-    coords1: [number, number], 
-    coords2: [number, number]
-): number
+	coords1: [number, number],
+	coords2: [number, number]
+): number;
 ```
 
 **Usage examples:**
@@ -225,8 +231,8 @@ const walkTime = calculateWalkingTimeFromDistance(2.5); // ~30 minutes
 
 // Calculate walking time between coordinates
 const time = calculateWalkingTimeBetweenCoords(
-    [48.1351, 11.5820],  // Munich
-    [48.1372, 11.5755]   // Another point in Munich
+	[48.1351, 11.582], // Munich
+	[48.1372, 11.5755] // Another point in Munich
 ); // ~3 minutes
 ```
 
@@ -235,6 +241,7 @@ const time = calculateWalkingTimeBetweenCoords(
 ## Example Timeline Calculation
 
 ### Scenario
+
 - **Start Time:** 8:00
 - **Location 1:** Museum (stay 1 hour)
 - **Transport to Location 2:** Walking (30 minutes)
@@ -255,6 +262,7 @@ const time = calculateWalkingTimeBetweenCoords(
 ### Public Transport Search Considerations
 
 When searching at 10:15, the system should:
+
 1. Find nearby stations to Park (departure station)
 2. Find nearby stations to Location 3 (arrival station)
 3. Calculate walking time to departure station (~5-10 min)
@@ -265,6 +273,7 @@ When searching at 10:15, the system should:
 ### User Display
 
 The timeline shows:
+
 ```
 📍 Location 2 (Park)
    10:15 Depart
@@ -272,7 +281,7 @@ The timeline shows:
 🚂 Train RE7
    10:25 → 11:10 • 45min
    1 transfer
-   
+
 📍 Location 3
    11:15 Arrive
 ```

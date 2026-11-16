@@ -5,6 +5,7 @@
 This application uses the **public-transport/hafas-client** API for German railway and public transport data.
 
 ### API Endpoint
+
 - **Base URL**: `https://v6.db.transport.rest`
 - **Alternative**: `https://v6.bahn.guru` (more stable, community-backed)
 
@@ -13,6 +14,7 @@ This application uses the **public-transport/hafas-client** API for German railw
 **Yes!** The API is completely free to use with no API key required.
 
 ### Key Facts
+
 - ✅ **100% Free** - No costs, no rate limits mentioned
 - ✅ **Open Source** - [GitHub Repository](https://github.com/public-transport/hafas-client)
 - ✅ **No Authentication** - No API keys needed
@@ -31,16 +33,19 @@ This is the **same API** used by popular German transit apps:
 ## Technical Details
 
 ### What is HAFAS?
+
 HAFAS (HaCon Fahrplan-Auskunfts-System) is the system used by Deutsche Bahn and many other European transit agencies. The `hafas-client` library provides a clean REST API on top of the official but complex HAFAS interface.
 
 ### Endpoints Used
 
 1. **`/stops/nearby`** - Find nearby stations
+
    ```
    GET /stops/nearby?latitude={lat}&longitude={lon}&distance={meters}&results={n}
    ```
 
 2. **`/journeys`** - Find connections between stations
+
    ```
    GET /journeys?from={stationId}&to={stationId}&results={n}
    ```
@@ -53,18 +58,22 @@ HAFAS (HaCon Fahrplan-Auskunfts-System) is the system used by Deutsche Bahn and 
 ## Reliability & Rate Limits
 
 ### Current Status
+
 - The API is generally reliable and fast
 - No official rate limits published
 - Recommended: Be respectful with requests (cache when possible)
 
 ### Best Practices
+
 1. Don't spam requests - cache results when appropriate
 2. Use reasonable result limits (we use 8-10 max)
 3. Handle errors gracefully with fallbacks
 4. Consider using the alternative endpoint if the main one is slow
 
 ### Fallback Strategy
+
 The app currently uses this strategy:
+
 1. Try DB API (`v6.db.transport.rest`) for station search
 2. If no results, fall back to OpenStreetMap data
 3. For journey planning, always prefer DB API stations (they have proper IDs)
@@ -72,21 +81,25 @@ The app currently uses this strategy:
 ## Alternative APIs Considered
 
 ### 1. Direct HAFAS API
+
 - **Pros**: Official data source
 - **Cons**: Complex protocol, requires reverse engineering
 - **Verdict**: ❌ Too complex, `hafas-client` is a better wrapper
 
 ### 2. OpenStreetMap Only
+
 - **Pros**: Always free, good geographic data
 - **Cons**: No real-time transit data, no journey planning
 - **Verdict**: ✅ Used as fallback for station locations
 
 ### 3. DB Navigator API
+
 - **Pros**: Official DB app API
 - **Cons**: Unofficial, may break, no documentation
 - **Verdict**: ❌ Not reliable
 
 ### 4. Bahn.guru Direct
+
 - **Pros**: Community-backed, stable
 - **Cons**: Limited endpoints
 - **Verdict**: ✅ Good alternative endpoint (use v6.bahn.guru)
@@ -100,6 +113,7 @@ If `v6.db.transport.rest` becomes unavailable:
 3. **Use another region**: There are endpoints for other countries too
 
 ### Self-Hosting Example
+
 ```bash
 # Clone the repository
 git clone https://github.com/derhuerst/db-rest.git
@@ -115,6 +129,7 @@ npm start
 ## Data Sources
 
 The API aggregates data from:
+
 - 🚂 Deutsche Bahn (DB) - Long-distance trains
 - 🚃 Regional transit operators (VBB, VRR, etc.)
 - 🚌 Local bus services
@@ -128,7 +143,7 @@ The API aggregates data from:
 
 ## Conclusion
 
-**The current implementation is perfect!** 
+**The current implementation is perfect!**
 
 - ✅ Free and open source
 - ✅ Used by major German transit apps

@@ -118,7 +118,7 @@
 	const hasTransitSegments = $derived(journeySegments.some((s) => s.mode === 'transit'));
 	const isReadOnly = $derived(journey.isCompleted === true);
 
-	onMount(async () => {
+	onMount(() => {
 		isOffline = !navigator.onLine;
 		const off = () => {
 			isOffline = true;
@@ -127,17 +127,20 @@
 		const on = () => (isOffline = false);
 		window.addEventListener('offline', off);
 		window.addEventListener('online', on);
-		const draft = await getLocalJourneyDraft(journey.id);
-		if (draft) {
-			journey = draft.snapshot.journey as typeof journey;
-			journeyStops = draft.snapshot.stops;
-			journeySegments = draft.snapshot.segments;
-			localBaseUpdatedAt = draft.baseUpdatedAt;
-			syncState = draft.baseUpdatedAt !== data.journey.updatedAt ? 'conflict' : 'local';
-		} else {
-			localBaseUpdatedAt = data.journey.updatedAt;
-			await cacheJourney(journey.id, { journey, stops: journeyStops, segments: journeySegments });
-		}
+		// The draft restore is async, but onMount must return its cleanup synchronously.
+		void (async () => {
+			const draft = await getLocalJourneyDraft(journey.id);
+			if (draft) {
+				journey = draft.snapshot.journey as typeof journey;
+				journeyStops = draft.snapshot.stops;
+				journeySegments = draft.snapshot.segments;
+				localBaseUpdatedAt = draft.baseUpdatedAt;
+				syncState = draft.baseUpdatedAt !== data.journey.updatedAt ? 'conflict' : 'local';
+			} else {
+				localBaseUpdatedAt = data.journey.updatedAt;
+				await cacheJourney(journey.id, { journey, stops: journeyStops, segments: journeySegments });
+			}
+		})();
 		return () => {
 			window.removeEventListener('offline', off);
 			window.removeEventListener('online', on);
@@ -491,6 +494,7 @@
 				: (details?.error ?? 'Local changes could not be uploaded.');
 			return;
 		}
+		if (result.type !== 'success') return;
 		const payload = result.data as {
 			journey?: typeof journey;
 			stops?: Stop[];
@@ -555,7 +559,9 @@
 						onkeydown={(e) => e.key === 'Enter' && saveTitle()}
 					/>
 				{:else if isReadOnly}
-					<p class="travel-display truncate text-lg leading-tight text-[#172a45] sm:text-xl">{journey.title}</p>
+					<p class="travel-display truncate text-lg leading-tight text-[#172a45] sm:text-xl">
+						{journey.title}
+					</p>
 				{:else}
 					<button
 						class="travel-display block max-w-full truncate text-left text-lg leading-tight text-[#172a45] hover:text-[#a45e38] sm:text-xl"
@@ -608,7 +614,7 @@
 		<main class="mx-auto max-w-2xl p-4 sm:p-5">
 			{#if isReadOnly}
 				<div
-					class="mb-4 flex items-start gap-3 border border-[#2f7d58]/35 border-l-4 border-l-[#2f7d58] bg-[#f1f6f1] px-3 py-3 text-sm text-[#245e44]"
+					class="mb-4 flex items-start gap-3 border border-l-4 border-[#2f7d58]/35 border-l-[#2f7d58] bg-[#f1f6f1] px-3 py-3 text-sm text-[#245e44]"
 				>
 					<IconCheckCircle class="mt-0.5 h-5 w-5 shrink-0" />
 					<div>
@@ -619,7 +625,9 @@
 					</div>
 				</div>
 			{:else if syncState !== 'synced'}
-				<div class="mb-4 border border-[#172a45]/25 border-l-4 border-l-[#e6a527] bg-[#f4eee0] px-3 py-3 text-sm text-[#172a45]">
+				<div
+					class="mb-4 border border-l-4 border-[#172a45]/25 border-l-[#e6a527] bg-[#f4eee0] px-3 py-3 text-sm text-[#172a45]"
+				>
 					<div class="flex flex-wrap items-center justify-between gap-3">
 						<div>
 							<strong
@@ -665,19 +673,29 @@
 				</div>
 			{/if}
 			{#if dndItems.length > 0}
-				<section class="animate-fade-in-up mb-4 border border-[#172a45]/35 border-t-4 border-t-[#e6a527] bg-[#fffdf7] px-4 py-3">
+				<section
+					class="animate-fade-in-up mb-4 border border-t-4 border-[#172a45]/35 border-t-[#e6a527] bg-[#fffdf7] px-4 py-3"
+				>
 					<div class="flex items-baseline justify-between gap-3">
 						<p class="travel-eyebrow text-[9px]">Route overview</p>
-						<p class="travel-folio text-xs text-[#a45e38]">{formatDuration(overview.total)} end to end</p>
+						<p class="travel-folio text-xs text-[#a45e38]">
+							{formatDuration(overview.total)} end to end
+						</p>
 					</div>
 					<div class="mt-2 flex items-center gap-2">
 						<span class="h-2 w-2 shrink-0 rounded-full bg-[#172a45]"></span>
-						<span class="travel-display min-w-0 truncate text-base text-[#172a45]">{dndItems[0].name}</span>
+						<span class="travel-display min-w-0 truncate text-base text-[#172a45]"
+							>{dndItems[0].name}</span
+						>
 						<span class="h-px min-w-3 flex-1 bg-[#e6a527]"></span>
 						<span class="h-2 w-2 shrink-0 rounded-full bg-[#e6a527]"></span>
-						<span class="travel-display min-w-0 truncate text-base text-[#172a45]">{dndItems[dndItems.length - 1].name}</span>
+						<span class="travel-display min-w-0 truncate text-base text-[#172a45]"
+							>{dndItems[dndItems.length - 1].name}</span
+						>
 					</div>
-					<div class="travel-eyebrow mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-[#172a45]/55">
+					<div
+						class="travel-eyebrow mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-[#172a45]/55"
+					>
 						<span>{dndItems.length} {dndItems.length === 1 ? 'stop' : 'stops'}</span>
 						<span>{formatDuration(overview.travel)} travelling</span>
 						<span>{formatDuration(overview.stays)} staying</span>
@@ -685,8 +703,10 @@
 					</div>
 				</section>
 			{:else}
-				<div class="flex flex-col items-center gap-3 border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 py-12 text-center">
-					<IconPin class="text-[#a45e38]/60 h-10 w-10" />
+				<div
+					class="flex flex-col items-center gap-3 border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 py-12 text-center"
+				>
+					<IconPin class="h-10 w-10 text-[#a45e38]/60" />
 					<p class="travel-display text-lg text-[#172a45]">A blank itinerary</p>
 					<p class="text-xs text-[#172a45]/55">Add your first stop to begin plotting the route.</p>
 				</div>
@@ -757,10 +777,10 @@
 
 {#if celebrating}
 	<div
-		class="animate-soft-pop pointer-events-none fixed bottom-6 left-1/2 z-[2600] -translate-x-1/2 border border-[#172a45]/45 border-l-4 border-l-[#e6a527] bg-[#fffdf7] px-4 py-2.5 shadow-[6px_7px_0_rgba(23,42,69,0.18)]"
+		class="animate-soft-pop pointer-events-none fixed bottom-6 left-1/2 z-[2600] -translate-x-1/2 border border-l-4 border-[#172a45]/45 border-l-[#e6a527] bg-[#fffdf7] px-4 py-2.5 shadow-[6px_7px_0_rgba(23,42,69,0.18)]"
 		role="status"
 	>
-		<span class="text-[#e6a527] animate-sparkle mr-1.5 text-base">✦</span>
+		<span class="animate-sparkle mr-1.5 text-base text-[#e6a527]">✦</span>
 		<span class="travel-display text-base text-[#172a45]">Journey complete — nicely done.</span>
 	</div>
 {/if}
@@ -778,7 +798,6 @@
 
 {#if !isReadOnly}<ShareModal
 		bind:open={showShareModal}
-		journeyId={journey.id}
 		journeyTitle={journey.title}
 		isPublic={journey.isPublic}
 		{shareUrl}

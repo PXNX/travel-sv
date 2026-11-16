@@ -45,8 +45,17 @@
 			/>
 		{:else}
 			<div class="mb-5 grid grid-cols-3 border-y border-[#172a45]/20">
-				<StatTile value={journeys.length} label={journeys.length === 1 ? 'Trip' : 'Trips'} delay={0} />
-				<StatTile value={totalStops} label={totalStops === 1 ? 'Stop' : 'Stops'} tone="secondary" delay={80} />
+				<StatTile
+					value={journeys.length}
+					label={journeys.length === 1 ? 'Trip' : 'Trips'}
+					delay={0}
+				/>
+				<StatTile
+					value={totalStops}
+					label={totalStops === 1 ? 'Stop' : 'Stops'}
+					tone="secondary"
+					delay={80}
+				/>
 				<StatTile
 					value={totalDuration > 0 ? formatDuration(totalDuration) : '—'}
 					label="Recorded time"
@@ -59,7 +68,7 @@
 				class="mb-3 flex items-center gap-2 border border-[#172a45]/25 bg-[#fffdf7] px-3 py-2.5 focus-within:border-[#a45e38]"
 				for="completed-trip-search"
 			>
-				<IconSearch class="text-[#a45e38] h-5 w-5 shrink-0" />
+				<IconSearch class="h-5 w-5 shrink-0 text-[#a45e38]" />
 				<input
 					id="completed-trip-search"
 					class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#172a45]/35"
@@ -67,7 +76,11 @@
 					placeholder="Search completed trips by name"
 				/>
 				{#if search}
-					<button class="text-[#172a45]/40 hover:text-[#a45e38]" aria-label="Clear search" onclick={() => (search = '')}>
+					<button
+						class="text-[#172a45]/40 hover:text-[#a45e38]"
+						aria-label="Clear search"
+						onclick={() => (search = '')}
+					>
 						<IconClose class="h-4 w-4" />
 					</button>
 				{/if}
@@ -78,11 +91,7 @@
 					{#each visibleJourneys as journey, i (journey.id)}
 						<div class="animate-fade-in-up" style={`animation-delay: ${i * 55}ms`}>
 							<div class="relative">
-								<JourneyCard
-									{journey}
-									index={i}
-									onclick={() => goto(`/journeys/${journey.id}`)}
-								/>
+								<JourneyCard {journey} index={i} onclick={() => goto(`/journeys/${journey.id}`)} />
 								<span
 									class="pointer-events-none absolute top-2 right-3 border border-[#2f7d58]/40 bg-[#f1f6f1] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] text-[#2f7d58] uppercase"
 								>
@@ -93,7 +102,9 @@
 					{/each}
 				</div>
 			{:else}
-				<div class="border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 px-4 py-10 text-center">
+				<div
+					class="border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 px-4 py-10 text-center"
+				>
 					<p class="travel-display text-lg text-[#172a45]">No trip matches “{search}”</p>
 					<p class="mt-1 text-xs text-[#a45e38]">Try a different name.</p>
 				</div>

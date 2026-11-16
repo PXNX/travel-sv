@@ -89,11 +89,9 @@
 		onclick={handleBackdropClick}
 	>
 		<div
-			class="relative flex max-h-[92dvh] w-full flex-col overflow-hidden border border-[#172a45]/60 border-t-4 border-t-[#e6a527] bg-[#fffdf7] shadow-[10px_12px_0_rgba(23,42,69,0.25)] outline-none sm:max-h-[85dvh] {SIZE[
+			class="relative flex max-h-[92dvh] w-full flex-col overflow-hidden border border-t-4 border-[#172a45]/60 border-t-[#e6a527] bg-[#fffdf7] shadow-[10px_12px_0_rgba(23,42,69,0.25)] outline-none sm:max-h-[85dvh] {SIZE[
 				size
-			]} {sheet
-				? 'animate-slide-up sm:animate-fade-in-scale'
-				: 'animate-fade-in-scale'}"
+			]} {sheet ? 'animate-slide-up sm:animate-fade-in-scale' : 'animate-fade-in-scale'}"
 			role="dialog"
 			aria-modal="true"
 			aria-label={title ? undefined : ariaLabel}
@@ -102,9 +100,14 @@
 			use:focusTrap
 		>
 			{#if title}
-				<header class="flex shrink-0 items-start justify-between gap-3 border-b border-[#172a45]/20 px-5 py-3.5">
+				<header
+					class="flex shrink-0 items-start justify-between gap-3 border-b border-[#172a45]/20 px-5 py-3.5"
+				>
 					<div class="min-w-0">
-						<h2 id={titleId} class="travel-display flex items-center gap-1.5 text-lg leading-tight text-[#172a45]">
+						<h2
+							id={titleId}
+							class="travel-display flex items-center gap-1.5 text-lg leading-tight text-[#172a45]"
+						>
 							{#if Icon}
 								<Icon class="size-5 shrink-0 text-[#a45e38]" />
 							{/if}
@@ -115,7 +118,13 @@
 						{/if}
 					</div>
 					{#if dismissible}
-						<IconButton icon={IconClose} label="Close" size="sm" class="-mr-1.5 shrink-0" onclick={close} />
+						<IconButton
+							icon={IconClose}
+							label="Close"
+							size="sm"
+							class="-mr-1.5 shrink-0"
+							onclick={close}
+						/>
 					{/if}
 				</header>
 			{/if}

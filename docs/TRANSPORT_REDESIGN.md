@@ -7,11 +7,13 @@ This document describes the redesigned architecture and UI for searching bus and
 ## Key Improvements
 
 ### 1. **Automatic Station Discovery**
+
 - **Before**: Users had to manually click "Find Stations" for each location
 - **After**: Stations are automatically discovered when the transport editor opens
 - **Benefit**: Reduces clicks and cognitive load
 
 ### 2. **Smart Departure Time Suggestions**
+
 - **Before**: Users had to manually calculate when to depart based on previous activities
 - **After**: System automatically calculates suggested departure time based on:
   - Trip start date/time
@@ -20,6 +22,7 @@ This document describes the redesigned architecture and UI for searching bus and
 - **Benefit**: Intelligent time planning, reduces errors
 
 ### 3. **Unified Station Service**
+
 - **Before**: Mixed logic between DB API and OSM in the component
 - **After**: Centralized `stationService.ts` with clean abstraction
 - **Features**:
@@ -29,6 +32,7 @@ This document describes the redesigned architecture and UI for searching bus and
   - Station type detection (railway, bus, mixed)
 
 ### 4. **Progressive Disclosure UI**
+
 - **Before**: All options shown at once, cluttered interface
 - **After**: Information revealed step-by-step
   1. Select transport mode
@@ -38,6 +42,7 @@ This document describes the redesigned architecture and UI for searching bus and
 - **Benefit**: Cleaner interface, easier to understand
 
 ### 5. **Real-time Connection Integration**
+
 - **Before**: Connections shown in separate section, required manual selection
 - **After**: Connections displayed as selectable cards immediately when both stations are known
 - **Features**:
@@ -75,29 +80,30 @@ This document describes the redesigned architecture and UI for searching bus and
 
 ```typescript
 interface Station {
-  id: string;
-  name: string;
-  type: 'railway' | 'bus' | 'mixed';
-  lat: number;
-  lon: number;
-  distance: number;
-  products?: { /* DB API products */ };
-  source: 'db' | 'osm';
+	id: string;
+	name: string;
+	type: 'railway' | 'bus' | 'mixed';
+	lat: number;
+	lon: number;
+	distance: number;
+	products?: {/* DB API products */};
+	source: 'db' | 'osm';
 }
 
 interface Connection {
-  departure: Date;
-  arrival: Date;
-  duration: number;
-  transfers: number;
-  legs: ConnectionLeg[];
-  price?: { amount: number; currency: string; };
+	departure: Date;
+	arrival: Date;
+	duration: number;
+	transfers: number;
+	legs: ConnectionLeg[];
+	price?: { amount: number; currency: string };
 }
 ```
 
 ### Component: `TransportEditor.svelte`
 
 **State Management:**
+
 - Separated concerns: station search, connection search, form data
 - Reactive effects for automatic operations
 - Progressive state updates
@@ -159,6 +165,7 @@ interface Connection {
 **New Function: `calculateSuggestedDepartureTime()`**
 
 Algorithm:
+
 ```
 suggestedTime = tripStartTime
 for each stop before current:
@@ -168,6 +175,7 @@ return suggestedTime
 ```
 
 Example:
+
 ```
 Trip starts: 09:00
 Stop 1: Museum (stay 90 min)
@@ -187,6 +195,7 @@ Transport: ??? (being calculated)
 **Endpoints Used:**
 
 1. **Nearby Stops**
+
    ```
    GET /stops/nearby?latitude={lat}&longitude={lon}&distance={meters}&results={n}
    ```
@@ -207,6 +216,7 @@ Transport: ??? (being calculated)
 **Used as fallback when DB API has limited coverage**
 
 Query searches for:
+
 - `railway=station` (train stations)
 - `railway=halt` (smaller stops)
 - `public_transport=station` (general PT)
@@ -245,18 +255,21 @@ Query searches for:
 ## Benefits Summary
 
 ### For Users:
+
 - ✅ **Faster**: Auto-discovery reduces clicks by 60%
 - ✅ **Smarter**: Intelligent time suggestions prevent planning errors
 - ✅ **Easier**: Step-by-step UI is less overwhelming
 - ✅ **Accurate**: Real-time connection data from official sources
 
 ### For Developers:
+
 - ✅ **Cleaner**: Separated concerns (service vs. component)
 - ✅ **Testable**: Service layer can be unit tested
 - ✅ **Maintainable**: Single source of truth for station logic
 - ✅ **Extensible**: Easy to add more transport providers
 
 ### Technical:
+
 - ✅ **Resilient**: Fallback from DB to OSM ensures coverage
 - ✅ **Efficient**: Deduplication prevents showing same station twice
 - ✅ **Smart**: Type detection (railway/bus/mixed) for better UX
@@ -265,18 +278,21 @@ Query searches for:
 ## Future Enhancements
 
 ### Short-term:
+
 1. **Cache station results** for repeated searches
 2. **Add "Favorite stations"** for frequently used locations
 3. **Show platform information** when available
 4. **Display delays/disruptions** from real-time data
 
 ### Medium-term:
+
 1. **Multi-modal routing** (e.g., bus to station, then train)
 2. **Price comparison** between connection options
 3. **Alternative routes** when primary is delayed
 4. **Save common routes** as templates
 
 ### Long-term:
+
 1. **Integration with ride-sharing** (Uber, Lyft)
 2. **Carbon footprint calculation** per route
 3. **Accessibility options** (wheelchair, elevator access)
@@ -285,45 +301,48 @@ Query searches for:
 ## Testing Recommendations
 
 ### Unit Tests:
+
 ```typescript
 describe('stationService', () => {
-  test('deduplicates nearby stations', () => {
-    // Test station within 100m with similar name
-  });
-  
-  test('prefers DB stations over OSM', () => {
-    // Test that DB API stations take priority
-  });
-  
-  test('formats distance correctly', () => {
-    // Test meter/kilometer formatting
-  });
+	test('deduplicates nearby stations', () => {
+		// Test station within 100m with similar name
+	});
+
+	test('prefers DB stations over OSM', () => {
+		// Test that DB API stations take priority
+	});
+
+	test('formats distance correctly', () => {
+		// Test meter/kilometer formatting
+	});
 });
 ```
 
 ### Integration Tests:
+
 ```typescript
 describe('TransportEditor', () => {
-  test('auto-loads stations on open', async () => {
-    // Mock coordinates, verify API calls
-  });
-  
-  test('suggests connections after both stations selected', async () => {
-    // Verify automatic connection search
-  });
-  
-  test('populates form when connection selected', () => {
-    // Verify all fields filled correctly
-  });
+	test('auto-loads stations on open', async () => {
+		// Mock coordinates, verify API calls
+	});
+
+	test('suggests connections after both stations selected', async () => {
+		// Verify automatic connection search
+	});
+
+	test('populates form when connection selected', () => {
+		// Verify all fields filled correctly
+	});
 });
 ```
 
 ### E2E Tests:
+
 ```typescript
 describe('Trip planning with transport', () => {
-  test('complete flow from location to transport', async () => {
-    // Add locations → open transport → select connection → verify saved
-  });
+	test('complete flow from location to transport', async () => {
+		// Add locations → open transport → select connection → verify saved
+	});
 });
 ```
 

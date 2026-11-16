@@ -9,6 +9,7 @@ This document shows the user interface improvements in the transport search rede
 ## 1. Initial View
 
 ### BEFORE (Current Design)
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Transportation Details                     [×] │
@@ -41,6 +42,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Manual clicks required to see stations
 - 😞 No guidance on what to do first
 - 😞 Empty form feels overwhelming
@@ -49,6 +51,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER (New Design)
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Transportation Details                     [×] │
@@ -72,6 +75,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Automatic station discovery
 - ✅ Clear loading states
 - ✅ Focused, uncluttered view
@@ -82,6 +86,7 @@ This document shows the user interface improvements in the transport search rede
 ## 2. Station Selection
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  From: Berlin Museum    [Find Stations]         │
@@ -102,6 +107,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Too many options at once
 - 😞 Hard to distinguish station types
 - 😞 No visual hierarchy
@@ -110,6 +116,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  From: Berlin Museum                            │
@@ -123,6 +130,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Top 4 stations only (less overwhelming)
 - ✅ Clear icons for station types
 - ✅ Closest station auto-selected
@@ -134,6 +142,7 @@ This document shows the user interface improvements in the transport search rede
 ## 3. Connection Selection
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  ✓ From: Berlin Hauptbahnhof                    │
@@ -153,6 +162,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Plain text list, hard to scan
 - 😞 All 8 connections shown at once
 - 😞 No visual separation
@@ -162,6 +172,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  ✓ From: Berlin Hauptbahnhof                    │
@@ -192,6 +203,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Card-based UI, easier to distinguish
 - ✅ Top 5 connections (most relevant)
 - ✅ First option highlighted (smart suggestion)
@@ -205,6 +217,7 @@ This document shows the user interface improvements in the transport search rede
 ## 4. After Selection
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  ────── Or Enter Manually ──────                │
@@ -220,6 +233,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 No visual feedback that connection was selected
 - 😞 Form appears suddenly
 - 😞 No easy way to go back to connection list
@@ -227,6 +241,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  ✅ Selected: 09:15 → 11:38 (ICE 1234)          │
@@ -244,6 +259,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Clear confirmation of selection
 - ✅ Section title shows context
 - ✅ Duration automatically calculated
@@ -255,6 +271,7 @@ This document shows the user interface improvements in the transport search rede
 ## 5. Walking Mode
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Transport Mode                                 │
@@ -270,6 +287,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Just a loading message
 - 😞 No visual representation of route
 - 😞 Unclear what's happening
@@ -277,6 +295,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  Transport Mode                                 │
@@ -306,6 +325,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Visual route representation
 - ✅ Clear start/end points
 - ✅ Shows distance and time
@@ -317,6 +337,7 @@ This document shows the user interface improvements in the transport search rede
 ## 6. Mobile View Comparison
 
 ### BEFORE (Mobile)
+
 ```
 ┌───────────────────┐
 │ Transportation[×] │
@@ -343,6 +364,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Too much scrolling
 - 😞 Small tap targets
 - 😞 Form feels cramped
@@ -350,6 +372,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER (Mobile)
+
 ```
 ┌───────────────────┐
 │ Transportation[×] │
@@ -392,6 +415,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Touch-optimized tap targets
 - ✅ Stacked layout for narrow screens
 - ✅ Swipeable connection cards
@@ -403,6 +427,7 @@ This document shows the user interface improvements in the transport search rede
 ## 7. Error States
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  From: Remote Village                           │
@@ -414,6 +439,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Generic error message
 - 😞 No guidance on what to do
 - 😞 Dead end for user
@@ -421,6 +447,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  From: Remote Village                           │
@@ -439,6 +466,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Helpful error message
 - ✅ Actionable suggestions
 - ✅ Quick action buttons
@@ -449,6 +477,7 @@ This document shows the user interface improvements in the transport search rede
 ## 8. Loading States
 
 ### BEFORE
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  ⏳ Searching connections...                    │
@@ -456,6 +485,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Issues:**
+
 - 😞 Just a spinner
 - 😞 No context
 - 😞 Can't see what's happening
@@ -463,6 +493,7 @@ This document shows the user interface improvements in the transport search rede
 ---
 
 ### AFTER
+
 ```
 ┌─────────────────────────────────────────────────┐
 │  🔍 Searching connections                       │
@@ -478,6 +509,7 @@ This document shows the user interface improvements in the transport search rede
 ```
 
 **Improvements:**
+
 - ✅ Shows what's being searched
 - ✅ Progress indication
 - ✅ Context about suggestions
@@ -487,18 +519,19 @@ This document shows the user interface improvements in the transport search rede
 
 ## Summary of UI Improvements
 
-| Aspect | Before | After | Impact |
-|--------|--------|-------|--------|
-| **Initial clicks** | 2-3 required | 0 required | 🔥 High |
-| **Cognitive load** | High (many options) | Low (progressive) | 🔥 High |
-| **Time to complete** | 60-90 seconds | 20-30 seconds | 🔥 High |
-| **Error recovery** | Difficult | Easy | 🔥 High |
-| **Mobile usability** | Poor | Good | 🔥 High |
-| **Visual clarity** | Cluttered | Clean | ⭐ Medium |
-| **Smart defaults** | None | Multiple | ⭐ Medium |
-| **Loading feedback** | Basic | Detailed | ⭐ Medium |
+| Aspect               | Before              | After             | Impact    |
+| -------------------- | ------------------- | ----------------- | --------- |
+| **Initial clicks**   | 2-3 required        | 0 required        | 🔥 High   |
+| **Cognitive load**   | High (many options) | Low (progressive) | 🔥 High   |
+| **Time to complete** | 60-90 seconds       | 20-30 seconds     | 🔥 High   |
+| **Error recovery**   | Difficult           | Easy              | 🔥 High   |
+| **Mobile usability** | Poor                | Good              | 🔥 High   |
+| **Visual clarity**   | Cluttered           | Clean             | ⭐ Medium |
+| **Smart defaults**   | None                | Multiple          | ⭐ Medium |
+| **Loading feedback** | Basic               | Detailed          | ⭐ Medium |
 
 ### Key Metrics
+
 - **66% fewer clicks** to complete task
 - **50% less time** from open to save
 - **75% better** mobile experience
@@ -509,17 +542,19 @@ This document shows the user interface improvements in the transport search rede
 ## User Feedback (Simulated)
 
 ### Before:
+
 > "I have to click so many things just to see what trains are available"
-> 
+>
 > "Why do I need to manually search for stations? The app knows where I am!"
-> 
+>
 > "The form is overwhelming, I don't know what to fill in first"
 
 ### After:
+
 > "Wow, it just showed me the trains automatically!"
-> 
+>
 > "I love that it suggests a departure time based on my previous stop"
-> 
+>
 > "The cards make it so easy to compare connections at a glance"
 
 ---

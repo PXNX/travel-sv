@@ -37,12 +37,14 @@ This application features a powerful dual search system using OpenStreetMap Nomi
 ## 🎯 What You Can Search
 
 ### 1. **Locations** (Geographic)
+
 - Cities and towns (Berlin, Munich, Vienna, Zürich)
 - Addresses (Marienplatz 1, München)
 - Regions (Bayern, Schwarzwald)
 - Administrative areas
 
 ### 2. **Places** (Points of Interest)
+
 - 🍽️ Restaurants, cafes, bars
 - 🏛️ Museums, galleries, theaters
 - 🏨 Hotels, attractions
@@ -53,6 +55,7 @@ This application features a powerful dual search system using OpenStreetMap Nomi
 ## 🌍 Coverage
 
 Search is restricted to:
+
 - 🇩🇪 **Germany** (Deutschland)
 - 🇦🇹 **Austria** (Österreich)
 - 🇨🇭 **Switzerland** (Schweiz)
@@ -62,26 +65,26 @@ Search is restricted to:
 
 ```svelte
 <script>
-  import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
+	import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
 </script>
 
 <!-- Search for cities -->
 <SearchAutocomplete
-  searchType="location"
-  placeholder="Search cities..."
-  onselect={(result) => {
-    console.log('Selected:', result.name);
-  }}
+	searchType="location"
+	placeholder="Search cities..."
+	onselect={(result) => {
+		console.log('Selected:', result.name);
+	}}
 />
 
 <!-- Search for restaurants -->
 <SearchAutocomplete
-  searchType="place"
-  category="food"
-  placeholder="Find restaurants..."
-  onselect={(result) => {
-    console.log('Found:', result.name);
-  }}
+	searchType="place"
+	category="food"
+	placeholder="Find restaurants..."
+	onselect={(result) => {
+		console.log('Found:', result.name);
+	}}
 />
 ```
 
@@ -114,15 +117,15 @@ docs/
 
 ```svelte
 <script>
-  import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
+	import SearchAutocomplete from '$lib/components/SearchAutocomplete.svelte';
 </script>
 
 <SearchAutocomplete
-  searchType="location"
-  onselect={(result) => {
-    // Handle selection
-    console.log(result);
-  }}
+	searchType="location"
+	onselect={(result) => {
+		// Handle selection
+		console.log(result);
+	}}
 />
 ```
 
@@ -136,8 +139,8 @@ const results = await searchLocations('Berlin');
 
 // Search for places
 const places = await searchPlaces('restaurant', {
-  category: 'food',
-  limit: 10
+	category: 'food',
+	limit: 10
 });
 ```
 
@@ -162,16 +165,19 @@ Visit `/search-demo` in your application to see an interactive demonstration.
 ## 📖 Documentation Reading Order
 
 **New to the search feature?**
+
 1. [Quick Start Guide](docs/SEARCH_QUICK_START.md) - Get coding fast
 2. [Try the Demo](/search-demo) - See it in action
 3. [Feature Guide](docs/SEARCH_FEATURE.md) - Learn the details
 
 **Integrating into your app?**
+
 1. [API Reference](docs/SEARCH_API_REFERENCE.md) - Function signatures
 2. [Quick Start Guide](docs/SEARCH_QUICK_START.md) - Code examples
 3. [Implementation Summary](docs/SEARCH_IMPLEMENTATION_SUMMARY.md) - Architecture
 
 **Want to understand the implementation?**
+
 1. [Implementation Summary](docs/SEARCH_IMPLEMENTATION_SUMMARY.md) - Overview
 2. [Feature Guide](docs/SEARCH_FEATURE.md) - Technical details
 3. Source code in `src/lib/services/searchService.ts`
@@ -192,15 +198,15 @@ The search component is highly customizable:
 
 ```svelte
 <SearchAutocomplete
-  placeholder="Custom placeholder..."
-  searchType="location"
-  limit={15}
-  compact={true}
-  autofocus={true}
-  showClearButton={true}
-  nearCoords={{ lat: 48.1351, lon: 11.5820 }}
-  onselect={handleSelect}
-  onclear={handleClear}
+	placeholder="Custom placeholder..."
+	searchType="location"
+	limit={15}
+	compact={true}
+	autofocus={true}
+	showClearButton={true}
+	nearCoords={{ lat: 48.1351, lon: 11.582 }}
+	onselect={handleSelect}
+	onclear={handleClear}
 />
 ```
 
@@ -230,16 +236,19 @@ The search component is highly customizable:
 ## 🐛 Troubleshooting
 
 **No results?**
+
 - Query must be at least 2 characters
 - Check internet connection
 - Verify you're searching in allowed countries
 
 **Slow response?**
+
 - First request is slower (DNS, SSL)
 - Rate limiting adds delays between requests
 - This is normal and expected
 
 **Wrong results?**
+
 - Verify search type (location vs place)
 - Check category filter (for places)
 - Try more specific search terms
@@ -270,17 +279,17 @@ When extending the search functionality:
 
 ## 🎯 Quick Links
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| [Quick Start](docs/SEARCH_QUICK_START.md) | Get started fast | All users |
-| [Feature Guide](docs/SEARCH_FEATURE.md) | Learn features | All users |
-| [API Reference](docs/SEARCH_API_REFERENCE.md) | API docs | Developers |
+| Document                                                | Purpose           | Audience   |
+| ------------------------------------------------------- | ----------------- | ---------- |
+| [Quick Start](docs/SEARCH_QUICK_START.md)               | Get started fast  | All users  |
+| [Feature Guide](docs/SEARCH_FEATURE.md)                 | Learn features    | All users  |
+| [API Reference](docs/SEARCH_API_REFERENCE.md)           | API docs          | Developers |
 | [Implementation](docs/SEARCH_IMPLEMENTATION_SUMMARY.md) | Technical details | Developers |
 
 ---
 
 **Version**: 1.0.0  
 **Last Updated**: 2024  
-**License**: Same as main project  
+**License**: Same as main project
 
 Happy searching! 🔍✨

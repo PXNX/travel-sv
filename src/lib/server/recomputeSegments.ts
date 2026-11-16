@@ -12,27 +12,27 @@ export async function recomputeSegments(journeyId: number) {
 	const [journey] = await db.select().from(journeys).where(eq(journeys.id, journeyId));
 	const minimumTransferMinutes = journey?.minimumTransferMinutes ?? 5;
 	const deutschlandticketOnly = journey?.deutschlandticketOnly ?? true;
-    const orderedStops = await db
-        .select()
-        .from(stops)
-        .where(eq(stops.journeyId, journeyId))
-        .orderBy(asc(stops.orderIndex));
+	const orderedStops = await db
+		.select()
+		.from(stops)
+		.where(eq(stops.journeyId, journeyId))
+		.orderBy(asc(stops.orderIndex));
 
-    if (orderedStops.length < 2) {
-        await db.delete(segments).where(eq(segments.journeyId, journeyId));
-        return [] as (typeof segments.$inferSelect)[];
-    }
+	if (orderedStops.length < 2) {
+		await db.delete(segments).where(eq(segments.journeyId, journeyId));
+		return [] as (typeof segments.$inferSelect)[];
+	}
 
-    // Remember existing modes so the user's choice survives a recompute
-    const existingSegments = await db
-        .select()
-        .from(segments)
-        .where(eq(segments.journeyId, journeyId));
+	// Remember existing modes so the user's choice survives a recompute
+	const existingSegments = await db
+		.select()
+		.from(segments)
+		.where(eq(segments.journeyId, journeyId));
 
-    const modeByPair = new Map<string, SegmentMode>();
-    for (const seg of existingSegments) {
-        modeByPair.set(`${seg.fromStopId}-${seg.toStopId}`, seg.mode as SegmentMode);
-    }
+	const modeByPair = new Map<string, SegmentMode>();
+	for (const seg of existingSegments) {
+		modeByPair.set(`${seg.fromStopId}-${seg.toStopId}`, seg.mode as SegmentMode);
+	}
 
 	const activePairs = new Set<string>();
 
@@ -45,7 +45,15 @@ export async function recomputeSegments(journeyId: number) {
 		activePairs.add(`${from.id}-${to.id}`);
 
 		try {
-			await computeSegment(from, to, journeyId, mode, minimumTransferMinutes, deutschlandticketOnly, mode === 'transit' ? { requireConfirmed: true } : {});
+			await computeSegment(
+				from,
+				to,
+				journeyId,
+				mode,
+				minimumTransferMinutes,
+				deutschlandticketOnly,
+				mode === 'transit' ? { requireConfirmed: true } : {}
+			);
 		} catch (err) {
 			console.error(`Segment ${from.id}→${to.id} failed:`, err);
 		}
@@ -57,5 +65,5 @@ export async function recomputeSegments(journeyId: number) {
 		}
 	}
 
-    return db.select().from(segments).where(eq(segments.journeyId, journeyId));
+	return db.select().from(segments).where(eq(segments.journeyId, journeyId));
 }

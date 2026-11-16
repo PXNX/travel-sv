@@ -1,135 +1,136 @@
 export type Category =
-    | 'sleeping'
-    | 'food'
-    | 'transport'
-    | 'leisure'
-    | 'shopping'
-    | 'nature'
-    | 'culture'
-    | 'nightlife'
-    | 'wellness';
+	| 'sleeping'
+	| 'food'
+	| 'transport'
+	| 'leisure'
+	| 'shopping'
+	| 'nature'
+	| 'culture'
+	| 'nightlife'
+	| 'wellness';
 
 export interface TravelTip {
-    id: number;
-    title: string;
-    description: string;
-    latitude: number;
-    longitude: number;
-    address?: string | null;
-    category: Category | string;
-    durationMinutes: number;
-    bestTimeToVisit?: string | null;
-    googleMapsUrl?: string | null;
-    tags?: string[];
-    imageUrl?: string | null;
-    userId: string;
-    userName: string | null;
-    likes: number;
-    createdAt: string;
-    updatedAt: string;
+	id: number;
+	title: string;
+	description: string;
+	latitude: number;
+	longitude: number;
+	address?: string | null;
+	category: Category | string;
+	durationMinutes: number;
+	bestTimeToVisit?: string | null;
+	googleMapsUrl?: string | null;
+	tags?: string[];
+	imageUrl?: string | null;
+	userId: string;
+	userName: string | null;
+	likes: number;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export interface TransportSegment {
-    type: 'walk' | 'transit' | 'drive';
-    durationMinutes: number;
-    distanceKm?: number;
-    details?: string;
-    departureTime?: string;
-    arrivalTime?: string;
+	type: 'walk' | 'transit' | 'drive';
+	durationMinutes: number;
+	distanceKm?: number;
+	details?: string;
+	departureTime?: string;
+	arrivalTime?: string;
 }
 
 export interface TripStop {
-    tipId: number;
-    order: number;
-    notes: string;
-    customDuration?: number;
-    transport?: TransportSegment;
+	tipId: number;
+	order: number;
+	notes: string;
+	customDuration?: number;
+	transport?: TransportSegment;
 }
 
 export interface Trip {
-    id: string;
-    name: string;
-    description?: string;
-    stops: TripStop[];
-    startDate?: string;
-    createdAt: string;
-    updatedAt: string;
+	id: string;
+	name: string;
+	description?: string;
+	stops: TripStop[];
+	startDate?: string;
+	createdAt: string;
+	updatedAt: string;
 }
 
 // Journey types (new data model)
 export interface Journey {
-    id: number;
-    ownerId: string;
-    title: string;
-    description?: string | null;
-    isPublic: boolean;
+	id: number;
+	ownerId: string;
+	title: string;
+	description?: string | null;
+	isPublic: boolean;
 	shareToken?: string | null;
 	startDatetime?: Date | string | null;
 	minimumTransferMinutes?: number;
 	deutschlandticketOnly?: boolean;
 	isCompleted?: boolean;
 	createdAt: string;
-    updatedAt: string;
+	updatedAt: string;
 }
 
 export interface Stop {
-    id: number;
-    journeyId: number;
-    name: string;
-    lat: number;
-    lon: number;
-    orderIndex: number;
-    stayDurationMinutes?: number | null;
-    notes?: string | null;
+	id: number;
+	journeyId: number;
+	name: string;
+	lat: number;
+	lon: number;
+	orderIndex: number;
+	stayDurationMinutes?: number | null;
+	notes?: string | null;
 }
 
 export type SegmentMode = 'walk' | 'transit' | 'drive';
 
 export interface TransitLeg {
-    type: 'walking' | 'transport';
-    lineName?: string;
-    product?: string;
-    direction?: string;
-    departure?: string;
-    arrival?: string;
+	type: 'walking' | 'transport';
+	lineName?: string;
+	product?: string;
+	direction?: string;
+	departure?: string;
+	arrival?: string;
 	departureStation?: string;
 	arrivalStation?: string;
 	departureStationId?: string;
 	arrivalStationId?: string;
-    departureLat?: number;
-    departureLon?: number;
-    arrivalLat?: number;
-    arrivalLon?: number;
-    durationMinutes: number;
-    distanceM?: number;
-    platform?: string;
-    polyline?: [number, number][];
+	departureLat?: number;
+	departureLon?: number;
+	arrivalLat?: number;
+	arrivalLon?: number;
+	durationMinutes: number;
+	distanceM?: number;
+	platform?: string;
+	polyline?: [number, number][];
 }
 
 export interface Segment {
-    id: number;
-    journeyId: number;
-    fromStopId: number;
-    toStopId: number;
-    distanceM?: number | null;
-    elevationUpM?: number | null;
-    elevationDownM?: number | null;
-    travelDurationMinutes?: number | null;
-    mode: SegmentMode;
-    transitSummary?: string | null;
-    transitLegs?: TransitLeg[] | null;
-    walkToStationMin?: number | null;
-    walkFromStationMin?: number | null;
-    transfers?: number | null;
-    walkGeometry?: [number, number][] | null;
-    driveGeometry?: [number, number][] | null;
-    transitGeometry?: { coords: [number, number][]; mode: string; lineName?: string; product?: string }[] | null;
+	id: number;
+	journeyId: number;
+	fromStopId: number;
+	toStopId: number;
+	distanceM?: number | null;
+	elevationUpM?: number | null;
+	elevationDownM?: number | null;
+	travelDurationMinutes?: number | null;
+	mode: SegmentMode;
+	transitSummary?: string | null;
+	transitLegs?: TransitLeg[] | null;
+	walkToStationMin?: number | null;
+	walkFromStationMin?: number | null;
+	transfers?: number | null;
+	walkGeometry?: [number, number][] | null;
+	driveGeometry?: [number, number][] | null;
+	transitGeometry?:
+		{ coords: [number, number][]; mode: string; lineName?: string; product?: string }[] | null;
 }
 
 export interface JourneyWithDerived extends Journey {
-    firstStopName?: string | null;
-    lastStopName?: string | null;
-    stopCount: number;
-    totalDurationMinutes: number;
-    stopCoords?: { lat: number; lon: number }[];
+	firstStopName?: string | null;
+	lastStopName?: string | null;
+	stopCount: number;
+	totalDurationMinutes: number;
+	stopCoords?: { lat: number; lon: number }[];
 }

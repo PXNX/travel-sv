@@ -9,21 +9,19 @@ const ASSETS = [...build, ...files];
 
 // T05 — Install: cache app shell (cache-first)
 self.addEventListener('install', (event) => {
-	event.waitUntil(
-		caches.open(CACHE).then((cache) => cache.addAll(ASSETS))
-	);
+	event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
 });
 
 // Activate: clean old caches
 self.addEventListener('activate', (event) => {
 	event.waitUntil(
-		caches.keys().then((keys) =>
-			Promise.all(
-				keys
-					.filter((key) => key !== CACHE && key !== TILE_CACHE)
-					.map((key) => caches.delete(key))
+		caches
+			.keys()
+			.then((keys) =>
+				Promise.all(
+					keys.filter((key) => key !== CACHE && key !== TILE_CACHE).map((key) => caches.delete(key))
+				)
 			)
-		)
 	);
 });
 
@@ -42,9 +40,9 @@ self.addEventListener('fetch', (event) => {
 	// App shell assets: cache-first
 	if (ASSETS.includes(url.pathname)) {
 		event.respondWith(
-			caches.open(CACHE).then((cache) =>
-				cache.match(url.pathname).then((cached) => cached || fetch(event.request))
-			)
+			caches
+				.open(CACHE)
+				.then((cache) => cache.match(url.pathname).then((cached) => cached || fetch(event.request)))
 		);
 		return;
 	}

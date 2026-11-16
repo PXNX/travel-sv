@@ -66,10 +66,23 @@
 	}
 
 	function locationLabel(address: NominatimAddress | undefined, fallback: string): string {
-		const place = address?.city ?? address?.town ?? address?.village ?? address?.municipality ?? address?.county;
+		const place =
+			address?.city ??
+			address?.town ??
+			address?.village ??
+			address?.municipality ??
+			address?.county;
 		const state = address?.state ?? address?.state_district;
 		if (place && state && place !== state) return `${place}, ${state}`;
-		return place ?? state ?? fallback.split(',').slice(0, 2).map((part) => part.trim()).join(', ');
+		return (
+			place ??
+			state ??
+			fallback
+				.split(',')
+				.slice(0, 2)
+				.map((part) => part.trim())
+				.join(', ')
+		);
 	}
 
 	function handleSearchInput() {
@@ -96,7 +109,7 @@
 			}
 
 			const res = await fetch(
-			`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`
+				`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`
 			);
 			const data = await res.json();
 			searchResults = data;
@@ -111,8 +124,8 @@
 
 	function selectResult(result: NominatimResult) {
 		onconfirm?.({
-				name: locationLabel(result.address, result.display_name),
-				lat: parseFloat(result.lat),
+			name: locationLabel(result.address, result.display_name),
+			lat: parseFloat(result.lat),
 			lon: parseFloat(result.lon)
 		});
 		open = false;
@@ -121,15 +134,19 @@
 	async function confirmMapSelection() {
 		let name = `${selectedLat.toFixed(4)}, ${selectedLon.toFixed(4)}`;
 		try {
-			const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${selectedLat}&lon=${selectedLon}`);
+			const res = await fetch(
+				`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${selectedLat}&lon=${selectedLon}`
+			);
 			if (res.ok) {
-				const result = await res.json() as { display_name?: string; address?: NominatimAddress };
+				const result = (await res.json()) as { display_name?: string; address?: NominatimAddress };
 				name = locationLabel(result.address, result.display_name ?? name);
 			}
-		} catch { /* Preserve coordinate fallback when reverse geocoding is unavailable. */ }
+		} catch {
+			/* Preserve coordinate fallback when reverse geocoding is unavailable. */
+		}
 		onconfirm?.({
-				name,
-				lat: selectedLat,
+			name,
+			lat: selectedLat,
 			lon: selectedLon
 		});
 		open = false;

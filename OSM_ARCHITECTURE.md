@@ -265,30 +265,30 @@ User Action                 System Response
 ```typescript
 // From searchService.ts
 interface SearchResult {
-  id: string;
-  name: string;
-  displayName: string;
-  latitude: number;
-  longitude: number;
-  type: string;
-  category?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  countryCode?: string;
-  importance?: number;
+	id: string;
+	name: string;
+	displayName: string;
+	latitude: number;
+	longitude: number;
+	type: string;
+	category?: string;
+	address?: string;
+	city?: string;
+	state?: string;
+	country?: string;
+	countryCode?: string;
+	importance?: number;
 }
 
 // From osmMapper.ts
 interface OSMPlaceData {
-  title: string;
-  description: string;
-  category: Category; // 'food' | 'museum' | 'nature' | 'leisure'
-  durationMinutes: number;
-  latitude: number;
-  longitude: number;
-  address: string;
+	title: string;
+	description: string;
+	category: Category; // 'food' | 'museum' | 'nature' | 'leisure'
+	durationMinutes: number;
+	latitude: number;
+	longitude: number;
+	address: string;
 }
 
 // From app's type system

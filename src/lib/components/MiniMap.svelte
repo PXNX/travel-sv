@@ -38,14 +38,20 @@
 	});
 
 	function toBounds(pts: [number, number][]): [[number, number], [number, number]] {
-		let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+		let minLat = Infinity,
+			maxLat = -Infinity,
+			minLng = Infinity,
+			maxLng = -Infinity;
 		for (const [lat, lng] of pts) {
 			if (lat < minLat) minLat = lat;
 			if (lat > maxLat) maxLat = lat;
 			if (lng < minLng) minLng = lng;
 			if (lng > maxLng) maxLng = lng;
 		}
-		return [[minLat, minLng], [maxLat, maxLng]];
+		return [
+			[minLat, minLng],
+			[maxLat, maxLng]
+		];
 	}
 
 	$effect(() => {

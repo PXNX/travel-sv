@@ -36,7 +36,9 @@
 	const colors = $derived(SEGMENT_MODE_STYLES[segment.mode] ?? SEGMENT_MODE_STYLES.walk);
 	const ModeIcon = $derived(MODE_ICONS[segment.mode] ?? IconWalk);
 	const detailHint = $derived(segment.mode === 'transit' ? 'connection' : 'route');
-	const transitLines = $derived((segment.transitLegs ?? []).filter((leg) => leg.type === 'transport'));
+	const transitLines = $derived(
+		(segment.transitLegs ?? []).filter((leg) => leg.type === 'transport')
+	);
 	const hasConfirmedTransit = $derived(transitLines.length > 0);
 </script>
 
@@ -51,13 +53,15 @@
 	<div class="min-w-0 flex-1">
 		<div class="border px-3 py-2 {colors.border} {colors.bg}">
 			{#if !readonly && onmodechange}
-				<div class="mb-1.5"><Segmented
-					options={modes}
-					value={segment.mode}
-					disabled={loading}
-					ariaLabel="Travel mode"
-					onchange={(mode) => onmodechange(segment.id, mode)}
-				/></div>
+				<div class="mb-1.5">
+					<Segmented
+						options={modes}
+						value={segment.mode}
+						disabled={loading}
+						ariaLabel="Travel mode"
+						onchange={(mode) => onmodechange(segment.id, mode)}
+					/>
+				</div>
 			{/if}
 
 			{#if loading}
@@ -80,7 +84,10 @@
 								{segment.transfers === 0 ? 'Direct' : `${segment.transfers}× transfer`}
 							</span>
 							{#each transitLines as line, index (index)}
-								<span class="border px-1.5 py-0.5 text-[10px] leading-none font-bold text-white" style={`background:${transitColor(line.product)}`}>
+								<span
+									class="border px-1.5 py-0.5 text-[10px] leading-none font-bold text-white"
+									style={`background:${transitColor(line.product)}`}
+								>
 									{line.lineName ?? line.product ?? 'ÖPNV'}
 								</span>
 							{/each}
@@ -88,7 +95,9 @@
 							<span class="text-[11px] font-semibold text-[#a83a2b]">No confirmed connection</span>
 						{/if}
 					{:else if segment.distanceM}
-						<span class="text-[11px] font-bold text-[#172a45]">{formatDistance(segment.distanceM)}</span>
+						<span class="text-[11px] font-bold text-[#172a45]"
+							>{formatDistance(segment.distanceM)}</span
+						>
 					{/if}
 
 					{#if segment.mode === 'walk' && (segment.elevationUpM || segment.elevationDownM)}
@@ -98,12 +107,17 @@
 					{/if}
 
 					{#if segment.travelDurationMinutes}
-						<span class="travel-folio text-[11px] text-[#a45e38]">~{formatDuration(segment.travelDurationMinutes)}</span>
+						<span class="travel-folio text-[11px] text-[#a45e38]"
+							>~{formatDuration(segment.travelDurationMinutes)}</span
+						>
 					{/if}
 
 					{#if onclickdetail}
-						<span class="ml-auto inline-flex items-center gap-0.5 text-[10px] font-bold tracking-wide text-[#a45e38] uppercase opacity-0 transition-opacity group-hover:opacity-100">
-							{detailHint} <IconChevronRight class="size-3" />
+						<span
+							class="ml-auto inline-flex items-center gap-0.5 text-[10px] font-bold tracking-wide text-[#a45e38] uppercase opacity-0 transition-opacity group-hover:opacity-100"
+						>
+							{detailHint}
+							<IconChevronRight class="size-3" />
 						</span>
 					{/if}
 				</button>

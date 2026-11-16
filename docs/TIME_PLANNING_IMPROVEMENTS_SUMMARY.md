@@ -1,6 +1,7 @@
 # Time Planning Improvements Summary
 
 ## Overview
+
 This document summarizes the improvements made to time planning for public transport connections, including proper time calculations, duration formatting, and walking time integration.
 
 ## Changes Made
@@ -8,10 +9,12 @@ This document summarizes the improvements made to time planning for public trans
 ### 1. ✅ Format Minutes Over 60 as Hours
 
 **Files Modified:**
+
 - `src/lib/utils/calculations.ts` - Added `formatDurationSeconds()` helper
 - `src/lib/services/stationService.ts` - Updated `formatDuration()` to properly convert seconds to hours/minutes
 
 **Changes:**
+
 - Duration formatting now properly converts values over 60 minutes to hours
 - Examples:
   - `45 minutes` → `"45min"`
@@ -23,13 +26,15 @@ This document summarizes the improvements made to time planning for public trans
 ### 2. ✅ Show Only Closest 5 Stops
 
 **Files Modified:**
+
 - `src/lib/services/stationService.ts` - Clarified documentation
 - `src/lib/components/TransportEditor.svelte` - Already enforced with `.slice(0, 5)`
 
 **Implementation:**
+
 ```svelte
 {#each fromStations.slice(0, 5) as station}
-  <!-- Station display -->
+	<!-- Station display -->
 {/each}
 ```
 
@@ -38,27 +43,28 @@ The `findNearbyStations()` function returns stations sorted by distance, and we 
 ### 3. ✅ Proper Time Planning for Public Transport
 
 **Files Modified:**
+
 - `src/lib/components/TransportEditor.svelte`
 
 **Key Improvements:**
 
 #### a) Walking Time Calculation
+
 When a user selects a departure or arrival station, the system now automatically calculates walking time:
 
 ```typescript
 // Walking time to departure station
-const distanceMeters = getDistanceInMeters(
-  fromCoords[0], fromCoords[1],
-  station.lat, station.lon
-);
+const distanceMeters = getDistanceInMeters(fromCoords[0], fromCoords[1], station.lat, station.lon);
 // Assume walking speed of 5 km/h = 83.33 m/min
 walkingTimeToFromStation = Math.ceil(distanceMeters / 83.33);
 ```
 
 #### b) Adjusted Departure Time Search
+
 The connection search now accounts for walking time to the station:
 
 **Example Scenario:**
+
 - Start time at Location 1: **08:00**
 - Stay duration: **1h**
 - Walking to Location 2: **30min**
@@ -70,16 +76,17 @@ The connection search now accounts for walking time to the station:
 
 ```typescript
 if (suggestedDepartureTime) {
-  // Add walking time to station to get actual departure time from station
-  const actualStationDepartureTime = new Date(suggestedDepartureTime);
-  actualStationDepartureTime.setMinutes(
-    actualStationDepartureTime.getMinutes() + walkingTimeToFromStation
-  );
-  searchTime = actualStationDepartureTime;
+	// Add walking time to station to get actual departure time from station
+	const actualStationDepartureTime = new Date(suggestedDepartureTime);
+	actualStationDepartureTime.setMinutes(
+		actualStationDepartureTime.getMinutes() + walkingTimeToFromStation
+	);
+	searchTime = actualStationDepartureTime;
 }
 ```
 
 #### c) Total Duration Includes All Walking
+
 When selecting a connection, the total duration now includes:
 
 1. **Walking time from location to departure station**
@@ -92,6 +99,7 @@ durationMinutes = transportDurationMinutes + walkingTimeToFromStation + walkingT
 ```
 
 #### d) Clear Notes
+
 The notes field now automatically shows walking information:
 
 ```
@@ -107,6 +115,7 @@ or
 ### 4. ✅ Export getDistanceInMeters for Reuse
 
 **Files Modified:**
+
 - `src/lib/services/stationService.ts`
 
 Changed from `function getDistanceInMeters()` to `export function getDistanceInMeters()` to allow reuse in other components.
@@ -116,6 +125,7 @@ Changed from `function getDistanceInMeters()` to `export function getDistanceInM
 Let's walk through a complete example:
 
 ### User's Trip Plan:
+
 1. **Location 1**: Museum
    - Start time: **08:00**
    - Stay duration: **1h**
@@ -174,7 +184,7 @@ Location 3: Restaurant
 - [x] Duration formatting shows hours for values ≥60 minutes
 - [x] Only 5 closest stations are displayed
 - [x] Walking time to departure station is calculated when station is selected
-- [x] Walking time from arrival station is calculated when station is selected  
+- [x] Walking time from arrival station is calculated when station is selected
 - [x] Connection search uses departure time + walking time to station
 - [x] Total duration includes walking to/from stations
 - [x] Notes field shows walking time information
