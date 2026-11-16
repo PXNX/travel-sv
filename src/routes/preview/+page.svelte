@@ -265,21 +265,23 @@
 	</nav>
 
 	<div class="preview-stage">
-		{#if screen === 'index'}
-			<IndexPage data={indexData as any} />
-		{:else if screen === 'editor'}
-			<EditorPage data={editorData as any} />
-		{:else if screen === 'completed'}
-			<CompletedPage data={completedData as any} />
-		{:else if screen === 'shared'}
-			<SharedPage data={sharedData as any} />
-		{:else if screen === 'empty'}
-			<IndexPage data={{ journeys: [], completedCount: 0, user: indexData.user } as any} />
-		{:else if screen === 'login'}
-			<LoginPage />
-		{:else if screen === 'error'}
-			<ErrorPage status={404} data={{ requestId: 'd3m0-4b71-9f2a' }} />
-		{/if}
+		{#key screen}
+			{#if screen === 'index'}
+				<IndexPage data={indexData as any} />
+			{:else if screen === 'editor'}
+				<EditorPage data={editorData as any} />
+			{:else if screen === 'completed'}
+				<CompletedPage data={completedData as any} />
+			{:else if screen === 'shared'}
+				<SharedPage data={sharedData as any} />
+			{:else if screen === 'empty'}
+				<IndexPage data={{ journeys: [], completedCount: 0, user: indexData.user } as any} />
+			{:else if screen === 'login'}
+				<LoginPage />
+			{:else if screen === 'error'}
+				<ErrorPage status={404} data={{ requestId: 'd3m0-4b71-9f2a' }} />
+			{/if}
+		{/key}
 	</div>
 {:else}
 	<main class="travel-page grid min-h-screen place-items-center p-6">
