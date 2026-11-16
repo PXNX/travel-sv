@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Papier & Tinte: travel index as a restrained route register rather than a dashboard.
+	// Route register: every journey as a filed slip, with search and sorting.
 	import type { PageData } from './$types';
 	import type { JourneyWithDerived } from '$lib/types';
 	import JourneyCard from '$lib/components/JourneyCard.svelte';
@@ -14,6 +14,9 @@
 	import IconMap from '~icons/material-symbols/map-outline-rounded';
 	import IconAutoAwesome from '~icons/material-symbols/auto-awesome-rounded';
 	import IconCheckCircle from '~icons/material-symbols/check-circle-rounded';
+	import IconSearch from '~icons/material-symbols/search-rounded';
+	import IconClose from '~icons/material-symbols/close-rounded';
+	import IconArrowDownward from '~icons/material-symbols/arrow-downward-rounded';
 
 	let { data }: { data: PageData } = $props();
 
@@ -23,6 +26,15 @@
 	});
 	let isCreating = $state(false);
 	let mounted = $state(false);
+	let search = $state('');
+	type SortKey = 'recent' | 'name' | 'duration';
+	let sort = $state<SortKey>('recent');
+
+	const sortOptions: { value: SortKey; label: string }[] = [
+		{ value: 'recent', label: 'Recent' },
+		{ value: 'name', label: 'Name' },
+		{ value: 'duration', label: 'Length' }
+	];
 
 	onMount(async () => {
 		mounted = true;
@@ -47,6 +59,34 @@
 
 	const totalStops = $derived(journeys.reduce((sum, j) => sum + j.stopCount, 0));
 	const totalDuration = $derived(journeys.reduce((sum, j) => sum + j.totalDurationMinutes, 0));
+
+	const visibleJourneys = $derived.by(() => {
+		const term = search.trim().toLocaleLowerCase();
+		const filtered = term
+			? journeys.filter(
+					(j) =>
+						j.title.toLocaleLowerCase().includes(term) ||
+						(j.firstStopName ?? '').toLocaleLowerCase().includes(term) ||
+						(j.lastStopName ?? '').toLocaleLowerCase().includes(term)
+				)
+			: [...journeys];
+
+		return filtered.sort((a, b) => {
+			if (sort === 'name') return a.title.localeCompare(b.title);
+			if (sort === 'duration') return b.totalDurationMinutes - a.totalDurationMinutes;
+			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+		});
+	});
+
+	const stats = $derived([
+		{ value: journeys.length, label: journeys.length === 1 ? 'Journey' : 'Journeys', tone: 'primary' as const },
+		{ value: totalStops, label: totalStops === 1 ? 'Stop' : 'Stops', tone: 'secondary' as const },
+		{
+			value: totalDuration > 0 ? formatDuration(totalDuration) : '—',
+			label: 'Total time',
+			tone: 'accent' as const
+		}
+	]);
 </script>
 
 <svelte:head><title>My Journeys</title></svelte:head>
@@ -57,8 +97,8 @@
 	<PageHeader
 		title="My Journeys"
 		subtitle={journeys.length > 0
-			? `${journeys.length} ${journeys.length === 1 ? 'journey' : 'journeys'} planned`
-			: undefined}
+			? `${journeys.length} ${journeys.length === 1 ? 'journey' : 'journeys'} in the register`
+			: 'Your route register'}
 	>
 		{#snippet actions()}
 			<form method="POST" action="?/create" use:enhance={trackCreate}>
@@ -71,16 +111,17 @@
 		{#if data.completedCount > 0}
 			<a
 				href="/journeys/completed"
-				class="mb-4 flex items-center justify-between border-y border-[#172a45]/20 bg-[#fffdf7] px-3 py-2.5 text-sm font-semibold text-[#172a45] transition-colors hover:bg-[#eef4f8]"
+				class="group animate-glide-in mb-4 flex items-center justify-between border border-[#172a45]/25 border-l-4 border-l-[#2f7d58] bg-[#fffdf7] px-3 py-2.5 text-sm font-semibold text-[#172a45] transition-all hover:-translate-y-px hover:shadow-[3px_4px_0_rgba(23,42,69,0.12)]"
 			>
-				<span class="flex items-center gap-2"
-					><IconCheckCircle class="h-5 w-5 text-[#008d4f]" />Completed trips</span
-				>
-				<span class="text-xs font-medium text-[#172a45]/60"
-					>{data.completedCount} {data.completedCount === 1 ? 'trip' : 'trips'} →</span
-				>
+				<span class="flex items-center gap-2">
+					<IconCheckCircle class="text-[#2f7d58] h-5 w-5" />Completed trips
+				</span>
+				<span class="text-xs font-medium text-[#a45e38] transition-transform group-hover:translate-x-0.5">
+					{data.completedCount} {data.completedCount === 1 ? 'trip' : 'trips'} →
+				</span>
 			</a>
 		{/if}
+
 		{#if journeys.length === 0}
 			<EmptyState
 				icon={IconMap}
@@ -94,38 +135,66 @@
 			</EmptyState>
 		{:else}
 			{#if totalStops > 0 || totalDuration > 0}
-				<div
-					class="mb-5 grid grid-cols-3 gap-px border-y border-[#172a45]/20 bg-[#172a45]/20"
-					class:animate-fade-in-up={mounted}
-				>
-					<StatTile
-						value={journeys.length}
-						label={journeys.length === 1 ? 'Journey' : 'Journeys'}
-						tone="primary"
-					/>
-					<StatTile
-						value={totalStops}
-						label={totalStops === 1 ? 'Stop' : 'Stops'}
-						tone="secondary"
-					/>
-					<StatTile
-						value={totalDuration > 0 ? formatDuration(totalDuration) : '—'}
-						label="Total Time"
-						tone="accent"
-					/>
+				<div class="mb-5 grid grid-cols-3 border-y border-[#172a45]/20">
+					{#each stats as stat, i}
+						<StatTile {...stat} delay={i * 80} />
+					{/each}
 				</div>
 			{/if}
 
-			<div class="flex flex-col gap-3 border-t border-[#172a45]/25 pt-3">
-				{#each journeys as journey, i (journey.id)}
-					<div
-						class:animate-fade-in-up={mounted}
-						style={mounted ? `animation-delay: ${i * 60}ms` : ''}
-					>
-						<JourneyCard {journey} onclick={openJourney} />
-					</div>
-				{/each}
+			<!-- register tools -->
+			<div class="mb-3 flex flex-wrap items-center gap-2">
+				<label class="flex min-w-[180px] flex-1 items-center gap-2 border border-[#172a45]/25 bg-[#fffdf7] px-3 py-2 focus-within:border-[#a45e38]">
+					<IconSearch class="text-[#a45e38] h-4 w-4 shrink-0" />
+					<input
+						class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#172a45]/35"
+						type="search"
+						bind:value={search}
+						placeholder="Search journeys or places…"
+						aria-label="Search journeys"
+					/>
+					{#if search}
+						<button class="text-[#172a45]/40 hover:text-[#a45e38]" aria-label="Clear search" onclick={() => (search = '')}>
+							<IconClose class="h-4 w-4" />
+						</button>
+					{/if}
+				</label>
+				<span class="flex items-center gap-1 text-[#a45e38]"><IconArrowDownward class="h-4 w-4" /></span>
+				<div class="flex gap-px border border-[#172a45]/30 bg-[#efe6d5] p-px" role="radiogroup" aria-label="Sort journeys">
+					{#each sortOptions as option}
+						<button
+							type="button"
+							role="radio"
+							aria-checked={sort === option.value}
+							class="px-2.5 py-1.5 text-[11px] font-bold transition-all {sort === option.value
+								? 'animate-soft-pop bg-[#172a45] text-[#fffdf7]'
+								: 'text-[#172a45]/55 hover:bg-[#e6a527]/15'}"
+							onclick={() => (sort = option.value)}
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
 			</div>
+
+			{#if visibleJourneys.length > 0}
+				<div class="flex flex-col gap-2.5">
+					{#each visibleJourneys as journey, i (journey.id)}
+						<div
+							class:animate-fade-in-up={mounted}
+							style={mounted ? `animation-delay: ${i * 55}ms` : ''}
+						>
+							<JourneyCard {journey} index={i} onclick={openJourney} />
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<div class="border border-dashed border-[#172a45]/30 bg-[#fffdf7]/70 px-4 py-10 text-center">
+					<p class="travel-display text-lg text-[#172a45]">No matches in the register</p>
+					<p class="mt-1 text-xs text-[#a45e38]">Try another name or place, or clear the search.</p>
+					<button class="btn btn-ghost btn-sm mt-3" onclick={() => (search = '')}>Clear search</button>
+				</div>
+			{/if}
 		{/if}
 	</main>
 </div>
