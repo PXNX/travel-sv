@@ -14,9 +14,9 @@
 
 <main class="travel-page grid min-h-screen place-items-center p-5">
 		<section class="travel-error-sheet w-full max-w-md p-7" aria-labelledby="error-title">
-			<p class="mb-2 text-xs font-bold tracking-[0.12em] text-[#a45e38] uppercase">Error {status}</p>
-			<h1 id="error-title" class="travel-display">{title}</h1>
-			<p class="travel-error-copy">{explanation}</p>
+			<p class="travel-eyebrow animate-glide-in mb-2">Error {status}</p>
+			<h1 id="error-title" class="travel-display animate-glide-in" style="animation-delay: 60ms">{title}</h1>
+			<p class="travel-error-copy animate-glide-in" style="animation-delay: 120ms">{explanation}</p>
 		{#if requestId}
 			<p class="travel-error-request">Request ID <code>{requestId}</code></p>
 		{/if}
