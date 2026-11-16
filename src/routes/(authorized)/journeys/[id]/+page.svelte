@@ -5,11 +5,11 @@
 	import { computeDerivedArrivalTimes, formatDuration, formatDistance } from '$lib/helpers';
 	import { deserialize } from '$app/forms';
 	import { browser } from '$app/environment';
-	import StopCard from '$lib/components/StopCard.svelte';
-	import SegmentChip from '$lib/components/SegmentChip.svelte';
-	import ShareModal from '$lib/components/ShareModal.svelte';
-	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
-	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
+	import StopCard from '$lib/journeys/StopCard.svelte';
+	import SegmentChip from '$lib/journeys/SegmentChip.svelte';
+	import ShareModal from '$lib/journeys/ShareModal.svelte';
+	import OfflineBanner from '$lib/app/OfflineBanner.svelte';
+	import TransitDetailModal from '$lib/journeys/TransitDetailModal.svelte';
 	import Modal from '$lib/ui/Modal.svelte';
 	import { SaveStatus } from '$lib/ui';
 
@@ -533,7 +533,7 @@
 <OfflineBanner />
 
 {#if showMap}
-	{#await import('$lib/components/JourneyMap.svelte') then { default: JourneyMap }}
+	{#await import('$lib/maps/JourneyMap.svelte') then { default: JourneyMap }}
 		<JourneyMap
 			stops={journeyStops}
 			segments={journeySegments}
@@ -786,7 +786,7 @@
 {/if}
 
 {#if browser && showLocationPicker}
-	{#await import('$lib/components/LocationPicker.svelte') then { default: LocationPicker }}
+	{#await import('$lib/maps/LocationPicker.svelte') then { default: LocationPicker }}
 		<LocationPicker
 			bind:open={showLocationPicker}
 			initialLat={locationPickerStop?.lat ?? 50}
@@ -867,7 +867,7 @@
 </Modal>
 
 {#if browser && showWalkRoute}
-	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+	{#await import('$lib/journeys/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 		<WalkRouteModal
 			bind:open={showWalkRoute}
 			segment={detailSegment}

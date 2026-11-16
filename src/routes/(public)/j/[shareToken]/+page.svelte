@@ -2,8 +2,8 @@
 	import type { PageData } from './$types';
 	import type { Stop, Segment } from '$lib/types';
 	import { computeDerivedArrivalTimes, formatDuration, formatDistance } from '$lib/helpers';
-	import SegmentChip from '$lib/components/SegmentChip.svelte';
-	import TransitDetailModal from '$lib/components/TransitDetailModal.svelte';
+	import SegmentChip from '$lib/journeys/SegmentChip.svelte';
+	import TransitDetailModal from '$lib/journeys/TransitDetailModal.svelte';
 	import { PageHeader } from '$lib/ui';
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
@@ -185,7 +185,7 @@
 						class="pointer-events-none h-40 border-b border-[#172a45]/20 select-none"
 						aria-hidden="true"
 					>
-						{#await import('$lib/components/MiniMap.svelte') then { default: MiniMap }}
+						{#await import('$lib/maps/MiniMap.svelte') then { default: MiniMap }}
 							<MiniMap
 								coords={sortedStops.map((s) => ({ lat: s.lat, lon: s.lon }))}
 								class="h-full w-full"
@@ -269,7 +269,7 @@
 />
 
 {#if browser && showWalkRoute}
-	{#await import('$lib/components/WalkRouteModal.svelte') then { default: WalkRouteModal }}
+	{#await import('$lib/journeys/WalkRouteModal.svelte') then { default: WalkRouteModal }}
 		<WalkRouteModal
 			bind:open={showWalkRoute}
 			segment={detailSegment}

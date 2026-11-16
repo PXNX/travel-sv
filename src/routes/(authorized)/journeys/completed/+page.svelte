@@ -2,7 +2,7 @@
 	// Route ledger: a quiet, searchable archive of finished trips.
 	import type { PageData } from './$types';
 	import type { JourneyWithDerived } from '$lib/types';
-	import JourneyCard from '$lib/components/JourneyCard.svelte';
+	import JourneyCard from '$lib/journeys/JourneyCard.svelte';
 	import { EmptyState, PageHeader, StatTile } from '$lib/ui';
 	import { formatDuration } from '$lib/helpers';
 	import { goto } from '$app/navigation';

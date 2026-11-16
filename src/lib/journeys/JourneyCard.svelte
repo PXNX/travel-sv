@@ -60,7 +60,7 @@
 			<div
 				class="relative w-24 shrink-0 overflow-hidden border-r border-[#172a45]/20 bg-[#e7ddca] sm:w-32"
 			>
-				{#await import('./MiniMap.svelte') then { default: MiniMap }}
+				{#await import('$lib/maps/MiniMap.svelte') then { default: MiniMap }}
 					<MiniMap coords={journey.stopCoords!} class="h-full w-full" />
 				{/await}
 				<div class="absolute inset-0 bg-gradient-to-r from-transparent to-[#fffdf7]/40"></div>

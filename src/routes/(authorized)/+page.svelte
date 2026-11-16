@@ -2,8 +2,8 @@
 	// Route register: every journey as a filed slip, with search and sorting.
 	import type { PageData } from './$types';
 	import type { JourneyWithDerived } from '$lib/types';
-	import JourneyCard from '$lib/components/JourneyCard.svelte';
-	import OfflineBanner from '$lib/components/OfflineBanner.svelte';
+	import JourneyCard from '$lib/journeys/JourneyCard.svelte';
+	import OfflineBanner from '$lib/app/OfflineBanner.svelte';
 	import { Button, EmptyState, PageHeader, StatTile } from '$lib/ui';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
