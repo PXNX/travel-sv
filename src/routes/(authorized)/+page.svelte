@@ -23,10 +23,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let journeys = $state<JourneyWithDerived[]>([]);
-	$effect.pre(() => {
-		journeys = data.journeys as JourneyWithDerived[];
-	});
+	let journeys = $state<JourneyWithDerived[]>(data.journeys as JourneyWithDerived[]);
 	let isCreating = $state(false);
 	let searchInput: HTMLInputElement | undefined = $state();
 

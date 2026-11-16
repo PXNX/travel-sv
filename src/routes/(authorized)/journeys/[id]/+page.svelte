@@ -36,30 +36,16 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let journey: typeof data.journey = $state(undefined!);
-	let journeyStops = $state<Stop[]>([]);
-	let journeySegments = $state<Segment[]>([]);
-
-	$effect.pre(() => {
-		journey = data.journey;
-	});
-	$effect.pre(() => {
-		journeyStops = data.stops as Stop[];
-	});
-	$effect.pre(() => {
-		journeySegments = data.segments as Segment[];
-	});
+	// Initialise from server data so SSR renders a complete page on a hard refresh.
+	// Effects do not run on the server, so the old $state(undefined) + $effect sync
+	// crashed in <svelte:head> when a journey page was opened directly.
+	let journey: typeof data.journey = $state(data.journey);
+	let journeyStops = $state<Stop[]>(data.stops as Stop[]);
+	let journeySegments = $state<Segment[]>(data.segments as Segment[]);
 
 	let editingTitle = $state(false);
-	let titleInput = $state('');
-	let startDatetime = $state('');
-
-	$effect.pre(() => {
-		titleInput = data.journey.title;
-	});
-	$effect.pre(() => {
-		startDatetime = data.journey.startDatetime ?? '';
-	});
+	let titleInput = $state(data.journey.title);
+	let startDatetime = $state(data.journey.startDatetime ?? '');
 
 	let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
 	let saveTimer: ReturnType<typeof setTimeout>;
@@ -111,10 +97,9 @@
 	let isRecomputing = $state(false);
 	let recomputeTimer: ReturnType<typeof setTimeout>;
 
-	let dndItems = $state<(Stop & { id: number })[]>([]);
-	$effect(() => {
-		dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
-	});
+	let dndItems = $state<(Stop & { id: number })[]>(
+		[...(data.stops as Stop[])].sort((a, b) => a.orderIndex - b.orderIndex)
+	);
 
 	const hasTransitSegments = $derived(journeySegments.some((s) => s.mode === 'transit'));
 	const isReadOnly = $derived(journey.isCompleted === true);
@@ -135,6 +120,7 @@
 				journey = draft.snapshot.journey as typeof journey;
 				journeyStops = draft.snapshot.stops;
 				journeySegments = draft.snapshot.segments;
+				dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
 				localBaseUpdatedAt = draft.baseUpdatedAt;
 				syncState = draft.baseUpdatedAt !== data.journey.updatedAt ? 'conflict' : 'local';
 			} else {
@@ -247,6 +233,7 @@
 			if (d.journey) journey = d.journey as typeof journey;
 			if (d.stops) journeyStops = d.stops as Stop[];
 			if (d.segments) journeySegments = d.segments as Segment[];
+			dndItems = [...journeyStops].sort((a, b) => a.orderIndex - b.orderIndex);
 			if (d.shareUrl) shareUrl = d.shareUrl as string;
 		}
 		return result;
