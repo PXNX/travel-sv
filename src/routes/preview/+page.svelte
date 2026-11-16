@@ -275,7 +275,13 @@
 			{:else if screen === 'shared'}
 				<SharedPage data={sharedData as any} />
 			{:else if screen === 'empty'}
-				<IndexPage data={{ journeys: [], completedCount: 0, user: indexData.user } as any} />
+				<IndexPage
+					data={{
+						journeys: [],
+						completedCount: 0,
+						user: { ...indexData.user, id: 'demo-empty' }
+					} as any}
+				/>
 			{:else if screen === 'login'}
 				<LoginPage />
 			{:else if screen === 'error'}
